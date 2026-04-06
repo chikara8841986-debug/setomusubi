@@ -1,0 +1,495 @@
+import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
+import type { Business, AvailabilitySlot, MswContact } from '../../types/database'
+
+type SearchResult = Business & {
+  matchedSlot: AvailabilitySlot
+}
+
+type BookingForm = {
+  contactName: string
+  patientName: string
+  patientAddress: string
+  destination: string
+  equipment: 'wheelchair' | 'reclining_wheelchair' | 'stretcher'
+  equipmentRental: boolean
+  notes: string
+}
+
+const SERVICE_AREAS = [
+  '善通寺市', '丸亀市', '坂出市', '宇多津町',
+  '多度津町', '琴平町', 'まんのう町', '綾川町'
+]
+
+const EQUIPMENT_OPTIONS = [
+  { value: 'wheelchair', label: '車椅子' },
+  { value: 'reclining_wheelchair', label: 'リクライニング車椅子' },
+  { value: 'stretcher', label: 'ストレッチャー' },
+] as const
+
+export default function MswSearch() {
+  const { hospitalId } = useAuth()
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+
+  // Step 1: Search form
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [startTime, setStartTime] = useState('10:00')
+  const [endTime, setEndTime] = useState('11:00')
+  const [area, setArea] = useState('')
+  const [needWheelchair, setNeedWheelchair] = useState(false)
+  const [needReclining, setNeedReclining] = useState(false)
+  const [needStretcher, setNeedStretcher] = useState(false)
+  const [needFemale, setNeedFemale] = useState(false)
+  const [needLongDistance, setNeedLongDistance] = useState(false)
+  const [needSameDay, setNeedSameDay] = useState(false)
+
+  // Step 2: Results
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const [selectedBusiness, setSelectedBusiness] = useState<SearchResult | null>(null)
+
+  // Step 3: Booking form
+  const [contacts, setContacts] = useState<MswContact[]>([])
+  const [form, setForm] = useState<BookingForm>({
+    contactName: '',
+    patientName: '',
+    patientAddress: '',
+    destination: '',
+    equipment: 'wheelchair',
+    equipmentRental: false,
+    notes: '',
+  })
+  const [isNewContact, setIsNewContact] = useState(false)
+  const [newContactName, setNewContactName] = useState('')
+  const [booking, setBooking] = useState(false)
+  const [bookingError, setBookingError] = useState('')
+
+  // Confirmed state
+  const [confirmed, setConfirmed] = useState<{ reservationId: string; cancelPhone: string | null } | null>(null)
+
+  useEffect(() => {
+    if (!hospitalId) return
+    supabase
+      .from('msw_contacts')
+      .select('*')
+      .eq('hospital_id', hospitalId)
+      .order('created_at')
+      .then(({ data }) => setContacts(data ?? []))
+  }, [hospitalId])
+
+  const handleSearch = async () => {
+    if (!area) { setSearchError('対応エリアを選択してください'); return }
+    if (startTime >= endTime) { setSearchError('終了時間は開始時間より後にしてください'); return }
+    setSearchError('')
+    setSearching(true)
+
+    // Find available slots on the date
+    type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
+    const { data: rawSlots } = await supabase
+      .from('availability_slots')
+      .select('*, businesses(*)')
+      .eq('date', date)
+      .eq('is_available', true)
+      .lte('start_time', startTime)
+      .gte('end_time', endTime)
+
+    const slots = rawSlots as unknown as SlotWithBusiness[] | null
+
+    if (!slots || slots.length === 0) {
+      setResults([])
+      setSearching(false)
+      setStep(2)
+      return
+    }
+
+    // Filter businesses by conditions
+    const matched: SearchResult[] = []
+    for (const slot of slots) {
+      const biz = slot.businesses as Business
+      if (!biz || !biz.approved) continue
+      if (!biz.service_areas?.includes(area)) continue
+      if (needWheelchair && !biz.has_wheelchair) continue
+      if (needReclining && !biz.has_reclining_wheelchair) continue
+      if (needStretcher && !biz.has_stretcher) continue
+      if (needFemale && !biz.has_female_caregiver) continue
+      if (needLongDistance && !biz.long_distance) continue
+      if (needSameDay && !biz.same_day) continue
+
+      matched.push({ ...biz, matchedSlot: slot as AvailabilitySlot })
+    }
+
+    setResults(matched)
+    setSearching(false)
+    setStep(2)
+  }
+
+  const handleSelectBusiness = (biz: SearchResult) => {
+    setSelectedBusiness(biz)
+    setStep(3)
+  }
+
+  const handleBook = async () => {
+    if (!hospitalId || !selectedBusiness) return
+    const contactName = isNewContact ? newContactName.trim() : form.contactName
+    if (!contactName) { setBookingError('担当者名を入力してください'); return }
+    if (!form.patientName.trim()) { setBookingError('患者氏名を入力してください'); return }
+    if (!form.patientAddress.trim()) { setBookingError('乗車地を入力してください'); return }
+    if (!form.destination.trim()) { setBookingError('目的地を入力してください'); return }
+
+    setBooking(true)
+    setBookingError('')
+
+    const slot = selectedBusiness.matchedSlot
+
+    // Exclusive lock: mark slot as unavailable first (optimistic lock)
+    const { error: lockError, data: lockData } = await supabase
+      .from('availability_slots')
+      .update({ is_available: false })
+      .eq('id', slot.id)
+      .eq('is_available', true)  // Only update if still available
+      .select()
+      .single()
+
+    if (lockError || !lockData) {
+      setBookingError('この枠は他の予約で埋まりました。別の事業所を選択してください。')
+      setBooking(false)
+      return
+    }
+
+    // Create reservation
+    const { data: reservation, error: resError } = await supabase
+      .from('reservations')
+      .insert({
+        business_id: selectedBusiness.id,
+        hospital_id: hospitalId,
+        slot_id: slot.id,
+        contact_name: contactName,
+        patient_name: form.patientName.trim(),
+        patient_address: form.patientAddress.trim(),
+        destination: form.destination.trim(),
+        equipment: form.equipment,
+        equipment_rental: form.equipmentRental,
+        notes: form.notes.trim() || null,
+        reservation_date: date,
+        start_time: startTime,
+        end_time: endTime,
+        status: 'confirmed',
+      })
+      .select()
+      .single()
+
+    if (resError) {
+      // Rollback slot
+      await supabase.from('availability_slots').update({ is_available: true }).eq('id', slot.id)
+      setBookingError('予約に失敗しました: ' + resError.message)
+      setBooking(false)
+      return
+    }
+
+    // Save new contact if entered
+    if (isNewContact && newContactName.trim()) {
+      await supabase.from('msw_contacts').insert({ hospital_id: hospitalId, name: newContactName.trim() })
+      setContacts(prev => [...prev, { id: '', hospital_id: hospitalId, name: newContactName.trim(), created_at: '' }])
+    }
+
+    setConfirmed({ reservationId: reservation.id, cancelPhone: selectedBusiness.cancel_phone })
+    setBooking(false)
+  }
+
+  if (confirmed) {
+    return (
+      <div className="max-w-md mx-auto">
+        <div className="card text-center py-8">
+          <div className="text-5xl mb-4">✅</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">予約が確定しました</h2>
+          <p className="text-sm text-gray-500 mb-4">事業所とご担当者様にメールを送信しました</p>
+          {confirmed.cancelPhone && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left text-sm mb-4">
+              <p className="font-medium text-amber-800 mb-1">キャンセルの場合</p>
+              <p className="text-amber-700">事業所へ直接お電話ください</p>
+              <a href={`tel:${confirmed.cancelPhone}`} className="text-lg font-bold text-amber-900 block mt-1">
+                📞 {confirmed.cancelPhone}
+              </a>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              setStep(1)
+              setConfirmed(null)
+              setSelectedBusiness(null)
+              setForm({ contactName: '', patientName: '', patientAddress: '', destination: '', equipment: 'wheelchair', equipmentRental: false, notes: '' })
+            }}
+            className="btn-primary"
+          >
+            続けて予約する
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 mb-6">
+        {[
+          { n: 1, label: '検索' },
+          { n: 2, label: '事業所選択' },
+          { n: 3, label: '予約内容' },
+        ].map(({ n, label }, i) => (
+          <div key={n} className="flex items-center gap-2 flex-1">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step >= n ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+            }`}>{n}</div>
+            <span className={`text-xs hidden sm:block ${step === n ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>{label}</span>
+            {i < 2 && <div className={`flex-1 h-0.5 ${step > n ? 'bg-blue-500' : 'bg-gray-200'}`} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: Search */}
+      {step === 1 && (
+        <div className="card">
+          <h2 className="text-base font-semibold text-gray-800 mb-4">空き事業所を検索</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="label">希望日 <span className="text-red-500">*</span></label>
+              <input type="date" className="input-base" value={date} onChange={e => setDate(e.target.value)}
+                min={format(new Date(), 'yyyy-MM-dd')} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">希望開始時間</label>
+                <input type="time" className="input-base" value={startTime} onChange={e => setStartTime(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">希望終了時間</label>
+                <input type="time" className="input-base" value={endTime} onChange={e => setEndTime(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className="label">対応エリア <span className="text-red-500">*</span></label>
+              <select className="input-base" value={area} onChange={e => setArea(e.target.value)}>
+                <option value="">選択してください</option>
+                {SERVICE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">必要条件（任意）</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: '車椅子対応', state: needWheelchair, set: setNeedWheelchair },
+                  { label: 'リクライニング対応', state: needReclining, set: setNeedReclining },
+                  { label: 'ストレッチャー対応', state: needStretcher, set: setNeedStretcher },
+                  { label: '女性介護者在籍', state: needFemale, set: setNeedFemale },
+                  { label: '長距離対応', state: needLongDistance, set: setNeedLongDistance },
+                  { label: '当日対応', state: needSameDay, set: setNeedSameDay },
+                ].map(({ label, state, set }) => (
+                  <label key={label} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className="w-4 h-4 rounded" />
+                    <span className="text-sm text-gray-700">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {searchError && <p className="text-sm text-red-600">{searchError}</p>}
+            <button onClick={handleSearch} className="btn-primary w-full" disabled={searching}>
+              {searching ? '検索中...' : '空きを検索する'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Results */}
+      {step === 2 && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={() => setStep(1)} className="text-blue-600 text-sm hover:underline">← 検索に戻る</button>
+            <span className="text-sm text-gray-500">
+              {date} {startTime}〜{endTime} / {area}
+            </span>
+          </div>
+
+          {results.length === 0 ? (
+            <div className="card text-center py-8">
+              <p className="text-gray-500 text-sm">条件に合う空き事業所が見つかりませんでした</p>
+              <p className="text-gray-400 text-xs mt-1">条件を変更して再度検索してください</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">{results.length}件の事業所が見つかりました</p>
+              {results.map(biz => (
+                <div key={biz.id} className="card hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                      <p className="text-xs text-gray-500">{biz.address}</p>
+                    </div>
+                    <button
+                      onClick={() => handleSelectBusiness(biz)}
+                      className="btn-primary text-sm px-4 py-1.5 flex-shrink-0"
+                    >
+                      予約する
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {biz.has_wheelchair && <span className="badge-blue">車椅子</span>}
+                    {biz.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
+                    {biz.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
+                    {biz.has_female_caregiver && <span className="badge-green">女性介護者</span>}
+                    {biz.long_distance && <span className="badge-gray">長距離対応</span>}
+                    {biz.same_day && <span className="badge-gray">当日対応</span>}
+                  </div>
+                  {biz.pricing && (
+                    <p className="text-xs text-gray-600 border-t pt-2 mt-2">
+                      <span className="font-medium">料金: </span>{biz.pricing}
+                    </p>
+                  )}
+                  {biz.qualifications && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      <span className="font-medium">特徴: </span>{biz.qualifications}
+                    </p>
+                  )}
+                  {biz.cancel_phone && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      キャンセル連絡先: {biz.cancel_phone}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 3: Booking form */}
+      {step === 3 && selectedBusiness && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={() => setStep(2)} className="text-blue-600 text-sm hover:underline">← 事業所選択に戻る</button>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-sm">
+            <p className="font-semibold text-blue-800">{selectedBusiness.name}</p>
+            <p className="text-blue-600">{date} {startTime}〜{endTime}</p>
+          </div>
+
+          <div className="card space-y-4">
+            <h2 className="text-base font-semibold text-gray-800">予約内容を入力</h2>
+
+            {/* Contact name */}
+            <div>
+              <label className="label">担当者名 <span className="text-red-500">*</span></label>
+              {contacts.length > 0 && !isNewContact ? (
+                <div className="flex gap-2">
+                  <select
+                    className="input-base flex-1"
+                    value={form.contactName}
+                    onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}
+                  >
+                    <option value="">選択してください</option>
+                    {contacts.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setIsNewContact(true)}
+                    className="btn-secondary text-sm px-3 whitespace-nowrap"
+                  >
+                    新規入力
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="input-base flex-1"
+                    value={newContactName}
+                    onChange={e => setNewContactName(e.target.value)}
+                    placeholder="担当者名を入力"
+                  />
+                  {contacts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsNewContact(false)}
+                      className="btn-secondary text-sm px-3 whitespace-nowrap"
+                    >
+                      一覧から選択
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="label">患者氏名 <span className="text-red-500">*</span></label>
+              <input type="text" className="input-base" value={form.patientName}
+                onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))}
+                placeholder="山田 太郎" />
+            </div>
+            <div>
+              <label className="label">乗車地（患者住所） <span className="text-red-500">*</span></label>
+              <input type="text" className="input-base" value={form.patientAddress}
+                onChange={e => setForm(f => ({ ...f, patientAddress: e.target.value }))}
+                placeholder="香川県丸亀市〇〇町1-2-3" />
+            </div>
+            <div>
+              <label className="label">目的地 <span className="text-red-500">*</span></label>
+              <input type="text" className="input-base" value={form.destination}
+                onChange={e => setForm(f => ({ ...f, destination: e.target.value }))}
+                placeholder="〇〇病院・〇〇クリニック など" />
+            </div>
+            <div>
+              <label className="label">使用機材 <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-3 gap-2">
+                {EQUIPMENT_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, equipment: opt.value }))}
+                    className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
+                      form.equipment === opt.value
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.equipmentRental}
+                onChange={e => setForm(f => ({ ...f, equipmentRental: e.target.checked }))}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-sm text-gray-700">機材の貸出が必要</span>
+            </label>
+            <div>
+              <label className="label">備考（任意）</label>
+              <textarea
+                className="input-base resize-none"
+                rows={3}
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="酸素吸入が必要 / エレベーターなし など"
+              />
+            </div>
+
+            {bookingError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{bookingError}</p>}
+
+            <button onClick={handleBook} className="btn-primary w-full text-base py-3" disabled={booking}>
+              {booking ? '予約処理中...' : '予約を確定する'}
+            </button>
+            <p className="text-xs text-gray-500 text-center">確定と同時に事業所・担当者にメール通知されます</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
