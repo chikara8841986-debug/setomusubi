@@ -5,6 +5,19 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import type { Reservation } from '../../types/database'
 
+async function cancelReservation(reservation: Reservation): Promise<string | null> {
+  const { error } = await supabase
+    .from('reservations')
+    .update({ status: 'cancelled' })
+    .eq('id', reservation.id)
+  if (error) return error.message
+  // Restore slot availability if linked
+  if (reservation.slot_id) {
+    await supabase.from('availability_slots').update({ is_available: true }).eq('id', reservation.slot_id)
+  }
+  return null
+}
+
 type ReservationWithBusiness = Reservation & {
   businesses: { name: string; cancel_phone: string | null } | null
 }
@@ -21,6 +34,8 @@ export default function MswReservations() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<ReservationWithBusiness | null>(null)
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState('')
 
   useEffect(() => {
     if (!hospitalId) return
@@ -133,7 +148,32 @@ export default function MswReservations() {
               </div>
             )}
 
-            <button onClick={() => setSelected(null)} className="btn-secondary w-full mt-4">閉じる</button>
+            {cancelError && <p className="text-xs text-red-600 mt-2">{cancelError}</p>}
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => { setSelected(null); setCancelError('') }} className="btn-secondary flex-1">閉じる</button>
+              {selected.status === 'confirmed' && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('この予約をキャンセルしますか？\n事業所へ直接ご連絡も忘れずに。')) return
+                    setCancelling(true)
+                    setCancelError('')
+                    const err = await cancelReservation(selected)
+                    if (err) {
+                      setCancelError('キャンセルに失敗しました: ' + err)
+                    } else {
+                      setReservations(prev => prev.map(r => r.id === selected.id ? { ...r, status: 'cancelled' as const } : r))
+                      setSelected(null)
+                    }
+                    setCancelling(false)
+                  }}
+                  disabled={cancelling}
+                  className="btn-danger flex-1 text-sm"
+                >
+                  {cancelling ? 'キャンセル中...' : 'キャンセル'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

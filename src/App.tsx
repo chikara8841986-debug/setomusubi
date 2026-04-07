@@ -20,6 +20,7 @@ import HospitalProfile from './pages/msw/HospitalProfile'
 
 // Admin pages
 import AdminApprovals from './pages/admin/Approvals'
+import AdminStats from './pages/admin/Stats'
 
 // Other pages
 import NotFound from './pages/NotFound'
@@ -76,6 +77,7 @@ function AppRoutes() {
           <Layout>
             <Routes>
               <Route path="approvals" element={<AdminApprovals />} />
+              <Route path="stats" element={<AdminStats />} />
               <Route path="*" element={<Navigate to="approvals" replace />} />
             </Routes>
           </Layout>

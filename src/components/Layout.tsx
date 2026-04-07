@@ -15,6 +15,7 @@ const NAV_MSW = [
 
 const NAV_ADMIN = [
   { to: '/admin/approvals', label: '事業所承認' },
+  { to: '/admin/stats', label: '統計' },
 ]
 
 export default function Layout({ children }: { children: React.ReactNode }) {

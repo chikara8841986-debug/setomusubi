@@ -27,6 +27,7 @@ export default function BusinessReservations() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<ReservationWithHospital | null>(null)
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
+  const [completing, setCompleting] = useState(false)
 
   useEffect(() => {
     if (!businessId) return
@@ -130,7 +131,28 @@ export default function BusinessReservations() {
               <Row label="機材貸出" value={selected.equipment_rental ? 'あり' : 'なし'} />
               {selected.notes && <Row label="備考" value={selected.notes} />}
             </dl>
-            <button onClick={() => setSelected(null)} className="btn-secondary w-full mt-4">閉じる</button>
+
+            {selected.status === 'confirmed' && (
+              <button
+                onClick={async () => {
+                  if (!confirm('この予約を完了にしますか？\n枠が即時解放されます。')) return
+                  setCompleting(true)
+                  await supabase.from('reservations').update({ status: 'completed' }).eq('id', selected.id)
+                  if (selected.slot_id) {
+                    await supabase.from('availability_slots').update({ is_available: true }).eq('id', selected.slot_id)
+                  }
+                  setReservations(prev => prev.map(r => r.id === selected.id ? { ...r, status: 'completed' as const } : r))
+                  setCompleting(false)
+                  setSelected(null)
+                }}
+                disabled={completing}
+                className="w-full mt-4 text-sm bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium transition-colors"
+              >
+                {completing ? '処理中...' : '✓ 完了にする（枠を解放）'}
+              </button>
+            )}
+
+            <button onClick={() => setSelected(null)} className="btn-secondary w-full mt-2">閉じる</button>
           </div>
         </div>
       )}
