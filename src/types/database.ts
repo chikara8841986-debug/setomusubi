@@ -189,6 +189,7 @@ export type Database = {
           start_time: string
           end_time: string
           status: ReservationStatus
+          reminder_sent: boolean
           created_at: string
         }
         Insert: {
@@ -207,6 +208,7 @@ export type Database = {
           start_time: string
           end_time: string
           status?: ReservationStatus
+          reminder_sent?: boolean
         }
         Update: {
           id?: string
@@ -224,6 +226,7 @@ export type Database = {
           start_time?: string
           end_time?: string
           status?: ReservationStatus
+          reminder_sent?: boolean
         }
         Relationships: []
       }

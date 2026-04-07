@@ -1,0 +1,7 @@
+# Supabase Edge Function スケジュール設定
+# Supabase Dashboard > Edge Functions > send-reminder の「Cron Schedule」に設定してください
+
+# send-reminder: 毎時0分に実行（1時間前リマインドを5分ウィンドウでチェック）
+# Cron: 0 * * * *
+
+# send-confirmation: DBトリガーまたは予約処理後に直接呼び出し（フロントから invoke）

@@ -173,6 +173,7 @@ create table if not exists reservations (
   start_time time not null,
   end_time time not null,
   status text not null default 'confirmed' check (status in ('confirmed', 'completed', 'cancelled')),
+  reminder_sent boolean not null default false,
   created_at timestamptz default now() not null
 );
 
@@ -221,6 +222,26 @@ create policy "reservations: admin read all" on reservations
 -- =====================================================
 alter publication supabase_realtime add table availability_slots;
 alter publication supabase_realtime add table reservations;
+
+-- =====================================================
+-- Performance indexes
+-- =====================================================
+create index if not exists idx_availability_slots_business_date
+  on availability_slots (business_id, date);
+
+create index if not exists idx_availability_slots_available
+  on availability_slots (date, is_available)
+  where is_available = true;
+
+create index if not exists idx_reservations_business
+  on reservations (business_id, reservation_date);
+
+create index if not exists idx_reservations_hospital
+  on reservations (hospital_id, reservation_date);
+
+create index if not exists idx_reservations_reminder
+  on reservations (reservation_date, start_time, status, reminder_sent)
+  where status = 'confirmed' and reminder_sent = false;
 
 -- =====================================================
 -- Admin user setup
