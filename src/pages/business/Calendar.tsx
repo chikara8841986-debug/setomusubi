@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import type { AvailabilitySlot, Reservation } from '../../types/database'
+import type { AvailabilitySlot, Reservation, Business } from '../../types/database'
 
 type SlotWithReservation = AvailabilitySlot & {
   reservation?: Array<Reservation & { hospitals: { name: string } | null }>
@@ -16,7 +17,7 @@ const QUICK_TIMES = [
 ]
 
 export default function BusinessCalendar() {
-  const { businessId } = useAuth()
+  const { businessId, user } = useAuth()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [slots, setSlots] = useState<SlotWithReservation[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,8 +28,24 @@ export default function BusinessCalendar() {
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState('')
   const [completingId, setCompletingId] = useState<string | null>(null)
+  const [profileIncomplete, setProfileIncomplete] = useState(false)
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('businesses')
+      .select('service_areas, cancel_phone')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        const biz = data as Pick<Business, 'service_areas' | 'cancel_phone'> | null
+        if (biz && (biz.service_areas.length === 0 || !biz.cancel_phone)) {
+          setProfileIncomplete(true)
+        }
+      })
+  }, [user])
 
   const fetchSlots = useCallback(async () => {
     if (!businessId) return
@@ -63,6 +80,12 @@ export default function BusinessCalendar() {
         event: '*',
         schema: 'public',
         table: 'availability_slots',
+        filter: `business_id=eq.${businessId}`,
+      }, fetchSlots)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reservations',
         filter: `business_id=eq.${businessId}`,
       }, fetchSlots)
       .subscribe()
@@ -157,6 +180,19 @@ export default function BusinessCalendar() {
           </button>
         </div>
       </div>
+
+      {profileIncomplete && (
+        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2 text-sm">
+          <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
+          <div>
+            <p className="text-amber-800 font-medium">プロフィールが未設定です</p>
+            <p className="text-amber-700 text-xs mt-0.5">対応エリアやキャンセル連絡先を設定するとMSWの検索に表示されます。</p>
+            <Link to="/business/profile" className="text-amber-700 underline text-xs font-medium mt-1 inline-block">
+              プロフィールを設定する →
+            </Link>
+          </div>
+        </div>
+      )}
 
       <p className="text-xs text-gray-400 mb-3 text-center">
         {format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 {format(addDays(weekStart, 6), 'M月d日', { locale: ja })}

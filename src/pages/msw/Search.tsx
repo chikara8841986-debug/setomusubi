@@ -193,9 +193,20 @@ export default function MswSearch() {
 
     // Save new contact if entered
     if (isNewContact && newContactName.trim()) {
-      await supabase.from('msw_contacts').insert({ hospital_id: hospitalId, name: newContactName.trim() })
-      setContacts(prev => [...prev, { id: '', hospital_id: hospitalId, name: newContactName.trim(), created_at: '' }])
+      const { data: newContact } = await supabase
+        .from('msw_contacts')
+        .insert({ hospital_id: hospitalId, name: newContactName.trim() })
+        .select()
+        .single()
+      if (newContact) {
+        setContacts(prev => [...prev, newContact])
+      }
     }
+
+    // Fire confirmation email (non-blocking)
+    supabase.functions.invoke('send-confirmation', {
+      body: { reservation_id: reservation.id },
+    }).catch(() => {/* ignore if edge function not deployed yet */})
 
     setConfirmed({ reservationId: reservation.id, cancelPhone: selectedBusiness.cancel_phone })
     setBooking(false)

@@ -16,9 +16,13 @@ import BusinessReservations from './pages/business/Reservations'
 // MSW pages
 import MswSearch from './pages/msw/Search'
 import MswReservations from './pages/msw/Reservations'
+import HospitalProfile from './pages/msw/HospitalProfile'
 
 // Admin pages
 import AdminApprovals from './pages/admin/Approvals'
+
+// Other pages
+import NotFound from './pages/NotFound'
 
 function RootRedirect() {
   const { user, role, loading } = useAuth()
@@ -59,6 +63,7 @@ function AppRoutes() {
             <Routes>
               <Route path="search" element={<MswSearch />} />
               <Route path="reservations" element={<MswReservations />} />
+              <Route path="profile" element={<HospitalProfile />} />
               <Route path="*" element={<Navigate to="search" replace />} />
             </Routes>
           </Layout>
@@ -77,7 +82,7 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

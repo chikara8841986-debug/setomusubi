@@ -4,11 +4,24 @@ import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import type { Business } from '../../types/database'
 
+const EQUIPMENT_MAP = [
+  { key: 'has_wheelchair', label: '車椅子対応' },
+  { key: 'has_reclining_wheelchair', label: 'リクライニング対応' },
+  { key: 'has_stretcher', label: 'ストレッチャー対応' },
+  { key: 'rental_wheelchair', label: '車椅子貸出' },
+  { key: 'rental_reclining_wheelchair', label: 'リクライニング貸出' },
+  { key: 'rental_stretcher', label: 'ストレッチャー貸出' },
+  { key: 'has_female_caregiver', label: '女性介護者在籍' },
+  { key: 'long_distance', label: '長距離対応' },
+  { key: 'same_day', label: '当日対応' },
+] as const
+
 export default function AdminApprovals() {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'pending' | 'approved'>('pending')
   const [processing, setProcessing] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   const fetch = async () => {
     const { data } = await supabase
@@ -30,9 +43,8 @@ export default function AdminApprovals() {
   }
 
   const handleReject = async (id: string) => {
-    if (!confirm('この事業所を却下・削除しますか？この操作は取り消せません。')) return
+    if (!confirm('この事業所を却下・削除しますか？\nこの操作は取り消せません。')) return
     setProcessing(id)
-    // Get user_id first
     const { data: biz } = await supabase.from('businesses').select('user_id').eq('id', id).single()
     await supabase.from('businesses').delete().eq('id', id)
     if (biz) await supabase.from('profiles').delete().eq('id', biz.user_id)
@@ -48,30 +60,31 @@ export default function AdminApprovals() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-4">事業所承認管理</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-1">事業所承認管理</h1>
+      <p className="text-xs text-gray-400 mb-4">登録申請が届いた事業所を審査・承認します</p>
 
       <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setTab('pending')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === 'pending' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
-          }`}
-        >
-          承認待ち
-          {pending.length > 0 && (
-            <span className="ml-1.5 bg-red-500 text-white text-xs rounded-full w-4 h-4 inline-flex items-center justify-center">
-              {pending.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setTab('approved')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === 'approved' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
-          }`}
-        >
-          承認済み ({approved.length})
-        </button>
+        {(['pending', 'approved'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              tab === t ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+            }`}
+          >
+            {t === 'pending' ? '承認待ち' : '承認済み'}
+            {t === 'pending' && pending.length > 0 && (
+              <span className={`text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold ${
+                tab === 'pending' ? 'bg-white text-blue-600' : 'bg-red-500 text-white'
+              }`}>
+                {pending.length}
+              </span>
+            )}
+            {t === 'approved' && (
+              <span className="text-xs opacity-60">({approved.length})</span>
+            )}
+          </button>
+        ))}
       </div>
 
       {list.length === 0 ? (
@@ -80,56 +93,99 @@ export default function AdminApprovals() {
         </div>
       ) : (
         <div className="space-y-3">
-          {list.map(biz => (
-            <div key={biz.id} className="card">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900">{biz.name}</h3>
-                    {biz.approved ? <span className="badge-green">承認済み</span> : <span className="badge-red">承認待ち</span>}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{biz.address ?? '住所未設定'}</p>
-                  <p className="text-xs text-gray-500">{biz.phone ?? '電話番号未設定'}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    登録日: {format(parseISO(biz.created_at), 'yyyy年M月d日', { locale: ja })}
-                  </p>
-                  {biz.service_areas?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {biz.service_areas.map(a => (
-                        <span key={a} className="badge-gray">{a}</span>
-                      ))}
+          {list.map(biz => {
+            const isExpanded = expanded === biz.id
+            const features = EQUIPMENT_MAP.filter(e => biz[e.key as keyof Business])
+            return (
+              <div key={biz.id} className="card">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                      {biz.approved
+                        ? <span className="badge-green">承認済み</span>
+                        : <span className="badge-red">承認待ち</span>
+                      }
                     </div>
-                  )}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {biz.has_wheelchair && <span className="badge-blue">車椅子</span>}
-                    {biz.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
-                    {biz.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
-                    {biz.has_female_caregiver && <span className="badge-green">女性介護者</span>}
-                    {biz.long_distance && <span className="badge-gray">長距離</span>}
-                    {biz.same_day && <span className="badge-gray">当日対応</span>}
+                    <p className="text-xs text-gray-500">{biz.address ?? '住所未設定'} ／ {biz.phone ?? '電話番号未設定'}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      登録: {format(parseISO(biz.created_at), 'yyyy/M/d HH:mm', { locale: ja })}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                    {!biz.approved && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(biz.id)}
+                          disabled={processing === biz.id}
+                          className="btn-primary text-sm px-4 py-1.5 min-w-[60px]"
+                        >
+                          {processing === biz.id ? '...' : '承認'}
+                        </button>
+                        <button
+                          onClick={() => handleReject(biz.id)}
+                          disabled={processing === biz.id}
+                          className="btn-danger text-sm px-4 py-1.5 min-w-[60px]"
+                        >
+                          却下
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setExpanded(isExpanded ? null : biz.id)}
+                      className="text-xs text-blue-600 hover:underline text-center"
+                    >
+                      {isExpanded ? '閉じる' : '詳細'}
+                    </button>
                   </div>
                 </div>
-                {!biz.approved && (
-                  <div className="flex flex-col gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => handleApprove(biz.id)}
-                      disabled={processing === biz.id}
-                      className="btn-primary text-sm px-4 py-1.5"
-                    >
-                      承認
-                    </button>
-                    <button
-                      onClick={() => handleReject(biz.id)}
-                      disabled={processing === biz.id}
-                      className="btn-danger text-sm px-4 py-1.5"
-                    >
-                      却下
-                    </button>
+
+                {/* Expanded details */}
+                {isExpanded && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-xs text-gray-600">
+                    {biz.service_areas?.length > 0 && (
+                      <div>
+                        <span className="font-medium text-gray-700">対応エリア: </span>
+                        <span>{biz.service_areas.join('・')}</span>
+                      </div>
+                    )}
+                    {features.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {features.map(f => (
+                          <span key={f.key} className="badge-blue">{f.label}</span>
+                        ))}
+                      </div>
+                    )}
+                    {biz.business_hours_start && (
+                      <div>
+                        <span className="font-medium text-gray-700">営業時間: </span>
+                        <span>{biz.business_hours_start.slice(0,5)}〜{biz.business_hours_end?.slice(0,5)}</span>
+                      </div>
+                    )}
+                    {biz.cancel_phone && (
+                      <div>
+                        <span className="font-medium text-gray-700">キャンセル連絡先: </span>
+                        <a href={`tel:${biz.cancel_phone}`} className="text-blue-600">{biz.cancel_phone}</a>
+                      </div>
+                    )}
+                    {biz.pricing && (
+                      <div>
+                        <span className="font-medium text-gray-700">料金: </span>
+                        <span>{biz.pricing}</span>
+                      </div>
+                    )}
+                    {biz.qualifications && (
+                      <div>
+                        <span className="font-medium text-gray-700">資格・特徴: </span>
+                        <span>{biz.qualifications}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
