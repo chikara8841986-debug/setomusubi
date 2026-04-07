@@ -33,8 +33,10 @@ export default function MswSearch() {
   const { hospitalId } = useAuth()
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
+  const today = format(new Date(), 'yyyy-MM-dd')
+
   // Step 1: Search form
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [date, setDate] = useState(today)
   const [startTime, setStartTime] = useState('10:00')
   const [endTime, setEndTime] = useState('11:00')
   const [area, setArea] = useState('')
@@ -258,7 +260,7 @@ export default function MswSearch() {
             <div>
               <label className="label">希望日 <span className="text-red-500">*</span></label>
               <input type="date" className="input-base" value={date} onChange={e => setDate(e.target.value)}
-                min={format(new Date(), 'yyyy-MM-dd')} />
+                min={today} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

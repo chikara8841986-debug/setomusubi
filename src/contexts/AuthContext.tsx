@@ -10,6 +10,7 @@ type AuthContextType = {
   role: UserRole | null
   businessId: string | null
   hospitalId: string | null
+  businessApproved: boolean
   loading: boolean
   signOut: () => Promise<void>
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   businessId: null,
   hospitalId: null,
+  businessApproved: false,
   loading: true,
   signOut: async () => {},
 })
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null)
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [hospitalId, setHospitalId] = useState<string | null>(null)
+  const [businessApproved, setBusinessApproved] = useState(false)
   const [loading, setLoading] = useState(true)
 
   async function loadUserMeta(userId: string) {
@@ -46,10 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profile.role === 'business') {
       const { data } = await supabase
         .from('businesses')
-        .select('id')
+        .select('id, approved')
         .eq('user_id', userId)
         .single()
       setBusinessId(data?.id ?? null)
+      setBusinessApproved(data?.approved ?? false)
     } else if (profile.role === 'msw') {
       const { data } = await supabase
         .from('hospitals')
@@ -80,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(null)
         setBusinessId(null)
         setHospitalId(null)
+        setBusinessApproved(false)
       }
     })
 
@@ -91,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, role, businessId, hospitalId, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, businessId, hospitalId, businessApproved, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   )

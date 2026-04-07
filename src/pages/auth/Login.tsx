@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const notice = (location.state as { message?: string } | null)?.message ?? ''
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -48,6 +50,12 @@ export default function Login() {
           <h1 className="text-3xl font-bold text-blue-700">せとむすび</h1>
           <p className="text-gray-500 text-sm mt-1">介護タクシー予約プラットフォーム</p>
         </div>
+
+        {notice && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
+            {notice}
+          </div>
+        )}
 
         <div className="card">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">ログイン</h2>
