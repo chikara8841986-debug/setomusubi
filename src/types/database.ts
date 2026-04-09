@@ -2,7 +2,7 @@ export type UserRole = 'business' | 'msw' | 'admin'
 
 export type Equipment = 'wheelchair' | 'reclining_wheelchair' | 'stretcher'
 
-export type ReservationStatus = 'confirmed' | 'completed' | 'cancelled'
+export type ReservationStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected'
 
 export type Database = {
   public: {

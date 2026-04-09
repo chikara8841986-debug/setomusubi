@@ -16,10 +16,12 @@ import BusinessReservations from './pages/business/Reservations'
 // MSW pages
 import MswSearch from './pages/msw/Search'
 import MswReservations from './pages/msw/Reservations'
+import MswContacts from './pages/msw/Contacts'
 import HospitalProfile from './pages/msw/HospitalProfile'
 
 // Admin pages
 import AdminApprovals from './pages/admin/Approvals'
+import AdminReservations from './pages/admin/Reservations'
 import AdminStats from './pages/admin/Stats'
 
 // Other pages
@@ -64,6 +66,7 @@ function AppRoutes() {
             <Routes>
               <Route path="search" element={<MswSearch />} />
               <Route path="reservations" element={<MswReservations />} />
+              <Route path="contacts" element={<MswContacts />} />
               <Route path="profile" element={<HospitalProfile />} />
               <Route path="*" element={<Navigate to="search" replace />} />
             </Routes>
@@ -77,6 +80,7 @@ function AppRoutes() {
           <Layout>
             <Routes>
               <Route path="approvals" element={<AdminApprovals />} />
+              <Route path="reservations" element={<AdminReservations />} />
               <Route path="stats" element={<AdminStats />} />
               <Route path="*" element={<Navigate to="approvals" replace />} />
             </Routes>

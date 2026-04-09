@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,6 +16,8 @@ const QUICK_TIMES = [
   { label: '終日', start: '09:00', end: '18:00' },
 ]
 
+const DAY_LABELS = ['月', '火', '水', '木', '金', '土', '日']
+
 export default function BusinessCalendar() {
   const { businessId, user } = useAuth()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
@@ -29,6 +31,16 @@ export default function BusinessCalendar() {
   const [addError, setAddError] = useState('')
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [profileIncomplete, setProfileIncomplete] = useState(false)
+
+  // Recurring modal state
+  const [showRecurModal, setShowRecurModal] = useState(false)
+  const [recurDays, setRecurDays] = useState<boolean[]>([true, true, true, true, true, false, false]) // Mon-Fri default
+  const [recurStart, setRecurStart] = useState('09:00')
+  const [recurEnd, setRecurEnd] = useState('18:00')
+  const [recurWeeks, setRecurWeeks] = useState(4)
+  const [recurSaving, setRecurSaving] = useState(false)
+  const [recurResult, setRecurResult] = useState<{ added: number; skipped: number } | null>(null)
+  const [recurError, setRecurError] = useState('')
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
@@ -148,6 +160,72 @@ export default function BusinessCalendar() {
     fetchSlots()
   }
 
+  // Recurring slot bulk-add
+  const handleRecurAdd = async () => {
+    if (!businessId) return
+    if (recurStart >= recurEnd) { setRecurError('終了時間は開始時間より後にしてください'); return }
+    if (!recurDays.some(Boolean)) { setRecurError('曜日を1つ以上選択してください'); return }
+
+    setRecurSaving(true)
+    setRecurError('')
+    setRecurResult(null)
+
+    const today = startOfDay(new Date())
+    // Build list of dates to add (from today for recurWeeks weeks)
+    const datesToAdd: string[] = []
+    for (let w = 0; w < recurWeeks; w++) {
+      for (let d = 0; d < 7; d++) {
+        // d=0 is Monday (weekStartsOn:1)
+        const dayIndex = d // 0=Mon, 1=Tue, ..., 6=Sun
+        if (!recurDays[dayIndex]) continue
+        // Find the Monday of the current week offset
+        const weekMonday = startOfWeek(addWeeks(today, w), { weekStartsOn: 1 })
+        const date = addDays(weekMonday, d)
+        if (isBefore(date, today)) continue
+        datesToAdd.push(format(date, 'yyyy-MM-dd'))
+      }
+    }
+
+    if (datesToAdd.length === 0) {
+      setRecurError('追加対象の日付がありません（過去の日付は除外されます）')
+      setRecurSaving(false)
+      return
+    }
+
+    // Check which dates already have a slot with same time to avoid duplicates
+    const { data: existing } = await supabase
+      .from('availability_slots')
+      .select('date, start_time, end_time')
+      .eq('business_id', businessId)
+      .in('date', datesToAdd)
+      .eq('start_time', recurStart)
+      .eq('end_time', recurEnd)
+
+    const existingKeys = new Set((existing ?? []).map(s => s.date))
+    const newDates = datesToAdd.filter(d => !existingKeys.has(d))
+    const skipped = datesToAdd.length - newDates.length
+
+    if (newDates.length > 0) {
+      const rows = newDates.map(date => ({
+        business_id: businessId,
+        date,
+        start_time: recurStart,
+        end_time: recurEnd,
+        is_available: true,
+      }))
+      const { error } = await supabase.from('availability_slots').insert(rows)
+      if (error) {
+        setRecurError('追加に失敗しました: ' + error.message)
+        setRecurSaving(false)
+        return
+      }
+    }
+
+    setRecurResult({ added: newDates.length, skipped })
+    setRecurSaving(false)
+    fetchSlots()
+  }
+
   const slotsForDay = (date: Date) =>
     slots.filter(s => isSameDay(parseISO(s.date), date))
 
@@ -160,6 +238,12 @@ export default function BusinessCalendar() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-900">稼働カレンダー</h1>
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => { setShowRecurModal(true); setRecurResult(null); setRecurError('') }}
+            className="px-3 h-8 rounded-lg border border-blue-200 bg-blue-50 text-xs text-blue-600 hover:bg-blue-100 font-medium"
+          >
+            週次設定
+          </button>
           <button
             onClick={() => setWeekStart(d => addDays(d, -7))}
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-sm"
@@ -362,6 +446,108 @@ export default function BusinessCalendar() {
               <button className="btn-secondary flex-1" onClick={() => setShowAddModal(false)}>キャンセル</button>
               <button className="btn-primary flex-1" onClick={handleAddSlot} disabled={addSaving}>
                 {addSaving ? '追加中...' : '追加する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring slot modal */}
+      {showRecurModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-5 pb-8 sm:pb-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">週次スケジュール設定</h3>
+              <button onClick={() => setShowRecurModal(false)} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">指定した曜日・時間帯のスロットを複数週まとめて追加します。既存のスロットは重複追加されません。</p>
+
+            {/* Day picker */}
+            <div className="mb-4">
+              <p className="label mb-2">稼働曜日</p>
+              <div className="flex gap-1.5">
+                {DAY_LABELS.map((label, i) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setRecurDays(prev => prev.map((v, idx) => idx === i ? !v : v))}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                      recurDays[i]
+                        ? i >= 5 ? 'bg-blue-500 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time */}
+            <div className="mb-3">
+              <p className="label mb-1.5">クイック選択</p>
+              <div className="flex gap-2 mb-3">
+                {QUICK_TIMES.map(qt => (
+                  <button
+                    key={qt.label}
+                    type="button"
+                    onClick={() => { setRecurStart(qt.start); setRecurEnd(qt.end) }}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      recurStart === qt.start && recurEnd === qt.end
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                    }`}
+                  >
+                    {qt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">開始時間</label>
+                  <input type="time" className="input-base" value={recurStart} onChange={e => setRecurStart(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">終了時間</label>
+                  <input type="time" className="input-base" value={recurEnd} onChange={e => setRecurEnd(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* Weeks ahead */}
+            <div className="mb-4">
+              <label className="label">追加する週数</label>
+              <div className="flex gap-2">
+                {[2, 4, 8, 12].map(w => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setRecurWeeks(w)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      recurWeeks === w
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                    }`}
+                  >
+                    {w}週
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {recurError && <p className="text-xs text-red-600 mb-2">{recurError}</p>}
+
+            {recurResult && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3 text-xs text-green-800">
+                ✓ {recurResult.added}枠を追加しました
+                {recurResult.skipped > 0 && ` （重複${recurResult.skipped}枠はスキップ）`}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button className="btn-secondary flex-1" onClick={() => setShowRecurModal(false)}>閉じる</button>
+              <button className="btn-primary flex-1" onClick={handleRecurAdd} disabled={recurSaving}>
+                {recurSaving ? '追加中...' : '一括追加'}
               </button>
             </div>
           </div>

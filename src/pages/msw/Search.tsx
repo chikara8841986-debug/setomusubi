@@ -35,7 +35,7 @@ export default function MswSearch() {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  // Step 1: Search form
+  // Step 1
   const [date, setDate] = useState(today)
   const [startTime, setStartTime] = useState('10:00')
   const [endTime, setEndTime] = useState('11:00')
@@ -47,13 +47,13 @@ export default function MswSearch() {
   const [needLongDistance, setNeedLongDistance] = useState(false)
   const [needSameDay, setNeedSameDay] = useState(false)
 
-  // Step 2: Results
+  // Step 2
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [selectedBusiness, setSelectedBusiness] = useState<SearchResult | null>(null)
 
-  // Step 3: Booking form
+  // Step 3
   const [contacts, setContacts] = useState<MswContact[]>([])
   const [form, setForm] = useState<BookingForm>({
     contactName: '',
@@ -66,11 +66,11 @@ export default function MswSearch() {
   })
   const [isNewContact, setIsNewContact] = useState(false)
   const [newContactName, setNewContactName] = useState('')
-  const [booking, setBooking] = useState(false)
-  const [bookingError, setBookingError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   // Confirmed state
-  const [confirmed, setConfirmed] = useState<{ reservationId: string; cancelPhone: string | null } | null>(null)
+  const [confirmed, setConfirmed] = useState<{ cancelPhone: string | null } | null>(null)
 
   useEffect(() => {
     if (!hospitalId) return
@@ -88,7 +88,6 @@ export default function MswSearch() {
     setSearchError('')
     setSearching(true)
 
-    // Find available slots on the date
     type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
     const { data: rawSlots } = await supabase
       .from('availability_slots')
@@ -107,7 +106,6 @@ export default function MswSearch() {
       return
     }
 
-    // Filter businesses by conditions
     const matched: SearchResult[] = []
     for (const slot of slots) {
       const biz = slot.businesses as Business
@@ -119,7 +117,6 @@ export default function MswSearch() {
       if (needFemale && !biz.has_female_caregiver) continue
       if (needLongDistance && !biz.long_distance) continue
       if (needSameDay && !biz.same_day) continue
-
       matched.push({ ...biz, matchedSlot: slot as AvailabilitySlot })
     }
 
@@ -133,36 +130,21 @@ export default function MswSearch() {
     setStep(3)
   }
 
-  const handleBook = async () => {
+  const handleSubmitRequest = async () => {
     if (!hospitalId || !selectedBusiness) return
     const contactName = isNewContact ? newContactName.trim() : form.contactName
-    if (!contactName) { setBookingError('担当者名を入力してください'); return }
-    if (!form.patientName.trim()) { setBookingError('患者氏名を入力してください'); return }
-    if (!form.patientAddress.trim()) { setBookingError('乗車地を入力してください'); return }
-    if (!form.destination.trim()) { setBookingError('目的地を入力してください'); return }
+    if (!contactName) { setSubmitError('担当者名を入力してください'); return }
+    if (!form.patientName.trim()) { setSubmitError('患者氏名を入力してください'); return }
+    if (!form.patientAddress.trim()) { setSubmitError('乗車地を入力してください'); return }
+    if (!form.destination.trim()) { setSubmitError('目的地を入力してください'); return }
 
-    setBooking(true)
-    setBookingError('')
+    setSubmitting(true)
+    setSubmitError('')
 
     const slot = selectedBusiness.matchedSlot
 
-    // Exclusive lock: mark slot as unavailable first (optimistic lock)
-    const { error: lockError, data: lockData } = await supabase
-      .from('availability_slots')
-      .update({ is_available: false })
-      .eq('id', slot.id)
-      .eq('is_available', true)  // Only update if still available
-      .select()
-      .single()
-
-    if (lockError || !lockData) {
-      setBookingError('この枠は他の予約で埋まりました。別の事業所を選択してください。')
-      setBooking(false)
-      return
-    }
-
-    // Create reservation
-    const { data: reservation, error: resError } = await supabase
+    // Insert reservation as 'pending' — no slot locking yet (business decides)
+    const { error: resError } = await supabase
       .from('reservations')
       .insert({
         business_id: selectedBusiness.id,
@@ -178,16 +160,12 @@ export default function MswSearch() {
         reservation_date: date,
         start_time: startTime,
         end_time: endTime,
-        status: 'confirmed',
+        status: 'pending',
       })
-      .select()
-      .single()
 
     if (resError) {
-      // Rollback slot
-      await supabase.from('availability_slots').update({ is_available: true }).eq('id', slot.id)
-      setBookingError('予約に失敗しました: ' + resError.message)
-      setBooking(false)
+      setSubmitError('申請に失敗しました: ' + resError.message)
+      setSubmitting(false)
       return
     }
 
@@ -198,46 +176,43 @@ export default function MswSearch() {
         .insert({ hospital_id: hospitalId, name: newContactName.trim() })
         .select()
         .single()
-      if (newContact) {
-        setContacts(prev => [...prev, newContact])
-      }
+      if (newContact) setContacts(prev => [...prev, newContact])
     }
 
-    // Fire confirmation email (non-blocking)
-    supabase.functions.invoke('send-confirmation', {
-      body: { reservation_id: reservation.id },
-    }).catch(() => {/* ignore if edge function not deployed yet */})
-
-    setConfirmed({ reservationId: reservation.id, cancelPhone: selectedBusiness.cancel_phone })
-    setBooking(false)
+    setConfirmed({ cancelPhone: selectedBusiness.cancel_phone })
+    setSubmitting(false)
   }
 
   if (confirmed) {
     return (
       <div className="max-w-md mx-auto">
         <div className="card text-center py-8">
-          <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">予約が確定しました</h2>
-          <p className="text-sm text-gray-500 mb-4">事業所とご担当者様にメールを送信しました</p>
+          <div className="text-5xl mb-4">📋</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">仮予約の申請が完了しました</h2>
+          <p className="text-sm text-gray-500 mb-1">事業所からの確定連絡をお待ちください</p>
+          <p className="text-xs text-gray-400 mb-5">予約の確定・却下は「予約履歴」で確認できます</p>
+
           {confirmed.cancelPhone && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left text-sm mb-4">
-              <p className="font-medium text-amber-800 mb-1">キャンセルの場合</p>
-              <p className="text-amber-700">事業所へ直接お電話ください</p>
-              <a href={`tel:${confirmed.cancelPhone}`} className="text-lg font-bold text-amber-900 block mt-1">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left text-sm mb-5">
+              <p className="font-medium text-blue-800 mb-1">急ぎの場合は直接お電話ください</p>
+              <a href={`tel:${confirmed.cancelPhone}`} className="text-lg font-bold text-blue-900 block mt-1">
                 📞 {confirmed.cancelPhone}
               </a>
             </div>
           )}
+
           <button
             onClick={() => {
               setStep(1)
               setConfirmed(null)
               setSelectedBusiness(null)
               setForm({ contactName: '', patientName: '', patientAddress: '', destination: '', equipment: 'wheelchair', equipmentRental: false, notes: '' })
+              setNewContactName('')
+              setIsNewContact(false)
             }}
             className="btn-primary"
           >
-            続けて予約する
+            続けて申請する
           </button>
         </div>
       </div>
@@ -251,7 +226,7 @@ export default function MswSearch() {
         {[
           { n: 1, label: '検索' },
           { n: 2, label: '事業所選択' },
-          { n: 3, label: '予約内容' },
+          { n: 3, label: '申請内容' },
         ].map(({ n, label }, i) => (
           <div key={n} className="flex items-center gap-2 flex-1">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -270,8 +245,7 @@ export default function MswSearch() {
           <div className="space-y-4">
             <div>
               <label className="label">希望日 <span className="text-red-500">*</span></label>
-              <input type="date" className="input-base" value={date} onChange={e => setDate(e.target.value)}
-                min={today} />
+              <input type="date" className="input-base" value={date} onChange={e => setDate(e.target.value)} min={today} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -345,7 +319,7 @@ export default function MswSearch() {
                       onClick={() => handleSelectBusiness(biz)}
                       className="btn-primary text-sm px-4 py-1.5 flex-shrink-0"
                     >
-                      予約する
+                      申請する
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -367,9 +341,12 @@ export default function MswSearch() {
                     </p>
                   )}
                   {biz.cancel_phone && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      キャンセル連絡先: {biz.cancel_phone}
-                    </p>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t">
+                      <p className="text-xs text-gray-500">直接電話で確認することもできます</p>
+                      <a href={`tel:${biz.cancel_phone}`} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">
+                        📞 電話する
+                      </a>
+                    </div>
                   )}
                 </div>
               ))}
@@ -378,60 +355,53 @@ export default function MswSearch() {
         </div>
       )}
 
-      {/* Step 3: Booking form */}
+      {/* Step 3: Request form */}
       {step === 3 && selectedBusiness && (
         <div>
           <div className="flex items-center gap-3 mb-4">
             <button onClick={() => setStep(2)} className="text-blue-600 text-sm hover:underline">← 事業所選択に戻る</button>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-sm">
-            <p className="font-semibold text-blue-800">{selectedBusiness.name}</p>
-            <p className="text-blue-600">{date} {startTime}〜{endTime}</p>
+
+          {/* Summary + phone option */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
+            <p className="font-semibold text-blue-800 text-sm">{selectedBusiness.name}</p>
+            <p className="text-blue-600 text-xs">{date} {startTime}〜{endTime}</p>
+            {selectedBusiness.cancel_phone && (
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-200">
+                <p className="text-xs text-blue-700">急ぎの場合は直接電話でご確認ください</p>
+                <a href={`tel:${selectedBusiness.cancel_phone}`} className="text-xs font-bold text-blue-800 bg-white border border-blue-300 px-3 py-1 rounded-lg flex-shrink-0">
+                  📞 電話する
+                </a>
+              </div>
+            )}
           </div>
 
           <div className="card space-y-4">
-            <h2 className="text-base font-semibold text-gray-800">予約内容を入力</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-800">仮予約の申請内容</h2>
+              <p className="text-xs text-gray-500 mt-1">事業所が確認後、承認・却下の通知が来ます</p>
+            </div>
 
             {/* Contact name */}
             <div>
               <label className="label">担当者名 <span className="text-red-500">*</span></label>
               {contacts.length > 0 && !isNewContact ? (
                 <div className="flex gap-2">
-                  <select
-                    className="input-base flex-1"
-                    value={form.contactName}
-                    onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}
-                  >
+                  <select className="input-base flex-1" value={form.contactName}
+                    onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}>
                     <option value="">選択してください</option>
-                    {contacts.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
+                    {contacts.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setIsNewContact(true)}
-                    className="btn-secondary text-sm px-3 whitespace-nowrap"
-                  >
-                    新規入力
-                  </button>
+                  <button type="button" onClick={() => setIsNewContact(true)}
+                    className="btn-secondary text-sm px-3 whitespace-nowrap">新規入力</button>
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    className="input-base flex-1"
-                    value={newContactName}
-                    onChange={e => setNewContactName(e.target.value)}
-                    placeholder="担当者名を入力"
-                  />
+                  <input type="text" className="input-base flex-1" value={newContactName}
+                    onChange={e => setNewContactName(e.target.value)} placeholder="担当者名を入力" />
                   {contacts.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setIsNewContact(false)}
-                      className="btn-secondary text-sm px-3 whitespace-nowrap"
-                    >
-                      一覧から選択
-                    </button>
+                    <button type="button" onClick={() => setIsNewContact(false)}
+                      className="btn-secondary text-sm px-3 whitespace-nowrap">一覧から選択</button>
                   )}
                 </div>
               )}
@@ -440,8 +410,7 @@ export default function MswSearch() {
             <div>
               <label className="label">患者氏名 <span className="text-red-500">*</span></label>
               <input type="text" className="input-base" value={form.patientName}
-                onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))}
-                placeholder="山田 太郎" />
+                onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} placeholder="山田 太郎" />
             </div>
             <div>
               <label className="label">乗車地（患者住所） <span className="text-red-500">*</span></label>
@@ -459,47 +428,37 @@ export default function MswSearch() {
               <label className="label">使用機材 <span className="text-red-500">*</span></label>
               <div className="grid grid-cols-3 gap-2">
                 {EQUIPMENT_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
+                  <button key={opt.value} type="button"
                     onClick={() => setForm(f => ({ ...f, equipment: opt.value }))}
                     className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
                       form.equipment === opt.value
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
-                    }`}
-                  >
+                    }`}>
                     {opt.label}
                   </button>
                 ))}
               </div>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.equipmentRental}
+              <input type="checkbox" checked={form.equipmentRental}
                 onChange={e => setForm(f => ({ ...f, equipmentRental: e.target.checked }))}
-                className="w-4 h-4 rounded"
-              />
+                className="w-4 h-4 rounded" />
               <span className="text-sm text-gray-700">機材の貸出が必要</span>
             </label>
             <div>
               <label className="label">備考（任意）</label>
-              <textarea
-                className="input-base resize-none"
-                rows={3}
-                value={form.notes}
+              <textarea className="input-base resize-none" rows={3} value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="酸素吸入が必要 / エレベーターなし など"
-              />
+                placeholder="酸素吸入が必要 / エレベーターなし など" />
             </div>
 
-            {bookingError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{bookingError}</p>}
+            {submitError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{submitError}</p>}
 
-            <button onClick={handleBook} className="btn-primary w-full text-base py-3" disabled={booking}>
-              {booking ? '予約処理中...' : '予約を確定する'}
+            <button onClick={handleSubmitRequest} className="btn-primary w-full text-base py-3" disabled={submitting}>
+              {submitting ? '申請中...' : '仮予約を申請する'}
             </button>
-            <p className="text-xs text-gray-500 text-center">確定と同時に事業所・担当者にメール通知されます</p>
+            <p className="text-xs text-gray-500 text-center">事業所が承認すると予約が確定されます</p>
           </div>
         </div>
       )}
