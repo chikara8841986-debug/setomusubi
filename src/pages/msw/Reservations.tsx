@@ -6,6 +6,10 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import type { Reservation } from '../../types/database'
 
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
+
 type ReservationWithBusiness = Reservation & {
   businesses: { name: string; cancel_phone: string | null } | null
 }
@@ -172,8 +176,24 @@ export default function MswReservations() {
               <Row label="事業所" value={selected.businesses?.name ?? '—'} />
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
-              <Row label="乗車地" value={selected.patient_address} />
-              <Row label="目的地" value={selected.destination} />
+              <div className="flex gap-3">
+                <dt className="text-gray-500 w-20 flex-shrink-0">乗車地</dt>
+                <dd className="font-medium break-all">
+                  <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline">
+                    📍 {selected.patient_address}
+                  </a>
+                </dd>
+              </div>
+              <div className="flex gap-3">
+                <dt className="text-gray-500 w-20 flex-shrink-0">目的地</dt>
+                <dd className="font-medium break-all">
+                  <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline">
+                    📍 {selected.destination}
+                  </a>
+                </dd>
+              </div>
               <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment]} />
               <Row label="機材貸出" value={selected.equipment_rental ? 'あり' : 'なし'} />
               {selected.notes && <Row label="備考" value={selected.notes} />}
