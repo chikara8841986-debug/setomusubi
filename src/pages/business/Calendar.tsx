@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks, startOfMonth, endOfMonth } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -31,6 +31,7 @@ export default function BusinessCalendar() {
   const [addError, setAddError] = useState('')
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [profileIncomplete, setProfileIncomplete] = useState(false)
+  const [monthStats, setMonthStats] = useState({ confirmed: 0, completed: 0, pending: 0 })
 
   // Recurring modal state
   const [showRecurModal, setShowRecurModal] = useState(false)
@@ -58,6 +59,26 @@ export default function BusinessCalendar() {
         }
       })
   }, [user])
+
+  // Fetch this month's reservation stats
+  useEffect(() => {
+    if (!businessId) return
+    const now = new Date()
+    const from = format(startOfMonth(now), 'yyyy-MM-dd')
+    const to = format(endOfMonth(now), 'yyyy-MM-dd')
+    Promise.all([
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .eq('business_id', businessId).eq('status', 'confirmed')
+        .gte('reservation_date', from).lte('reservation_date', to),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .eq('business_id', businessId).eq('status', 'completed')
+        .gte('reservation_date', from).lte('reservation_date', to),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .eq('business_id', businessId).eq('status', 'pending'),
+    ]).then(([{ count: confirmed }, { count: completed }, { count: pending }]) => {
+      setMonthStats({ confirmed: confirmed ?? 0, completed: completed ?? 0, pending: pending ?? 0 })
+    })
+  }, [businessId])
 
   const fetchSlots = useCallback(async () => {
     if (!businessId) return
@@ -263,6 +284,20 @@ export default function BusinessCalendar() {
             ▶
           </button>
         </div>
+      </div>
+
+      {/* Monthly stats mini-cards */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {[
+          { label: `${format(new Date(), 'M月')}確定`, value: monthStats.confirmed, color: 'text-blue-600' },
+          { label: `${format(new Date(), 'M月')}完了`, value: monthStats.completed, color: 'text-green-600' },
+          { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-xl border border-gray-100 py-2 px-3 text-center shadow-sm">
+            <p className="text-xs text-gray-400">{s.label}</p>
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
       </div>
 
       {profileIncomplete && (

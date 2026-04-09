@@ -111,6 +111,8 @@ export default function BusinessReservations() {
     if (!confirm('この申請を却下しますか？')) return
     setProcessing(true)
     await supabase.from('reservations').update({ status: 'rejected' }).eq('id', r.id)
+    // Notify MSW (non-blocking)
+    supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
     setSelected(null)
     setProcessing(false)
     fetchReservations()

@@ -21,6 +21,7 @@ export default function AdminStats() {
     totalReservationsAllTime: 0,
     completedThisMonth: 0,
     cancelledThisMonth: 0,
+    pendingRequestsNow: 0,
   })
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function AdminStats() {
         { count: resAll },
         { count: completed },
         { count: cancelled },
+        { count: pendingRequests },
       ] = await Promise.all([
         supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', true),
         supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', false),
@@ -55,6 +57,8 @@ export default function AdminStats() {
         supabase.from('reservations').select('*', { count: 'exact', head: true })
           .eq('status', 'cancelled')
           .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
+        supabase.from('reservations').select('*', { count: 'exact', head: true })
+          .eq('status', 'pending'),
       ])
 
       setStats({
@@ -66,6 +70,7 @@ export default function AdminStats() {
         totalReservationsAllTime: resAll ?? 0,
         completedThisMonth: completed ?? 0,
         cancelledThisMonth: cancelled ?? 0,
+        pendingRequestsNow: pendingRequests ?? 0,
       })
       setLoading(false)
     }
@@ -84,6 +89,7 @@ export default function AdminStats() {
     { label: '累計予約', value: stats.totalReservationsAllTime, sub: '件', color: 'text-indigo-600' },
     { label: `${thisMonth}完了`, value: stats.completedThisMonth, sub: '件', color: 'text-green-600' },
     { label: `${thisMonth}キャンセル`, value: stats.cancelledThisMonth, sub: '件', color: stats.cancelledThisMonth > 0 ? 'text-amber-600' : 'text-gray-400' },
+    { label: '仮予約申請中', value: stats.pendingRequestsNow, sub: '件', color: stats.pendingRequestsNow > 0 ? 'text-red-500' : 'text-gray-400' },
   ]
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
