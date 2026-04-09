@@ -337,15 +337,20 @@ export default function BusinessCalendar() {
                   <div className="space-y-1.5 pl-1">
                     {daySlots.map(slot => {
                       const resArr = Array.isArray(slot.reservation) ? slot.reservation : []
-                      const res = resArr[0]
-                      const hasReservation = !slot.is_available && !!res
+                      // Find confirmed reservation first, then any pending
+                      const confirmedRes = resArr.find(r => r.status === 'confirmed')
+                      const pendingRes = resArr.find(r => r.status === 'pending')
+                      const hasConfirmed = !slot.is_available && !!confirmedRes
+                      const hasPending = !hasConfirmed && !!pendingRes
 
                       return (
                         <div
                           key={slot.id}
                           className={`rounded-lg px-3 py-2 text-sm ${
-                            hasReservation
+                            hasConfirmed
                               ? 'bg-orange-50 border border-orange-200'
+                              : hasPending
+                              ? 'bg-amber-50 border border-amber-300'
                               : 'bg-green-50 border border-green-200'
                           }`}
                         >
@@ -354,12 +359,14 @@ export default function BusinessCalendar() {
                               <span className="font-medium text-gray-800 whitespace-nowrap">
                                 {slot.start_time.slice(0, 5)}〜{slot.end_time.slice(0, 5)}
                               </span>
-                              {hasReservation
-                                ? <span className="badge-red flex-shrink-0">予約あり</span>
+                              {hasConfirmed
+                                ? <span className="badge-red flex-shrink-0">予約確定</span>
+                                : hasPending
+                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 flex-shrink-0">申請中</span>
                                 : <span className="badge-green flex-shrink-0">空き</span>
                               }
                             </div>
-                            {!hasReservation && !past && (
+                            {!hasConfirmed && !hasPending && !past && (
                               <button
                                 onClick={() => handleDeleteSlot(slot.id)}
                                 className="text-xs text-red-300 hover:text-red-500 flex-shrink-0"
@@ -369,21 +376,35 @@ export default function BusinessCalendar() {
                             )}
                           </div>
 
-                          {hasReservation && res && (
+                          {/* Confirmed reservation detail */}
+                          {hasConfirmed && confirmedRes && (
                             <div className="mt-2 text-xs text-gray-600 space-y-0.5 border-t border-orange-200 pt-2">
                               <p className="font-medium text-gray-700">
-                                {res.hospitals?.name ?? '—'} ／ {res.contact_name}
+                                {confirmedRes.hospitals?.name ?? '—'} ／ {confirmedRes.contact_name}
                               </p>
-                              <p>患者：{res.patient_name}</p>
-                              <p className="truncate">乗車地：{res.patient_address}</p>
-                              <p className="truncate">目的地：{res.destination}</p>
+                              <p>患者：{confirmedRes.patient_name}</p>
+                              <p className="truncate">乗車地：{confirmedRes.patient_address}</p>
+                              <p className="truncate">目的地：{confirmedRes.destination}</p>
                               <button
-                                onClick={() => handleComplete(res, slot.id)}
-                                disabled={completingId === res.id}
+                                onClick={() => handleComplete(confirmedRes, slot.id)}
+                                disabled={completingId === confirmedRes.id}
                                 className="mt-2 w-full text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium transition-colors"
                               >
-                                {completingId === res.id ? '処理中...' : '✓ 完了にする（枠を解放）'}
+                                {completingId === confirmedRes.id ? '処理中...' : '✓ 完了にする（枠を解放）'}
                               </button>
+                            </div>
+                          )}
+
+                          {/* Pending request detail */}
+                          {hasPending && pendingRes && (
+                            <div className="mt-2 text-xs text-amber-700 space-y-0.5 border-t border-amber-200 pt-2">
+                              <p className="font-medium">
+                                {pendingRes.hospitals?.name ?? '—'} ／ {pendingRes.contact_name}
+                              </p>
+                              <p>患者：{pendingRes.patient_name}</p>
+                              <p className="text-[10px] text-amber-600 mt-1">
+                                ※ 申請中 — 予約管理から承認または却下してください
+                              </p>
                             </div>
                           )}
                         </div>

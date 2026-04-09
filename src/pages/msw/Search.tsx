@@ -144,7 +144,7 @@ export default function MswSearch() {
     const slot = selectedBusiness.matchedSlot
 
     // Insert reservation as 'pending' — no slot locking yet (business decides)
-    const { error: resError } = await supabase
+    const { data: newReservation, error: resError } = await supabase
       .from('reservations')
       .insert({
         business_id: selectedBusiness.id,
@@ -160,8 +160,10 @@ export default function MswSearch() {
         reservation_date: date,
         start_time: startTime,
         end_time: endTime,
-        status: 'pending',
+        status: 'pending' as const,
       })
+      .select('id')
+      .single()
 
     if (resError) {
       setSubmitError('申請に失敗しました: ' + resError.message)
@@ -177,6 +179,13 @@ export default function MswSearch() {
         .select()
         .single()
       if (newContact) setContacts(prev => [...prev, newContact])
+    }
+
+    // Notify business of new request (non-blocking)
+    if (newReservation?.id) {
+      supabase.functions.invoke('send-request-received', {
+        body: { reservation_id: newReservation.id },
+      }).catch(() => {})
     }
 
     setConfirmed({ cancelPhone: selectedBusiness.cancel_phone })

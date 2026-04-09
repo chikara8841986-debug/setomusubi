@@ -172,7 +172,7 @@ create table if not exists reservations (
   reservation_date date not null,
   start_time time not null,
   end_time time not null,
-  status text not null default 'confirmed' check (status in ('confirmed', 'completed', 'cancelled')),
+  status text not null default 'pending' check (status in ('pending', 'confirmed', 'completed', 'cancelled', 'rejected')),
   reminder_sent boolean not null default false,
   created_at timestamptz default now() not null
 );
@@ -211,6 +211,14 @@ create policy "reservations: msw read own" on reservations
     )
   );
 
+-- MSW: cancel own reservations (update to cancelled)
+create policy "reservations: msw update own" on reservations
+  for update using (
+    exists (
+      select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid()
+    )
+  );
+
 -- Admin: read all (excluding patient PII is enforced in app layer)
 create policy "reservations: admin read all" on reservations
   for select using (
@@ -242,6 +250,18 @@ create index if not exists idx_reservations_hospital
 create index if not exists idx_reservations_reminder
   on reservations (reservation_date, start_time, status, reminder_sent)
   where status = 'confirmed' and reminder_sent = false;
+
+-- =====================================================
+-- Migration: add pending/rejected statuses (run if schema already applied)
+-- =====================================================
+-- alter table reservations drop constraint if exists reservations_status_check;
+-- alter table reservations add constraint reservations_status_check
+--   check (status in ('pending', 'confirmed', 'completed', 'cancelled', 'rejected'));
+-- alter table reservations alter column status set default 'pending';
+-- create policy "reservations: msw update own" on reservations
+--   for update using (
+--     exists (select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid())
+--   );
 
 -- =====================================================
 -- Admin user setup
