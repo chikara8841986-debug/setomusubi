@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks, startOfMonth, endOfMonth } from 'date-fns'
+
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -418,8 +422,14 @@ export default function BusinessCalendar() {
                                 {confirmedRes.hospitals?.name ?? '—'} ／ {confirmedRes.contact_name}
                               </p>
                               <p>患者：{confirmedRes.patient_name}</p>
-                              <p className="truncate">乗車地：{confirmedRes.patient_address}</p>
-                              <p className="truncate">目的地：{confirmedRes.destination}</p>
+                              <a href={mapsUrl(confirmedRes.patient_address)} target="_blank" rel="noopener noreferrer"
+                                className="block truncate text-blue-700 hover:underline">
+                                📍 乗車地：{confirmedRes.patient_address}
+                              </a>
+                              <a href={mapsUrl(confirmedRes.destination)} target="_blank" rel="noopener noreferrer"
+                                className="block truncate text-blue-700 hover:underline">
+                                📍 目的地：{confirmedRes.destination}
+                              </a>
                               <button
                                 onClick={() => handleComplete(confirmedRes, slot.id)}
                                 disabled={completingId === confirmedRes.id}
