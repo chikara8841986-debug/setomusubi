@@ -121,7 +121,16 @@ export default function BusinessIntroduction() {
           )}
           <div>
             <h2 className="font-bold text-gray-900 text-base">{data.name}</h2>
-            {data.address && <p className="text-xs text-gray-500">{data.address}</p>}
+            {data.address && (
+              <a
+                href={`https://maps.google.com/maps?q=${encodeURIComponent(data.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:underline block mt-0.5"
+              >
+                📍 {data.address}
+              </a>
+            )}
             {data.cancel_phone && (
               <p className="text-xs text-gray-600 mt-0.5">📞 {data.cancel_phone}</p>
             )}

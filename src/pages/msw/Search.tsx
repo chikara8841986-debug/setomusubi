@@ -21,6 +21,15 @@ type BookingForm = {
   notes: string
 }
 
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
+
+function formatHours(start: string | null, end: string | null) {
+  if (!start || !end) return null
+  return `${start.slice(0, 5)}〜${end.slice(0, 5)}`
+}
+
 const SERVICE_AREAS = [
   '善通寺市', '丸亀市', '坂出市', '宇多津町',
   '多度津町', '琴平町', 'まんのう町', '綾川町'
@@ -369,7 +378,22 @@ export default function MswSearch() {
                           {favorites.has(biz.id) ? '⭐' : '☆'}
                         </button>
                       </div>
-                      <p className="text-xs text-gray-500">{biz.address}</p>
+                      {biz.address ? (
+                        <a
+                          href={mapsUrl(biz.address)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-0.5 inline-block"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          📍 {biz.address}
+                        </a>
+                      ) : null}
+                      {formatHours(biz.business_hours_start, biz.business_hours_end) && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => handleSelectBusiness(biz)}
@@ -541,7 +565,16 @@ export default function MswSearch() {
               )}
               <div>
                 <p className="font-bold text-gray-900">{previewBusiness.name}</p>
-                {previewBusiness.address && <p className="text-xs text-gray-500">{previewBusiness.address}</p>}
+                {previewBusiness.address && (
+                  <a
+                    href={mapsUrl(previewBusiness.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline block mt-0.5"
+                  >
+                    📍 {previewBusiness.address}
+                  </a>
+                )}
                 {previewBusiness.cancel_phone && (
                   <a href={`tel:${previewBusiness.cancel_phone}`} className="text-xs text-blue-600 block mt-0.5">
                     📞 {previewBusiness.cancel_phone}
