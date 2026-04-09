@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
+import { useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import type { Business, AvailabilitySlot, MswContact } from '../../types/database'
+
+type FavoriteEntry = { business_id: string }
 
 type SearchResult = Business & {
   matchedSlot: AvailabilitySlot
@@ -29,8 +32,20 @@ const EQUIPMENT_OPTIONS = [
   { value: 'stretcher', label: 'ストレッチャー' },
 ] as const
 
+type PrefillState = {
+  patientName?: string
+  patientAddress?: string
+  destination?: string
+  equipment?: 'wheelchair' | 'reclining_wheelchair' | 'stretcher'
+  equipmentRental?: boolean
+  notes?: string
+  contactName?: string
+}
+
 export default function MswSearch() {
   const { hospitalId } = useAuth()
+  const location = useLocation()
+  const prefill = (location.state as { prefill?: PrefillState } | null)?.prefill
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -47,6 +62,9 @@ export default function MswSearch() {
   const [needLongDistance, setNeedLongDistance] = useState(false)
   const [needSameDay, setNeedSameDay] = useState(false)
 
+  // Favorites
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+
   // Step 2
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -56,13 +74,13 @@ export default function MswSearch() {
   // Step 3
   const [contacts, setContacts] = useState<MswContact[]>([])
   const [form, setForm] = useState<BookingForm>({
-    contactName: '',
-    patientName: '',
-    patientAddress: '',
-    destination: '',
-    equipment: 'wheelchair',
-    equipmentRental: false,
-    notes: '',
+    contactName: prefill?.contactName ?? '',
+    patientName: prefill?.patientName ?? '',
+    patientAddress: prefill?.patientAddress ?? '',
+    destination: prefill?.destination ?? '',
+    equipment: prefill?.equipment ?? 'wheelchair',
+    equipmentRental: prefill?.equipmentRental ?? false,
+    notes: prefill?.notes ?? '',
   })
   const [isNewContact, setIsNewContact] = useState(false)
   const [newContactName, setNewContactName] = useState('')
@@ -80,7 +98,26 @@ export default function MswSearch() {
       .eq('hospital_id', hospitalId)
       .order('created_at')
       .then(({ data }) => setContacts(data ?? []))
+    supabase
+      .from('favorites')
+      .select('business_id')
+      .eq('hospital_id', hospitalId)
+      .then(({ data }) => {
+        setFavorites(new Set((data as FavoriteEntry[] ?? []).map(f => f.business_id)))
+      })
   }, [hospitalId])
+
+  const toggleFavorite = async (businessId: string) => {
+    if (!hospitalId) return
+    if (favorites.has(businessId)) {
+      await supabase.from('favorites').delete()
+        .eq('hospital_id', hospitalId).eq('business_id', businessId)
+      setFavorites(prev => { const s = new Set(prev); s.delete(businessId); return s })
+    } else {
+      await supabase.from('favorites').insert({ hospital_id: hospitalId, business_id: businessId })
+      setFavorites(prev => new Set([...prev, businessId]))
+    }
+  }
 
   const handleSearch = async () => {
     if (!area) { setSearchError('対応エリアを選択してください'); return }
@@ -320,8 +357,17 @@ export default function MswSearch() {
               {results.map(biz => (
                 <div key={biz.id} className="card hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                        <button
+                          onClick={() => toggleFavorite(biz.id)}
+                          className="text-lg flex-shrink-0 leading-none"
+                          title={favorites.has(biz.id) ? 'お気に入り解除' : 'お気に入り登録'}
+                        >
+                          {favorites.has(biz.id) ? '⭐' : '☆'}
+                        </button>
+                      </div>
                       <p className="text-xs text-gray-500">{biz.address}</p>
                     </div>
                     <button

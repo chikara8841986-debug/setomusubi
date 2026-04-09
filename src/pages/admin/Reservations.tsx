@@ -15,6 +15,43 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   stretcher: 'ストレッチャー',
 }
 
+function exportCSV(reservations: ReservationFull[]) {
+  const EQUIPMENT_LABELS: Record<string, string> = {
+    wheelchair: '車椅子', reclining_wheelchair: 'リクライニング', stretcher: 'ストレッチャー',
+  }
+  const STATUS_LABELS: Record<string, string> = {
+    pending: '申請中', confirmed: '確定', completed: '完了', cancelled: 'キャンセル', rejected: '却下',
+  }
+  const header = ['予約日', '開始時間', '終了時間', '事業所名', '病院名', '担当者', '患者氏名', '乗車地', '目的地', '使用機材', '機材貸出', 'ステータス', '備考', '作成日時']
+  const rows = reservations.map(r => [
+    r.reservation_date,
+    r.start_time.slice(0, 5),
+    r.end_time.slice(0, 5),
+    r.businesses?.name ?? '',
+    r.hospitals?.name ?? '',
+    r.contact_name,
+    r.patient_name,
+    r.patient_address,
+    r.destination,
+    EQUIPMENT_LABELS[r.equipment] ?? r.equipment,
+    r.equipment_rental ? 'あり' : 'なし',
+    STATUS_LABELS[r.status] ?? r.status,
+    r.notes ?? '',
+    r.created_at.slice(0, 16).replace('T', ' '),
+  ])
+  const csv = [header, ...rows].map(row =>
+    row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n')
+  const bom = '\uFEFF'
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `reservations_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 const STATUS_OPTIONS = [
   { value: '', label: 'すべて' },
   { value: 'confirmed', label: '確定' },
@@ -61,7 +98,7 @@ export default function AdminReservations() {
       <h1 className="text-xl font-bold text-gray-900 mb-1">全予約一覧</h1>
       <p className="text-xs text-gray-400 mb-4">全事業所・全病院の予約を確認できます</p>
 
-      {/* Filters */}
+      {/* Filters + Export */}
       <div className="flex flex-wrap gap-2 mb-4">
         <input
           type="month"
@@ -69,6 +106,14 @@ export default function AdminReservations() {
           value={monthFilter}
           onChange={e => setMonthFilter(e.target.value)}
         />
+        {reservations.length > 0 && (
+          <button
+            onClick={() => exportCSV(reservations)}
+            className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1.5"
+          >
+            ↓ CSV
+          </button>
+        )}
         <div className="flex gap-1">
           {STATUS_OPTIONS.map(opt => (
             <button

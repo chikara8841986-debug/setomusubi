@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import type { Reservation } from '../../types/database'
@@ -27,6 +28,7 @@ type Tab = 'active' | 'past'
 
 export default function MswReservations() {
   const { hospitalId } = useAuth()
+  const navigate = useNavigate()
   const [reservations, setReservations] = useState<ReservationWithBusiness[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<ReservationWithBusiness | null>(null)
@@ -190,7 +192,29 @@ export default function MswReservations() {
 
             {cancelError && <p className="text-xs text-red-600 mt-2">{cancelError}</p>}
 
-            <div className="flex gap-2 mt-4">
+            {/* Re-apply with same content */}
+            <button
+              onClick={() => {
+                navigate('/msw/search', {
+                  state: {
+                    prefill: {
+                      patientName: selected.patient_name,
+                      patientAddress: selected.patient_address,
+                      destination: selected.destination,
+                      equipment: selected.equipment,
+                      equipmentRental: selected.equipment_rental,
+                      notes: selected.notes ?? '',
+                      contactName: selected.contact_name,
+                    }
+                  }
+                })
+              }}
+              className="w-full mt-4 text-sm border border-blue-300 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              同じ内容で再申請する
+            </button>
+
+            <div className="flex gap-2 mt-2">
               <button onClick={() => { setSelected(null); setCancelError('') }} className="btn-secondary flex-1">閉じる</button>
               {(selected.status === 'pending' || selected.status === 'confirmed') && (
                 <button

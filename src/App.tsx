@@ -17,6 +17,7 @@ import BusinessReservations from './pages/business/Reservations'
 import MswSearch from './pages/msw/Search'
 import MswReservations from './pages/msw/Reservations'
 import MswContacts from './pages/msw/Contacts'
+import MswFavorites from './pages/msw/Favorites'
 import HospitalProfile from './pages/msw/HospitalProfile'
 
 // Admin pages
@@ -67,6 +68,7 @@ function AppRoutes() {
               <Route path="search" element={<MswSearch />} />
               <Route path="reservations" element={<MswReservations />} />
               <Route path="contacts" element={<MswContacts />} />
+              <Route path="favorites" element={<MswFavorites />} />
               <Route path="profile" element={<HospitalProfile />} />
               <Route path="*" element={<Navigate to="search" replace />} />
             </Routes>

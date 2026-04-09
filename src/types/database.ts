@@ -144,6 +144,25 @@ export type Database = {
         }
         Relationships: []
       }
+      favorites: {
+        Row: {
+          id: string
+          hospital_id: string
+          business_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hospital_id: string
+          business_id: string
+        }
+        Update: {
+          id?: string
+          hospital_id?: string
+          business_id?: string
+        }
+        Relationships: []
+      }
       availability_slots: {
         Row: {
           id: string
@@ -245,3 +264,4 @@ export type MswContact = Database['public']['Tables']['msw_contacts']['Row']
 export type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row']
 export type Reservation = Database['public']['Tables']['reservations']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']
+export type Favorite = Database['public']['Tables']['favorites']['Row']

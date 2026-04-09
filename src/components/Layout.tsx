@@ -12,6 +12,7 @@ const NAV_BUSINESS = [
 const NAV_MSW = [
   { to: '/msw/search', label: '予約する' },
   { to: '/msw/reservations', label: '予約履歴' },
+  { to: '/msw/favorites', label: 'お気に入り' },
   { to: '/msw/contacts', label: '担当者' },
   { to: '/msw/profile', label: '病院情報' },
 ]

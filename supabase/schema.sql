@@ -120,6 +120,26 @@ create policy "msw_contacts: hospital owner full access" on msw_contacts
   );
 
 -- =====================================================
+-- favorites (MSWがお気に入り登録した事業所)
+-- =====================================================
+create table if not exists favorites (
+  id uuid primary key default gen_random_uuid(),
+  hospital_id uuid references hospitals(id) on delete cascade not null,
+  business_id uuid references businesses(id) on delete cascade not null,
+  created_at timestamptz default now() not null,
+  unique (hospital_id, business_id)
+);
+
+alter table favorites enable row level security;
+
+create policy "favorites: hospital owner full access" on favorites
+  for all using (
+    exists (
+      select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid()
+    )
+  );
+
+-- =====================================================
 -- availability_slots
 -- =====================================================
 create table if not exists availability_slots (
