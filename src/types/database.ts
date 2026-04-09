@@ -47,6 +47,10 @@ export type Database = {
           qualifications: string | null
           pricing: string | null
           cancel_phone: string | null
+          website_url: string | null
+          profile_image_url: string | null
+          vehicle_image_urls: string[]
+          pr_text: string | null
           approved: boolean
           created_at: string
         }
@@ -72,6 +76,10 @@ export type Database = {
           qualifications?: string | null
           pricing?: string | null
           cancel_phone?: string | null
+          website_url?: string | null
+          profile_image_url?: string | null
+          vehicle_image_urls?: string[]
+          pr_text?: string | null
           approved?: boolean
         }
         Update: {
@@ -96,6 +104,10 @@ export type Database = {
           qualifications?: string | null
           pricing?: string | null
           cancel_phone?: string | null
+          website_url?: string | null
+          profile_image_url?: string | null
+          vehicle_image_urls?: string[]
+          pr_text?: string | null
           approved?: boolean
         }
         Relationships: []

@@ -5,8 +5,9 @@ import { useAuth } from '../contexts/AuthContext'
 
 const NAV_BUSINESS = [
   { to: '/business/calendar', label: 'カレンダー' },
-  { to: '/business/profile', label: 'プロフィール' },
   { to: '/business/reservations', label: '予約管理' },
+  { to: '/business/introduction', label: '紹介ページ' },
+  { to: '/business/profile', label: 'プロフィール' },
 ]
 
 const NAV_MSW = [

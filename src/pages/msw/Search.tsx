@@ -70,6 +70,7 @@ export default function MswSearch() {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [selectedBusiness, setSelectedBusiness] = useState<SearchResult | null>(null)
+  const [previewBusiness, setPreviewBusiness] = useState<SearchResult | null>(null)
 
   // Step 3
   const [contacts, setContacts] = useState<MswContact[]>([])
@@ -395,14 +396,19 @@ export default function MswSearch() {
                       <span className="font-medium">特徴: </span>{biz.qualifications}
                     </p>
                   )}
-                  {biz.cancel_phone && (
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                      <p className="text-xs text-gray-500">直接電話で確認することもできます</p>
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t gap-2">
+                    <button
+                      onClick={() => setPreviewBusiness(biz)}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      詳細を見る →
+                    </button>
+                    {biz.cancel_phone && (
                       <a href={`tel:${biz.cancel_phone}`} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">
                         📞 電話する
                       </a>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -514,6 +520,81 @@ export default function MswSearch() {
               {submitting ? '申請中...' : '仮予約を申請する'}
             </button>
             <p className="text-xs text-gray-500 text-center">事業所が承認すると予約が確定されます</p>
+          </div>
+        </div>
+      )}
+
+      {/* Business detail preview modal */}
+      {previewBusiness && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">事業所詳細</h3>
+              <button onClick={() => setPreviewBusiness(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+            </div>
+
+            <div className="flex items-start gap-3 mb-3">
+              {previewBusiness.profile_image_url ? (
+                <img src={previewBusiness.profile_image_url} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-400 text-2xl">🚐</div>
+              )}
+              <div>
+                <p className="font-bold text-gray-900">{previewBusiness.name}</p>
+                {previewBusiness.address && <p className="text-xs text-gray-500">{previewBusiness.address}</p>}
+                {previewBusiness.cancel_phone && (
+                  <a href={`tel:${previewBusiness.cancel_phone}`} className="text-xs text-blue-600 block mt-0.5">
+                    📞 {previewBusiness.cancel_phone}
+                  </a>
+                )}
+                {previewBusiness.website_url && (
+                  <a href={previewBusiness.website_url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-600 underline block mt-0.5">🔗 ホームページ</a>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1 mb-3">
+              {previewBusiness.has_wheelchair && <span className="badge-blue">車椅子</span>}
+              {previewBusiness.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
+              {previewBusiness.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
+              {previewBusiness.has_female_caregiver && <span className="badge-green">女性介護者</span>}
+              {previewBusiness.long_distance && <span className="badge-gray">長距離対応</span>}
+              {previewBusiness.same_day && <span className="badge-gray">当日対応</span>}
+            </div>
+
+            {previewBusiness.pr_text && (
+              <p className="text-sm text-gray-700 whitespace-pre-line mb-3 border-t pt-3">{previewBusiness.pr_text}</p>
+            )}
+
+            {previewBusiness.vehicle_image_urls?.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 mb-3 border-t pt-3">
+                {previewBusiness.vehicle_image_urls.map(url => (
+                  <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-gray-100" />
+                ))}
+              </div>
+            )}
+
+            {previewBusiness.pricing && (
+              <div className="border-t pt-3 text-sm">
+                <span className="text-gray-500 text-xs">料金: </span>{previewBusiness.pricing}
+              </div>
+            )}
+            {previewBusiness.qualifications && (
+              <div className="border-t mt-2 pt-2 text-sm">
+                <span className="text-gray-500 text-xs">資格・特徴: </span>{previewBusiness.qualifications}
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setPreviewBusiness(null)} className="btn-secondary flex-1">閉じる</button>
+              <button
+                onClick={() => { handleSelectBusiness(previewBusiness); setPreviewBusiness(null) }}
+                className="btn-primary flex-1"
+              >
+                この事業所に申請
+              </button>
+            </div>
           </div>
         </div>
       )}

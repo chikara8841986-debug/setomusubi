@@ -12,6 +12,7 @@ import MswRegister from './pages/auth/MswRegister'
 import BusinessCalendar from './pages/business/Calendar'
 import BusinessProfile from './pages/business/Profile'
 import BusinessReservations from './pages/business/Reservations'
+import BusinessIntroduction from './pages/business/Introduction'
 
 // MSW pages
 import MswSearch from './pages/msw/Search'
@@ -54,6 +55,7 @@ function AppRoutes() {
               <Route path="calendar" element={<BusinessCalendar />} />
               <Route path="profile" element={<BusinessProfile />} />
               <Route path="reservations" element={<BusinessReservations />} />
+              <Route path="introduction" element={<BusinessIntroduction />} />
               <Route path="*" element={<Navigate to="calendar" replace />} />
             </Routes>
           </Layout>

@@ -50,6 +50,10 @@ create table if not exists businesses (
   qualifications text,
   pricing text,
   cancel_phone text,
+  website_url text,
+  profile_image_url text,
+  vehicle_image_urls text[] not null default '{}',
+  pr_text text,
   approved boolean not null default false,
   created_at timestamptz default now() not null
 );
@@ -270,6 +274,27 @@ create index if not exists idx_reservations_hospital
 create index if not exists idx_reservations_reminder
   on reservations (reservation_date, start_time, status, reminder_sent)
   where status = 'confirmed' and reminder_sent = false;
+
+-- =====================================================
+-- Storage buckets for business images
+-- Run in SQL Editor after creating the bucket in Dashboard
+-- =====================================================
+-- insert into storage.buckets (id, name, public) values ('business-images', 'business-images', true);
+--
+-- create policy "business images: owner upload" on storage.objects
+--   for insert with check (
+--     bucket_id = 'business-images' and
+--     (storage.foldername(name))[1] = auth.uid()::text
+--   );
+--
+-- create policy "business images: public read" on storage.objects
+--   for select using (bucket_id = 'business-images');
+--
+-- create policy "business images: owner delete" on storage.objects
+--   for delete using (
+--     bucket_id = 'business-images' and
+--     (storage.foldername(name))[1] = auth.uid()::text
+--   );
 
 -- =====================================================
 -- Migration: add pending/rejected statuses (run if schema already applied)
