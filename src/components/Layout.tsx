@@ -25,6 +25,34 @@ const NAV_ADMIN = [
   { to: '/admin/stats', label: '統計' },
 ]
 
+function AdminPendingBadge() {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      const { count: c } = await supabase
+        .from('businesses')
+        .select('*', { count: 'exact', head: true })
+        .eq('approved', false)
+      if (mounted) setCount(c ?? 0)
+    }
+    load()
+    const channel = supabase
+      .channel('admin-pending-badge')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'businesses' }, load)
+      .subscribe()
+    return () => { mounted = false; supabase.removeChannel(channel) }
+  }, [])
+
+  if (count === 0) return null
+  return (
+    <span className="ml-1 text-[10px] bg-red-500 text-white rounded-full w-4 h-4 inline-flex items-center justify-center font-bold">
+      {count > 9 ? '9+' : count}
+    </span>
+  )
+}
+
 function PendingBadge({ businessId }: { businessId: string }) {
   const [count, setCount] = useState(0)
 
@@ -120,6 +148,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {label}
                   {isReservationsNav && businessId && (
                     <PendingBadge businessId={businessId} />
+                  )}
+                  {to === '/admin/approvals' && role === 'admin' && (
+                    <AdminPendingBadge />
                   )}
                 </Link>
               )
