@@ -11,6 +11,13 @@ const supabase = createClient(
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
 const FROM_EMAIL = 'noreply@setomusubi.jp'
+const APP_URL = Deno.env.get('APP_URL') ?? 'https://setomusubi.vercel.app'
+
+const EQUIPMENT_LABELS: Record<string, string> = {
+  wheelchair: '車椅子',
+  reclining_wheelchair: 'リクライニング車椅子',
+  stretcher: 'ストレッチャー',
+}
 
 async function sendEmail(to: string, subject: string, body: string) {
   if (!RESEND_API_KEY) {
@@ -63,7 +70,7 @@ Deno.serve(async (req) => {
 患者: ${res.patient_name}
 乗車地: ${res.patient_address}
 目的地: ${res.destination}
-使用機材: ${res.equipment}
+使用機材: ${EQUIPMENT_LABELS[res.equipment] ?? res.equipment}
 機材貸出: ${res.equipment_rental ? 'あり' : 'なし'}
 ${res.notes ? `備考: ${res.notes}` : ''}
 ━━━━━━━━━━━━━━━━━━
@@ -71,8 +78,10 @@ ${res.notes ? `備考: ${res.notes}` : ''}
 キャンセルの場合は事業所へ直接ご連絡ください。
 ${res.businesses?.cancel_phone ? `キャンセル連絡先: ${res.businesses.cancel_phone}` : ''}
 
+▶ 予約確認
+${APP_URL}/msw/reservations
+
 せとむすび
-https://setomusubi.vercel.app
 `
 
   // Get business email
