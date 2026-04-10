@@ -7,6 +7,8 @@ import Layout from './components/Layout'
 import Login from './pages/auth/Login'
 import BusinessRegister from './pages/auth/BusinessRegister'
 import MswRegister from './pages/auth/MswRegister'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 
 // Business pages
 import BusinessCalendar from './pages/business/Calendar'
@@ -19,6 +21,7 @@ import MswSearch from './pages/msw/Search'
 import MswReservations from './pages/msw/Reservations'
 import MswContacts from './pages/msw/Contacts'
 import MswFavorites from './pages/msw/Favorites'
+import MswBusinesses from './pages/msw/Businesses'
 import HospitalProfile from './pages/msw/HospitalProfile'
 
 // Admin pages
@@ -44,6 +47,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth/reset-password" element={<ResetPassword />} />
       <Route path="/register/business" element={<BusinessRegister />} />
       <Route path="/register/msw" element={<MswRegister />} />
 
@@ -69,8 +74,9 @@ function AppRoutes() {
             <Routes>
               <Route path="search" element={<MswSearch />} />
               <Route path="reservations" element={<MswReservations />} />
-              <Route path="contacts" element={<MswContacts />} />
               <Route path="favorites" element={<MswFavorites />} />
+              <Route path="businesses" element={<MswBusinesses />} />
+              <Route path="contacts" element={<MswContacts />} />
               <Route path="profile" element={<HospitalProfile />} />
               <Route path="*" element={<Navigate to="search" replace />} />
             </Routes>

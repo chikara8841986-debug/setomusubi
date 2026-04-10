@@ -91,6 +91,11 @@ export default function Login() {
               {loading ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
+          <div className="mt-3 text-center">
+            <Link to="/auth/forgot-password" className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+              パスワードを忘れた方
+            </Link>
+          </div>
         </div>
 
         <div className="mt-4 space-y-2 text-center text-sm text-gray-600">
