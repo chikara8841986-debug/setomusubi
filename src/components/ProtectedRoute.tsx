@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { UserRole } from '../types/database'
 
@@ -30,14 +32,33 @@ export default function ProtectedRoute({ children, allowedRoles }: Props) {
 
   // Business pending approval
   if (role === 'business' && !businessApproved) {
-    return <PendingApproval />
+    return <PendingApproval userId={user.id} />
   }
 
   return <>{children}</>
 }
 
-function PendingApproval() {
+function PendingApproval({ userId }: { userId: string }) {
   const { signOut } = useAuth()
+
+  // Realtime: reload when admin approves this business
+  useEffect(() => {
+    const channel = supabase
+      .channel('approval-watch-' + userId)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'businesses',
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        if (payload.new?.approved === true) {
+          window.location.reload()
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [userId])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">

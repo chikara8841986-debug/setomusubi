@@ -38,6 +38,8 @@ export default function AdminApprovals() {
     if (!confirm('この事業所を承認しますか？')) return
     setProcessing(id)
     await supabase.from('businesses').update({ approved: true }).eq('id', id)
+    // Notify business (non-blocking)
+    supabase.functions.invoke('send-business-approved', { body: { business_id: id } }).catch(() => {})
     await fetch()
     setProcessing(null)
   }
