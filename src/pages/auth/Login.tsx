@@ -107,16 +107,16 @@ export default function Login() {
         </div>
 
         {/* Register links */}
-        <div className="mt-5 space-y-2 text-center text-sm text-slate-600">
+        <div className="mt-5 bg-white/75 backdrop-blur-md rounded-2xl px-5 py-4 space-y-2 text-center text-sm text-slate-700 shadow-sm">
           <p>
             事業所の方（新規登録）→{' '}
-            <Link to="/register/business" className="text-teal-700 hover:text-teal-900 font-medium transition-colors">
+            <Link to="/register/business" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
               事業所登録
             </Link>
           </p>
           <p>
             MSW（病院）の方（新規登録）→{' '}
-            <Link to="/register/msw" className="text-teal-700 hover:text-teal-900 font-medium transition-colors">
+            <Link to="/register/msw" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
               MSW登録
             </Link>
           </p>

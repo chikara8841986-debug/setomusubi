@@ -168,7 +168,7 @@ export default function MswRegister() {
           )}
         </div>
 
-        <p className="text-center text-sm text-slate-600 mt-5">
+        <p className="mt-5 bg-white/75 backdrop-blur-md rounded-2xl px-5 py-3.5 text-center text-sm text-slate-700 shadow-sm">
           すでにアカウントをお持ちの方は{' '}
           <Link to="/login" className="text-teal-700 hover:text-teal-900 font-medium transition-colors">ログイン</Link>
         </p>

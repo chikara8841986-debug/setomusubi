@@ -79,8 +79,8 @@ export default function ForgotPassword() {
           )}
         </div>
 
-        <div className="mt-5 text-center text-sm">
-          <Link to="/login" className="text-teal-700 hover:text-teal-900 transition-colors">← ログインに戻る</Link>
+        <div className="mt-5 bg-white/75 backdrop-blur-md rounded-2xl px-5 py-3.5 text-center text-sm shadow-sm">
+          <Link to="/login" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">← ログインに戻る</Link>
         </div>
       </div>
     </div>
