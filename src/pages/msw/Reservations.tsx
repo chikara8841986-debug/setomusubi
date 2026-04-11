@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { useNavigate } from 'react-router-dom'
@@ -40,7 +40,7 @@ export default function MswReservations() {
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
 
-  const fetchReservations = async () => {
+  const fetchReservations = useCallback(async () => {
     if (!hospitalId) return
     const { data } = await supabase
       .from('reservations')
@@ -50,9 +50,20 @@ export default function MswReservations() {
       .order('start_time', { ascending: false })
     setReservations((data as ReservationWithBusiness[]) ?? [])
     setLoading(false)
-  }
+  }, [hospitalId])
 
-  useEffect(() => { fetchReservations() }, [hospitalId])
+  useEffect(() => {
+    fetchReservations()
+    if (!hospitalId) return
+    const channel = supabase
+      .channel('msw-reservations-' + hospitalId)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'reservations',
+        filter: `hospital_id=eq.${hospitalId}`,
+      }, fetchReservations)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchReservations, hospitalId])
 
   // Active: pending + confirmed future
   const active = reservations.filter(r => {
