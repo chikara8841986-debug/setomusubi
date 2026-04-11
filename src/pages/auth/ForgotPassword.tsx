@@ -29,7 +29,7 @@ export default function ForgotPassword() {
       className="min-h-screen relative flex items-center justify-center p-4"
       style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
-      <div className="absolute inset-0 backdrop-blur-lg bg-white/45" />
+      <div className="absolute inset-0 backdrop-blur-sm bg-white/20" />
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand */}

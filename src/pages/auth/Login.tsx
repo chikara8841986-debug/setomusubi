@@ -49,7 +49,7 @@ export default function Login() {
       style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       {/* Blurred dark overlay */}
-      <div className="absolute inset-0 backdrop-blur-lg bg-white/45" />
+      <div className="absolute inset-0 backdrop-blur-sm bg-white/20" />
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand */}
