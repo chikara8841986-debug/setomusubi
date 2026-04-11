@@ -44,7 +44,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" /><div className="relative z-10 w-full flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blue-700">せとむすび</h1>
@@ -113,6 +113,7 @@ export default function Login() {
           </p>
         </div>
       </div>
-    </div>
+    </div></div>
   )
 }
+

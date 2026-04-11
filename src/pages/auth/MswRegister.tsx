@@ -88,8 +88,9 @@ export default function MswRegister() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center p-4 relative" style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
+      <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-6">
           <Link to="/" className="text-2xl font-bold text-blue-700">せとむすび</Link>
           <p className="text-gray-500 text-sm mt-1">MSW（病院）新規登録</p>
