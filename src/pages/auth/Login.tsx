@@ -44,21 +44,29 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" /><div className="relative z-10 w-full flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div
+      className="min-h-screen relative flex items-center justify-center p-4"
+      style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      {/* Dark gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/65 via-slate-800/50 to-slate-900/65" />
+
+      <div className="relative z-10 w-full max-w-sm">
+        {/* Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-700">せとむすび</h1>
-          <p className="text-gray-500 text-sm mt-1">介護タクシー予約プラットフォーム</p>
+          <h1 className="font-display text-4xl font-black text-white drop-shadow-lg tracking-wide">せとむすび</h1>
+          <p className="text-white/70 text-sm mt-2 tracking-wide">介護タクシー予約プラットフォーム</p>
         </div>
 
         {notice && (
-          <div className="mb-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
+          <div className="mb-4 bg-emerald-500/20 border border-emerald-400/40 rounded-xl px-4 py-3 text-sm text-emerald-100 backdrop-blur-sm">
             {notice}
           </div>
         )}
 
-        <div className="card">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">ログイン</h2>
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-auth p-7">
+          <h2 className="text-lg font-bold text-slate-800 mb-5">ログイン</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">メールアドレス</label>
@@ -85,35 +93,35 @@ export default function Login() {
               />
             </div>
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>
             )}
             <button type="submit" className="btn-primary w-full" disabled={loading}>
               {loading ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
-          <div className="mt-3 text-center">
-            <Link to="/auth/forgot-password" className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+          <div className="mt-4 text-center">
+            <Link to="/auth/forgot-password" className="text-xs text-slate-400 hover:text-slate-600 hover:underline transition-colors">
               パスワードを忘れた方
             </Link>
           </div>
         </div>
 
-        <div className="mt-4 space-y-2 text-center text-sm text-gray-600">
+        {/* Register links */}
+        <div className="mt-5 space-y-2 text-center text-sm text-white/75">
           <p>
             事業所の方（新規登録）→{' '}
-            <Link to="/register/business" className="text-blue-600 hover:underline font-medium">
+            <Link to="/register/business" className="text-teal-300 hover:text-white font-medium transition-colors">
               事業所登録
             </Link>
           </p>
           <p>
             MSW（病院）の方（新規登録）→{' '}
-            <Link to="/register/msw" className="text-blue-600 hover:underline font-medium">
+            <Link to="/register/msw" className="text-teal-300 hover:text-white font-medium transition-colors">
               MSW登録
             </Link>
           </p>
         </div>
       </div>
-    </div></div>
+    </div>
   )
 }
-

@@ -48,13 +48,11 @@ export default function MswRegister() {
       if (signUpError) throw signUpError
       if (!data.user) throw new Error('ユーザー作成に失敗しました')
 
-      // Create profile
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({ id: data.user.id, role: 'msw' })
       if (profileError) throw profileError
 
-      // Create hospital
       const { data: hospital, error: hospError } = await supabase
         .from('hospitals')
         .insert({
@@ -67,7 +65,6 @@ export default function MswRegister() {
         .single()
       if (hospError) throw hospError
 
-      // Create initial contact
       if (contactName.trim() && hospital) {
         await supabase
           .from('msw_contacts')
@@ -88,24 +85,31 @@ export default function MswRegister() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative" style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
-      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
+    <div
+      className="min-h-screen relative flex items-center justify-center p-4"
+      style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/65 via-slate-800/50 to-slate-900/65" />
+
       <div className="relative z-10 w-full max-w-sm">
+        {/* Brand */}
         <div className="text-center mb-6">
-          <Link to="/" className="text-2xl font-bold text-blue-700">せとむすび</Link>
-          <p className="text-gray-500 text-sm mt-1">MSW（病院）新規登録</p>
+          <Link to="/" className="font-display text-3xl font-black text-white drop-shadow-lg tracking-wide">せとむすび</Link>
+          <p className="text-white/70 text-sm mt-2">MSW（病院）新規登録</p>
         </div>
 
+        {/* Progress */}
         <div className="flex items-center gap-2 mb-6">
           {[1, 2].map(s => (
-            <div key={s} className={`flex-1 h-1.5 rounded-full ${s <= step ? 'bg-teal-500' : 'bg-gray-200'}`} />
+            <div key={s} className={`flex-1 h-1.5 rounded-full transition-colors ${s <= step ? 'bg-teal-400' : 'bg-white/20'}`} />
           ))}
         </div>
 
-        <div className="card">
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-auth p-7">
           {step === 1 ? (
             <>
-              <h2 className="text-base font-semibold text-gray-800 mb-4">アカウント情報</h2>
+              <h2 className="text-base font-bold text-slate-800 mb-5">アカウント情報</h2>
               <form onSubmit={handleStep1} className="space-y-4">
                 <div>
                   <label className="label">メールアドレス</label>
@@ -122,13 +126,13 @@ export default function MswRegister() {
                   <input type="password" className="input-base" value={passwordConfirm}
                     onChange={e => setPasswordConfirm(e.target.value)} required placeholder="••••••••" />
                 </div>
-                {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-                <button type="submit" className="btn-primary w-full">次へ</button>
+                {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+                <button type="submit" className="btn-primary w-full">次へ →</button>
               </form>
             </>
           ) : (
             <>
-              <h2 className="text-base font-semibold text-gray-800 mb-4">病院情報</h2>
+              <h2 className="text-base font-bold text-slate-800 mb-5">病院情報</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="label">病院名 <span className="text-red-500">*</span></label>
@@ -150,10 +154,10 @@ export default function MswRegister() {
                   <input type="text" className="input-base" value={contactName}
                     onChange={e => setContactName(e.target.value)} placeholder="山田 花子" />
                 </div>
-                {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+                {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
                 <div className="flex gap-2">
                   <button type="button" className="btn-secondary flex-1" onClick={() => { setStep(1); setError('') }}>
-                    戻る
+                    ← 戻る
                   </button>
                   <button type="submit" className="btn-primary flex-1" disabled={loading}>
                     {loading ? '登録中...' : '登録する'}
@@ -164,9 +168,9 @@ export default function MswRegister() {
           )}
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-white/70 mt-5">
           すでにアカウントをお持ちの方は{' '}
-          <Link to="/login" className="text-blue-600 hover:underline">ログイン</Link>
+          <Link to="/login" className="text-teal-300 hover:text-white font-medium transition-colors">ログイン</Link>
         </p>
       </div>
     </div>
