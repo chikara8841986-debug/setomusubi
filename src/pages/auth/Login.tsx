@@ -49,13 +49,13 @@ export default function Login() {
       style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       {/* Blurred dark overlay */}
-      <div className="absolute inset-0 backdrop-blur-xl bg-slate-900/45" />
+      <div className="absolute inset-0 backdrop-blur-lg bg-white/45" />
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <h1 className="font-display text-4xl font-black text-white drop-shadow-lg tracking-wide">せとむすび</h1>
-          <p className="text-white/70 text-sm mt-2 tracking-wide">介護タクシー予約プラットフォーム</p>
+          <h1 className="font-display text-4xl font-black text-teal-800 drop-shadow-sm tracking-wide">せとむすび</h1>
+          <p className="text-slate-600 text-sm mt-2 tracking-wide">介護タクシー予約プラットフォーム</p>
         </div>
 
         {notice && (
@@ -107,16 +107,16 @@ export default function Login() {
         </div>
 
         {/* Register links */}
-        <div className="mt-5 space-y-2 text-center text-sm text-white/75">
+        <div className="mt-5 space-y-2 text-center text-sm text-slate-600">
           <p>
             事業所の方（新規登録）→{' '}
-            <Link to="/register/business" className="text-teal-300 hover:text-white font-medium transition-colors">
+            <Link to="/register/business" className="text-teal-700 hover:text-teal-900 font-medium transition-colors">
               事業所登録
             </Link>
           </p>
           <p>
             MSW（病院）の方（新規登録）→{' '}
-            <Link to="/register/msw" className="text-teal-300 hover:text-white font-medium transition-colors">
+            <Link to="/register/msw" className="text-teal-700 hover:text-teal-900 font-medium transition-colors">
               MSW登録
             </Link>
           </p>

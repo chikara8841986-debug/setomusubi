@@ -81,13 +81,13 @@ export default function BusinessRegister() {
       className="min-h-screen relative flex items-center justify-center p-4"
       style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
-      <div className="absolute inset-0 backdrop-blur-xl bg-slate-900/45" />
+      <div className="absolute inset-0 backdrop-blur-lg bg-white/45" />
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-6">
-          <Link to="/" className="font-display text-3xl font-black text-white drop-shadow-lg tracking-wide">せとむすび</Link>
-          <p className="text-white/70 text-sm mt-2">事業所 新規登録</p>
+          <Link to="/" className="font-display text-3xl font-black text-teal-800 drop-shadow-sm tracking-wide">せとむすび</Link>
+          <p className="text-slate-600 text-sm mt-2">事業所 新規登録</p>
         </div>
 
         {/* Progress */}
@@ -153,9 +153,9 @@ export default function BusinessRegister() {
           )}
         </div>
 
-        <p className="text-center text-sm text-white/70 mt-5">
+        <p className="text-center text-sm text-slate-600 mt-5">
           すでにアカウントをお持ちの方は{' '}
-          <Link to="/login" className="text-teal-300 hover:text-white font-medium transition-colors">ログイン</Link>
+          <Link to="/login" className="text-teal-700 hover:text-teal-900 font-medium transition-colors">ログイン</Link>
         </p>
       </div>
     </div>

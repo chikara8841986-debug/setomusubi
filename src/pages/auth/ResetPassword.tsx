@@ -48,13 +48,13 @@ export default function ResetPassword() {
       className="min-h-screen relative flex items-center justify-center p-4"
       style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
-      <div className="absolute inset-0 backdrop-blur-xl bg-slate-900/45" />
+      <div className="absolute inset-0 backdrop-blur-lg bg-white/45" />
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <h1 className="font-display text-4xl font-black text-white drop-shadow-lg tracking-wide">せとむすび</h1>
-          <p className="text-white/70 text-sm mt-2">新しいパスワードを設定</p>
+          <h1 className="font-display text-4xl font-black text-teal-800 drop-shadow-sm tracking-wide">せとむすび</h1>
+          <p className="text-slate-600 text-sm mt-2">新しいパスワードを設定</p>
         </div>
 
         {/* Card */}
