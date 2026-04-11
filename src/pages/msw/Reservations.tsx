@@ -80,7 +80,17 @@ export default function MswReservations() {
     setCancelError('')
     await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', r.id)
     if (r.slot_id && r.status === 'confirmed') {
-      await supabase.from('availability_slots').update({ is_available: true }).eq('id', r.slot_id)
+      // confirmed_count を1減らし、is_available を true に戻す
+      const { data: slot } = await supabase
+        .from('availability_slots')
+        .select('confirmed_count')
+        .eq('id', r.slot_id)
+        .single()
+      const newCount = Math.max(0, (slot?.confirmed_count ?? 1) - 1)
+      await supabase
+        .from('availability_slots')
+        .update({ confirmed_count: newCount, is_available: true })
+        .eq('id', r.slot_id)
     }
     setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: 'cancelled' as const } : x))
     setCancelling(false)

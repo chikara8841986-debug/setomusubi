@@ -153,8 +153,15 @@ create table if not exists availability_slots (
   start_time time not null,
   end_time time not null,
   is_available boolean not null default true,
+  capacity integer not null default 1,          -- 対応可能な台数
+  confirmed_count integer not null default 0,    -- 確定済み予約数
   created_at timestamptz default now() not null
 );
+
+-- ▼ 既存DBへのマイグレーション（初回のみ実行）
+-- alter table availability_slots
+--   add column if not exists capacity integer not null default 1,
+--   add column if not exists confirmed_count integer not null default 0;
 
 alter table availability_slots enable row level security;
 

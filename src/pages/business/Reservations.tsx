@@ -74,35 +74,45 @@ export default function BusinessReservations() {
     setProcessing(true)
     setActionError('')
 
-    // If there's a linked slot, try to lock it atomically
     if (r.slot_id) {
-      const { data: locked } = await supabase
+      // 現在のスロット状態を取得
+      const { data: slot } = await supabase
         .from('availability_slots')
-        .update({ is_available: false })
+        .select('capacity, confirmed_count, is_available')
         .eq('id', r.slot_id)
-        .eq('is_available', true)
-        .select()
         .single()
 
-      if (!locked) {
-        // Slot already taken — still allow approval (business can override)
-        // Just warn them
-        const ok = confirm('この時間帯は既に別の予約で埋まっている可能性があります。\nそれでも承認しますか？')
+      const capacity = slot?.capacity ?? 1
+      const confirmedCount = slot?.confirmed_count ?? 0
+
+      if (confirmedCount >= capacity) {
+        const ok = confirm('この時間帯は既に満車の可能性があります。\nそれでも承認しますか？')
         if (!ok) { setProcessing(false); return }
       }
 
-      // Auto-reject other pending requests for same slot
+      const newCount = confirmedCount + 1
+      const nowFull = newCount >= capacity
+
+      // confirmed_count をインクリメント、満車なら is_available = false
       await supabase
-        .from('reservations')
-        .update({ status: 'rejected' })
-        .eq('slot_id', r.slot_id)
-        .eq('status', 'pending')
-        .neq('id', r.id)
+        .from('availability_slots')
+        .update({ confirmed_count: newCount, is_available: !nowFull })
+        .eq('id', r.slot_id)
+
+      // 満車になった場合のみ他の申請中を自動却下
+      if (nowFull) {
+        await supabase
+          .from('reservations')
+          .update({ status: 'rejected' })
+          .eq('slot_id', r.slot_id)
+          .eq('status', 'pending')
+          .neq('id', r.id)
+      }
     }
 
     await supabase.from('reservations').update({ status: 'confirmed' }).eq('id', r.id)
 
-    // Send confirmation email (non-blocking)
+    // 確定メール送信（non-blocking）
     supabase.functions.invoke('send-confirmation', { body: { reservation_id: r.id } })
       .catch(() => {})
 
@@ -115,7 +125,6 @@ export default function BusinessReservations() {
     if (!confirm('この申請を却下しますか？')) return
     setProcessing(true)
     await supabase.from('reservations').update({ status: 'rejected' }).eq('id', r.id)
-    // Notify MSW (non-blocking)
     supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
     setSelected(null)
     setProcessing(false)
@@ -123,11 +132,21 @@ export default function BusinessReservations() {
   }
 
   const handleComplete = async (r: ReservationWithHospital) => {
-    if (!confirm('予約を完了にしますか？\n枠が即時解放されます。')) return
+    if (!confirm('予約を完了にしますか？')) return
     setProcessing(true)
     await supabase.from('reservations').update({ status: 'completed' }).eq('id', r.id)
     if (r.slot_id) {
-      await supabase.from('availability_slots').update({ is_available: true }).eq('id', r.slot_id)
+      // confirmed_count を1減らし、is_available を true に戻す
+      const { data: slot } = await supabase
+        .from('availability_slots')
+        .select('confirmed_count')
+        .eq('id', r.slot_id)
+        .single()
+      const newCount = Math.max(0, (slot?.confirmed_count ?? 1) - 1)
+      await supabase
+        .from('availability_slots')
+        .update({ confirmed_count: newCount, is_available: true })
+        .eq('id', r.slot_id)
     }
     setSelected(null)
     setProcessing(false)

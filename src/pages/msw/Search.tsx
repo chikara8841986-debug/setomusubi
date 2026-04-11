@@ -421,12 +421,19 @@ export default function MswSearch() {
                     </p>
                   )}
                   <div className="flex items-center justify-between mt-2 pt-2 border-t gap-2">
-                    <button
-                      onClick={() => setPreviewBusiness(biz)}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      詳細を見る →
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setPreviewBusiness(biz)}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        詳細を見る →
+                      </button>
+                      {(biz.matchedSlot.capacity ?? 1) > 1 && (
+                        <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                          空き{(biz.matchedSlot.capacity ?? 1) - (biz.matchedSlot.confirmed_count ?? 0)}台
+                        </span>
+                      )}
+                    </div>
                     {biz.cancel_phone && (
                       <a href={`tel:${biz.cancel_phone}`} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">
                         📞 電話する

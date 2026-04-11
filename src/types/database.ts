@@ -183,6 +183,8 @@ export type Database = {
           start_time: string
           end_time: string
           is_available: boolean
+          capacity: number
+          confirmed_count: number
           created_at: string
         }
         Insert: {
@@ -192,6 +194,8 @@ export type Database = {
           start_time: string
           end_time: string
           is_available?: boolean
+          capacity?: number
+          confirmed_count?: number
         }
         Update: {
           id?: string
@@ -200,6 +204,8 @@ export type Database = {
           start_time?: string
           end_time?: string
           is_available?: boolean
+          capacity?: number
+          confirmed_count?: number
         }
         Relationships: []
       }

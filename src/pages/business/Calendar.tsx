@@ -31,6 +31,7 @@ export default function BusinessCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [addStart, setAddStart] = useState('09:00')
   const [addEnd, setAddEnd] = useState('18:00')
+  const [addCapacity, setAddCapacity] = useState(1)
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState('')
   const [completingId, setCompletingId] = useState<string | null>(null)
@@ -43,6 +44,7 @@ export default function BusinessCalendar() {
   const [recurStart, setRecurStart] = useState('09:00')
   const [recurEnd, setRecurEnd] = useState('18:00')
   const [recurWeeks, setRecurWeeks] = useState(4)
+  const [recurCapacity, setRecurCapacity] = useState(1)
   const [recurSaving, setRecurSaving] = useState(false)
   const [recurResult, setRecurResult] = useState<{ added: number; skipped: number } | null>(null)
   const [recurError, setRecurError] = useState('')
@@ -133,6 +135,7 @@ export default function BusinessCalendar() {
     setSelectedDate(date)
     setAddStart('09:00')
     setAddEnd('18:00')
+    setAddCapacity(1)
     setAddError('')
     setShowAddModal(true)
   }
@@ -159,6 +162,8 @@ export default function BusinessCalendar() {
         start_time: addStart,
         end_time: addEnd,
         is_available: true,
+        capacity: addCapacity,
+        confirmed_count: 0,
       })
 
     setAddSaving(false)
@@ -177,10 +182,20 @@ export default function BusinessCalendar() {
   }
 
   const handleComplete = async (reservation: Reservation, slotId: string) => {
-    if (!confirm('予約を完了にしますか？\n枠が即時解放されます。')) return
+    if (!confirm('予約を完了にしますか？')) return
     setCompletingId(reservation.id)
     await supabase.from('reservations').update({ status: 'completed' }).eq('id', reservation.id)
-    await supabase.from('availability_slots').update({ is_available: true }).eq('id', slotId)
+    // confirmed_count を1減らし、is_available を true に戻す
+    const { data: slot } = await supabase
+      .from('availability_slots')
+      .select('confirmed_count')
+      .eq('id', slotId)
+      .single()
+    const newCount = Math.max(0, (slot?.confirmed_count ?? 1) - 1)
+    await supabase
+      .from('availability_slots')
+      .update({ confirmed_count: newCount, is_available: true })
+      .eq('id', slotId)
     setCompletingId(null)
     fetchSlots()
   }
@@ -237,6 +252,8 @@ export default function BusinessCalendar() {
         start_time: recurStart,
         end_time: recurEnd,
         is_available: true,
+        capacity: recurCapacity,
+        confirmed_count: 0,
       }))
       const { error } = await supabase.from('availability_slots').insert(rows)
       if (error) {
@@ -376,36 +393,51 @@ export default function BusinessCalendar() {
                   <div className="space-y-1.5 pl-1">
                     {daySlots.map(slot => {
                       const resArr = Array.isArray(slot.reservation) ? slot.reservation : []
-                      // Find confirmed reservation first, then any pending
-                      const confirmedRes = resArr.find(r => r.status === 'confirmed')
-                      const pendingRes = resArr.find(r => r.status === 'pending')
-                      const hasConfirmed = !slot.is_available && !!confirmedRes
-                      const hasPending = !hasConfirmed && !!pendingRes
+                      const capacity = slot.capacity ?? 1
+                      const confirmedCount = slot.confirmed_count ?? 0
+                      const confirmedResList = resArr.filter(r => r.status === 'confirmed')
+                      const pendingList = resArr.filter(r => r.status === 'pending')
+                      const remaining = capacity - confirmedCount
+                      const isFull = remaining <= 0
+                      const hasAnyConfirmed = confirmedCount > 0
+                      const hasPending = pendingList.length > 0
 
                       return (
                         <div
                           key={slot.id}
                           className={`rounded-lg px-3 py-2 text-sm ${
-                            hasConfirmed
+                            isFull
                               ? 'bg-orange-50 border border-orange-200'
+                              : hasAnyConfirmed
+                              ? 'bg-blue-50 border border-blue-200'
                               : hasPending
                               ? 'bg-amber-50 border border-amber-300'
                               : 'bg-green-50 border border-green-200'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0 flex-wrap">
                               <span className="font-medium text-gray-800 whitespace-nowrap">
                                 {slot.start_time.slice(0, 5)}〜{slot.end_time.slice(0, 5)}
                               </span>
-                              {hasConfirmed
-                                ? <span className="badge-red flex-shrink-0">予約確定</span>
-                                : hasPending
-                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 flex-shrink-0">申請中</span>
-                                : <span className="badge-green flex-shrink-0">空き</span>
-                              }
+                              {isFull ? (
+                                <span className="badge-red flex-shrink-0">満車</span>
+                              ) : hasAnyConfirmed ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex-shrink-0">
+                                  空き{remaining}台
+                                </span>
+                              ) : hasPending ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 flex-shrink-0">申請中</span>
+                              ) : (
+                                <span className="badge-green flex-shrink-0">
+                                  空き{capacity > 1 ? `${capacity}台` : ''}
+                                </span>
+                              )}
+                              {capacity > 1 && !isFull && !hasAnyConfirmed && (
+                                <span className="text-xs text-gray-400">{capacity}台対応</span>
+                              )}
                             </div>
-                            {!hasConfirmed && !hasPending && !past && (
+                            {confirmedCount === 0 && !hasPending && !past && (
                               <button
                                 onClick={() => handleDeleteSlot(slot.id)}
                                 className="text-xs text-red-300 hover:text-red-500 flex-shrink-0"
@@ -415,40 +447,52 @@ export default function BusinessCalendar() {
                             )}
                           </div>
 
-                          {/* Confirmed reservation detail */}
-                          {hasConfirmed && confirmedRes && (
-                            <div className="mt-2 text-xs text-gray-600 space-y-0.5 border-t border-orange-200 pt-2">
-                              <p className="font-medium text-gray-700">
-                                {confirmedRes.hospitals?.name ?? '—'} ／ {confirmedRes.contact_name}
-                              </p>
-                              <p>患者：{confirmedRes.patient_name}</p>
-                              <a href={mapsUrl(confirmedRes.patient_address)} target="_blank" rel="noopener noreferrer"
-                                className="block truncate text-blue-700 hover:underline">
-                                📍 乗車地：{confirmedRes.patient_address}
-                              </a>
-                              <a href={mapsUrl(confirmedRes.destination)} target="_blank" rel="noopener noreferrer"
-                                className="block truncate text-blue-700 hover:underline">
-                                📍 目的地：{confirmedRes.destination}
-                              </a>
-                              <button
-                                onClick={() => handleComplete(confirmedRes, slot.id)}
-                                disabled={completingId === confirmedRes.id}
-                                className="mt-2 w-full text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium transition-colors"
-                              >
-                                {completingId === confirmedRes.id ? '処理中...' : '✓ 完了にする（枠を解放）'}
-                              </button>
+                          {/* Confirmed reservations list */}
+                          {confirmedResList.length > 0 && (
+                            <div className="mt-2 space-y-2 border-t border-orange-200 pt-2">
+                              {confirmedResList.map((res, idx) => (
+                                <div key={res.id} className="text-xs text-gray-600 space-y-0.5">
+                                  {capacity > 1 && (
+                                    <p className="text-[10px] text-gray-400 font-medium">── 予約{idx + 1}</p>
+                                  )}
+                                  <p className="font-medium text-gray-700">
+                                    {res.hospitals?.name ?? '—'} ／ {res.contact_name}
+                                  </p>
+                                  <p>患者：{res.patient_name}</p>
+                                  <a href={mapsUrl(res.patient_address)} target="_blank" rel="noopener noreferrer"
+                                    className="block truncate text-blue-700 hover:underline">
+                                    📍 乗車地：{res.patient_address}
+                                  </a>
+                                  <a href={mapsUrl(res.destination)} target="_blank" rel="noopener noreferrer"
+                                    className="block truncate text-blue-700 hover:underline">
+                                    📍 目的地：{res.destination}
+                                  </a>
+                                  <button
+                                    onClick={() => handleComplete(res, slot.id)}
+                                    disabled={completingId === res.id}
+                                    className="mt-1.5 w-full text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium transition-colors"
+                                  >
+                                    {completingId === res.id ? '処理中...' : '✓ 完了にする'}
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           )}
 
-                          {/* Pending request detail */}
-                          {hasPending && pendingRes && (
-                            <div className="mt-2 text-xs text-amber-700 space-y-0.5 border-t border-amber-200 pt-2">
-                              <p className="font-medium">
-                                {pendingRes.hospitals?.name ?? '—'} ／ {pendingRes.contact_name}
-                              </p>
-                              <p>患者：{pendingRes.patient_name}</p>
-                              <p className="text-[10px] text-amber-600 mt-1">
-                                ※ 申請中 — 予約管理から承認または却下してください
+                          {/* Pending requests summary */}
+                          {hasPending && (
+                            <div className="mt-2 text-xs text-amber-700 border-t border-amber-200 pt-2">
+                              <p className="font-medium">申請中: {pendingList.length}件</p>
+                              {pendingList.slice(0, 2).map(r => (
+                                <p key={r.id} className="text-amber-600 mt-0.5">
+                                  {r.hospitals?.name ?? '—'} ／ {r.patient_name}
+                                </p>
+                              ))}
+                              {pendingList.length > 2 && (
+                                <p className="text-amber-500 mt-0.5">他{pendingList.length - 2}件…</p>
+                              )}
+                              <p className="text-[10px] text-amber-500 mt-1">
+                                予約管理から承認または却下してください
                               </p>
                             </div>
                           )}
@@ -503,6 +547,26 @@ export default function BusinessCalendar() {
               <div>
                 <label className="label">終了時間</label>
                 <input type="time" className="input-base" value={addEnd} onChange={e => setAddEnd(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="label">対応台数</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setAddCapacity(n)}
+                    className={`flex-1 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
+                      addCapacity === n
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                    }`}
+                  >
+                    {n}台
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -577,6 +641,27 @@ export default function BusinessCalendar() {
                   <label className="label">終了時間</label>
                   <input type="time" className="input-base" value={recurEnd} onChange={e => setRecurEnd(e.target.value)} />
                 </div>
+              </div>
+            </div>
+
+            {/* Capacity */}
+            <div className="mb-4">
+              <label className="label">対応台数</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setRecurCapacity(n)}
+                    className={`flex-1 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
+                      recurCapacity === n
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                    }`}
+                  >
+                    {n}台
+                  </button>
+                ))}
               </div>
             </div>
 
