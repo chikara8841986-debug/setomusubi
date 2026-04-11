@@ -89,7 +89,7 @@ export default function MswRegister() {
       className="min-h-screen relative flex items-center justify-center p-4"
       style={{ backgroundImage: "url('/setomusubi-bg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/65 via-slate-800/50 to-slate-900/65" />
+      <div className="absolute inset-0 backdrop-blur-xl bg-slate-900/45" />
 
       <div className="relative z-10 w-full max-w-sm">
         {/* Brand */}
