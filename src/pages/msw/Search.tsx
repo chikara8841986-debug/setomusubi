@@ -100,6 +100,15 @@ export default function MswSearch() {
   // Confirmed state
   const [confirmed, setConfirmed] = useState<{ cancelPhone: string | null } | null>(null)
 
+  // ESCキーでプレビューモーダルを閉じる
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewBusiness(null)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
   useEffect(() => {
     if (!hospitalId) return
     supabase
@@ -249,9 +258,9 @@ export default function MswSearch() {
           <p className="text-xs text-gray-400 mb-5">予約の確定・却下は「予約履歴」で確認できます</p>
 
           {confirmed.cancelPhone && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left text-sm mb-5">
-              <p className="font-medium text-blue-800 mb-1">急ぎの場合は直接お電話ください</p>
-              <a href={`tel:${confirmed.cancelPhone}`} className="text-lg font-bold text-blue-900 block mt-1">
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-left text-sm mb-5">
+              <p className="font-medium text-teal-800 mb-1">急ぎの場合は直接お電話ください</p>
+              <a href={`tel:${confirmed.cancelPhone}`} className="text-lg font-bold text-teal-900 block mt-1">
                 📞 {confirmed.cancelPhone}
               </a>
             </div>
@@ -286,10 +295,10 @@ export default function MswSearch() {
         ].map(({ n, label }, i) => (
           <div key={n} className="flex items-center gap-2 flex-1">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step >= n ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+              step >= n ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
             }`}>{n}</div>
-            <span className={`text-xs hidden sm:block ${step === n ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>{label}</span>
-            {i < 2 && <div className={`flex-1 h-0.5 ${step > n ? 'bg-blue-500' : 'bg-gray-200'}`} />}
+            <span className={`text-xs hidden sm:block ${step === n ? 'text-teal-600 font-medium' : 'text-gray-400'}`}>{label}</span>
+            {i < 2 && <div className={`flex-1 h-0.5 ${step > n ? 'bg-teal-500' : 'bg-gray-200'}`} />}
           </div>
         ))}
       </div>
@@ -350,7 +359,7 @@ export default function MswSearch() {
       {step === 2 && (
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <button onClick={() => setStep(1)} className="text-blue-600 text-sm hover:underline">← 検索に戻る</button>
+            <button onClick={() => setStep(1)} className="text-teal-600 text-sm hover:underline">← 検索に戻る</button>
             <span className="text-sm text-gray-500">
               {date} {startTime}〜{endTime} / {area}
             </span>
@@ -383,7 +392,7 @@ export default function MswSearch() {
                           href={mapsUrl(biz.address)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline mt-0.5 inline-block"
+                          className="text-xs text-teal-700 hover:underline mt-0.5 inline-block"
                           onClick={e => e.stopPropagation()}
                         >
                           📍 {biz.address}
@@ -424,7 +433,7 @@ export default function MswSearch() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setPreviewBusiness(biz)}
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-xs text-teal-700 hover:underline"
                       >
                         詳細を見る →
                       </button>
@@ -451,17 +460,17 @@ export default function MswSearch() {
       {step === 3 && selectedBusiness && (
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <button onClick={() => setStep(2)} className="text-blue-600 text-sm hover:underline">← 事業所選択に戻る</button>
+            <button onClick={() => setStep(2)} className="text-teal-600 text-sm hover:underline">← 事業所選択に戻る</button>
           </div>
 
           {/* Summary + phone option */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
-            <p className="font-semibold text-blue-800 text-sm">{selectedBusiness.name}</p>
-            <p className="text-blue-600 text-xs">{date} {startTime}〜{endTime}</p>
+          <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 mb-4">
+            <p className="font-semibold text-teal-800 text-sm">{selectedBusiness.name}</p>
+            <p className="text-teal-600 text-xs">{date} {startTime}〜{endTime}</p>
             {selectedBusiness.cancel_phone && (
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-200">
-                <p className="text-xs text-blue-700">急ぎの場合は直接電話でご確認ください</p>
-                <a href={`tel:${selectedBusiness.cancel_phone}`} className="text-xs font-bold text-blue-800 bg-white border border-blue-300 px-3 py-1 rounded-lg flex-shrink-0">
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-teal-200">
+                <p className="text-xs text-teal-700">急ぎの場合は直接電話でご確認ください</p>
+                <a href={`tel:${selectedBusiness.cancel_phone}`} className="text-xs font-bold text-teal-800 bg-white border border-teal-300 px-3 py-1 rounded-lg flex-shrink-0">
                   📞 電話する
                 </a>
               </div>
@@ -524,8 +533,8 @@ export default function MswSearch() {
                     onClick={() => setForm(f => ({ ...f, equipment: opt.value }))}
                     className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
                       form.equipment === opt.value
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
                     }`}>
                     {opt.label}
                   </button>
@@ -568,7 +577,7 @@ export default function MswSearch() {
               {previewBusiness.profile_image_url ? (
                 <img src={previewBusiness.profile_image_url} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-400 text-2xl">🚐</div>
+                <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
               )}
               <div>
                 <p className="font-bold text-gray-900">{previewBusiness.name}</p>
@@ -577,19 +586,19 @@ export default function MswSearch() {
                     href={mapsUrl(previewBusiness.address)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline block mt-0.5"
+                    className="text-xs text-teal-700 hover:underline block mt-0.5"
                   >
                     📍 {previewBusiness.address}
                   </a>
                 )}
                 {previewBusiness.cancel_phone && (
-                  <a href={`tel:${previewBusiness.cancel_phone}`} className="text-xs text-blue-600 block mt-0.5">
+                  <a href={`tel:${previewBusiness.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">
                     📞 {previewBusiness.cancel_phone}
                   </a>
                 )}
                 {previewBusiness.website_url && (
                   <a href={previewBusiness.website_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-blue-600 underline block mt-0.5">🔗 ホームページ</a>
+                    className="text-xs text-teal-700 underline block mt-0.5">🔗 ホームページ</a>
                 )}
               </div>
             </div>

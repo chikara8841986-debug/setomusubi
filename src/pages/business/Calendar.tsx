@@ -110,6 +110,15 @@ export default function BusinessCalendar() {
     setLoading(false)
   }, [businessId, weekStart])
 
+  // ESCキーでモーダルを閉じる
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setShowAddModal(false); setShowRecurModal(false) }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
   useEffect(() => {
     fetchSlots()
     if (!businessId) return
@@ -282,7 +291,7 @@ export default function BusinessCalendar() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => { setShowRecurModal(true); setRecurResult(null); setRecurError('') }}
-            className="px-3 h-8 rounded-lg border border-blue-200 bg-blue-50 text-xs text-blue-600 hover:bg-blue-100 font-medium"
+            className="px-3 h-8 rounded-lg border border-teal-200 bg-teal-50 text-xs text-teal-600 hover:bg-teal-100 font-medium"
           >
             週次設定
           </button>
@@ -310,7 +319,7 @@ export default function BusinessCalendar() {
       {/* Monthly stats mini-cards */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { label: `${format(new Date(), 'M月')}確定`, value: monthStats.confirmed, color: 'text-blue-600' },
+          { label: `${format(new Date(), 'M月')}確定`, value: monthStats.confirmed, color: 'text-teal-600' },
           { label: `${format(new Date(), 'M月')}完了`, value: monthStats.completed, color: 'text-green-600' },
           { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400' },
         ].map(s => (
@@ -354,7 +363,7 @@ export default function BusinessCalendar() {
               <div
                 key={date.toISOString()}
                 className={`rounded-xl border p-3 ${
-                  todayFlag ? 'border-blue-300 bg-blue-50/50' :
+                  todayFlag ? 'border-teal-300 bg-teal-50/50' :
                   past ? 'border-gray-100 bg-gray-50/50 opacity-60' :
                   'border-gray-100 bg-white'
                 }`}
@@ -363,7 +372,7 @@ export default function BusinessCalendar() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className={`w-9 h-9 rounded-full flex flex-col items-center justify-center text-xs font-bold leading-tight ${
-                      todayFlag ? 'bg-blue-600 text-white' :
+                      todayFlag ? 'bg-teal-600 text-white' :
                       isSun ? 'text-red-500' :
                       isSat ? 'text-blue-500' :
                       'text-gray-700'
@@ -379,7 +388,7 @@ export default function BusinessCalendar() {
                   {!past && (
                     <button
                       onClick={() => openAddModal(date)}
-                      className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium transition-colors"
+                      className="flex items-center gap-1 text-xs bg-teal-50 text-teal-600 px-3 py-1.5 rounded-lg hover:bg-teal-100 font-medium transition-colors"
                     >
                       <span>＋</span> 枠追加
                     </button>
@@ -409,7 +418,7 @@ export default function BusinessCalendar() {
                             isFull
                               ? 'bg-orange-50 border border-orange-200'
                               : hasAnyConfirmed
-                              ? 'bg-blue-50 border border-blue-200'
+                              ? 'bg-teal-50 border border-teal-200'
                               : hasPending
                               ? 'bg-amber-50 border border-amber-300'
                               : 'bg-green-50 border border-green-200'
@@ -423,7 +432,7 @@ export default function BusinessCalendar() {
                               {isFull ? (
                                 <span className="badge-red flex-shrink-0">満車</span>
                               ) : hasAnyConfirmed ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex-shrink-0">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 flex-shrink-0">
                                   空き{remaining}台
                                 </span>
                               ) : hasPending ? (
@@ -460,11 +469,11 @@ export default function BusinessCalendar() {
                                   </p>
                                   <p>患者：{res.patient_name}</p>
                                   <a href={mapsUrl(res.patient_address)} target="_blank" rel="noopener noreferrer"
-                                    className="block truncate text-blue-700 hover:underline">
+                                    className="block truncate text-teal-700 hover:underline">
                                     📍 乗車地：{res.patient_address}
                                   </a>
                                   <a href={mapsUrl(res.destination)} target="_blank" rel="noopener noreferrer"
-                                    className="block truncate text-blue-700 hover:underline">
+                                    className="block truncate text-teal-700 hover:underline">
                                     📍 目的地：{res.destination}
                                   </a>
                                   <button
@@ -529,8 +538,8 @@ export default function BusinessCalendar() {
                     onClick={() => applyQuickTime(qt.start, qt.end)}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       addStart === qt.start && addEnd === qt.end
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
                     }`}
                   >
                     {qt.label}
@@ -560,8 +569,8 @@ export default function BusinessCalendar() {
                     onClick={() => setAddCapacity(n)}
                     className={`flex-1 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
                       addCapacity === n
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
                     }`}
                   >
                     {n}台
@@ -603,7 +612,7 @@ export default function BusinessCalendar() {
                     onClick={() => setRecurDays(prev => prev.map((v, idx) => idx === i ? !v : v))}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
                       recurDays[i]
-                        ? i >= 5 ? 'bg-blue-500 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600'
+                        ? i >= 5 ? 'bg-teal-600 text-white border-teal-600' : 'bg-teal-600 text-white border-teal-600'
                         : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -624,8 +633,8 @@ export default function BusinessCalendar() {
                     onClick={() => { setRecurStart(qt.start); setRecurEnd(qt.end) }}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       recurStart === qt.start && recurEnd === qt.end
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
                     }`}
                   >
                     {qt.label}
@@ -655,8 +664,8 @@ export default function BusinessCalendar() {
                     onClick={() => setRecurCapacity(n)}
                     className={`flex-1 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
                       recurCapacity === n
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
                     }`}
                   >
                     {n}台
@@ -676,8 +685,8 @@ export default function BusinessCalendar() {
                     onClick={() => setRecurWeeks(w)}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       recurWeeks === w
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
                     }`}
                   >
                     {w}週

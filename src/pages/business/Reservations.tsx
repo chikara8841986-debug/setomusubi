@@ -20,6 +20,7 @@ const EQUIPMENT_LABELS: Record<string, string> = {
 }
 
 type Tab = 'pending' | 'upcoming' | 'past'
+type ConfirmAction = 'reject' | 'complete' | null
 
 export default function BusinessReservations() {
   const { businessId } = useAuth()
@@ -29,6 +30,7 @@ export default function BusinessReservations() {
   const [tab, setTab] = useState<Tab>('pending')
   const [processing, setProcessing] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
 
   const fetchReservations = useCallback(async () => {
     if (!businessId) return
@@ -55,6 +57,27 @@ export default function BusinessReservations() {
     return () => { supabase.removeChannel(channel) }
   }, [fetchReservations, businessId])
 
+  // ESCキーでモーダルを閉じる
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setSelected(null); setConfirmAction(null) }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  const openModal = (r: ReservationWithHospital) => {
+    setSelected(r)
+    setActionError('')
+    setConfirmAction(null)
+  }
+
+  const closeModal = () => {
+    setSelected(null)
+    setConfirmAction(null)
+    setActionError('')
+  }
+
   const pending = reservations.filter(r => r.status === 'pending')
   const upcoming = reservations.filter(r => {
     if (r.status !== 'confirmed') return false
@@ -75,7 +98,6 @@ export default function BusinessReservations() {
     setActionError('')
 
     if (r.slot_id) {
-      // 現在のスロット状態を取得
       const { data: slot } = await supabase
         .from('availability_slots')
         .select('capacity, confirmed_count, is_available')
@@ -84,22 +106,14 @@ export default function BusinessReservations() {
 
       const capacity = slot?.capacity ?? 1
       const confirmedCount = slot?.confirmed_count ?? 0
-
-      if (confirmedCount >= capacity) {
-        const ok = confirm('この時間帯は既に満車の可能性があります。\nそれでも承認しますか？')
-        if (!ok) { setProcessing(false); return }
-      }
-
       const newCount = confirmedCount + 1
       const nowFull = newCount >= capacity
 
-      // confirmed_count をインクリメント、満車なら is_available = false
       await supabase
         .from('availability_slots')
         .update({ confirmed_count: newCount, is_available: !nowFull })
         .eq('id', r.slot_id)
 
-      // 満車になった場合のみ他の申請中を自動却下
       if (nowFull) {
         await supabase
           .from('reservations')
@@ -111,32 +125,26 @@ export default function BusinessReservations() {
     }
 
     await supabase.from('reservations').update({ status: 'confirmed' }).eq('id', r.id)
+    supabase.functions.invoke('send-confirmation', { body: { reservation_id: r.id } }).catch(() => {})
 
-    // 確定メール送信（non-blocking）
-    supabase.functions.invoke('send-confirmation', { body: { reservation_id: r.id } })
-      .catch(() => {})
-
-    setSelected(null)
+    closeModal()
     setProcessing(false)
     fetchReservations()
   }
 
   const handleReject = async (r: ReservationWithHospital) => {
-    if (!confirm('この申請を却下しますか？')) return
     setProcessing(true)
     await supabase.from('reservations').update({ status: 'rejected' }).eq('id', r.id)
     supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
-    setSelected(null)
+    closeModal()
     setProcessing(false)
     fetchReservations()
   }
 
   const handleComplete = async (r: ReservationWithHospital) => {
-    if (!confirm('予約を完了にしますか？')) return
     setProcessing(true)
     await supabase.from('reservations').update({ status: 'completed' }).eq('id', r.id)
     if (r.slot_id) {
-      // confirmed_count を1減らし、is_available を true に戻す
       const { data: slot } = await supabase
         .from('availability_slots')
         .select('confirmed_count')
@@ -148,7 +156,7 @@ export default function BusinessReservations() {
         .update({ confirmed_count: newCount, is_available: true })
         .eq('id', r.slot_id)
     }
-    setSelected(null)
+    closeModal()
     setProcessing(false)
     fetchReservations()
   }
@@ -172,14 +180,14 @@ export default function BusinessReservations() {
             key={key}
             onClick={() => setTab(key)}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-              tab === key ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+              tab === key ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300'
             }`}
           >
             {label}
             {count > 0 && (
               <span className={`text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ${
                 tab === key
-                  ? 'bg-white text-blue-600'
+                  ? 'bg-white text-teal-600'
                   : alert ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500'
               }`}>
                 {count}
@@ -205,7 +213,7 @@ export default function BusinessReservations() {
       ) : (
         <div className="space-y-2">
           {list.map(r => (
-            <button key={r.id} onClick={() => { setSelected(r); setActionError('') }}
+            <button key={r.id} onClick={() => openModal(r)}
               className="card w-full text-left hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -231,7 +239,7 @@ export default function BusinessReservations() {
                 <h3 className="font-semibold text-gray-900">予約詳細</h3>
                 <StatusBadge status={selected.status} />
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
 
             <dl className="space-y-3 text-sm">
@@ -243,7 +251,7 @@ export default function BusinessReservations() {
                 <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
                 <dd className="font-medium text-sm">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all">
+                    className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
                   </a>
                 </dd>
@@ -252,7 +260,7 @@ export default function BusinessReservations() {
                 <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">目的地</dt>
                 <dd className="font-medium text-sm">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all">
+                    className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
                   </a>
                 </dd>
@@ -267,32 +275,78 @@ export default function BusinessReservations() {
             <div className="mt-4 space-y-2">
               {selected.status === 'pending' && (
                 <>
-                  <button
-                    onClick={() => handleApprove(selected)}
-                    disabled={processing}
-                    className="btn-primary w-full"
-                  >
-                    {processing ? '処理中...' : '✓ 承認する（予約を確定）'}
-                  </button>
-                  <button
-                    onClick={() => handleReject(selected)}
-                    disabled={processing}
-                    className="btn-danger w-full"
-                  >
-                    却下する
-                  </button>
+                  {confirmAction !== 'reject' && (
+                    <button
+                      onClick={() => handleApprove(selected)}
+                      disabled={processing}
+                      className="btn-primary w-full"
+                    >
+                      {processing ? '処理中...' : '✓ 承認する（予約を確定）'}
+                    </button>
+                  )}
+
+                  {confirmAction === 'reject' ? (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
+                      <p className="text-sm text-red-700 font-medium text-center">この申請を却下しますか？</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setConfirmAction(null)}
+                          className="btn-secondary flex-1 text-sm"
+                        >
+                          戻る
+                        </button>
+                        <button
+                          onClick={() => handleReject(selected)}
+                          disabled={processing}
+                          className="flex-1 text-sm bg-red-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+                        >
+                          {processing ? '処理中...' : '却下する'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmAction('reject')}
+                      disabled={processing}
+                      className="btn-danger w-full"
+                    >
+                      却下する
+                    </button>
+                  )}
                 </>
               )}
+
               {selected.status === 'confirmed' && !isPast(new Date(`${selected.reservation_date}T${selected.end_time}`)) && (
-                <button
-                  onClick={() => handleComplete(selected)}
-                  disabled={processing}
-                  className="w-full text-sm bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium transition-colors"
-                >
-                  {processing ? '処理中...' : '✓ 完了にする（枠を解放）'}
-                </button>
+                confirmAction === 'complete' ? (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
+                    <p className="text-sm text-orange-700 font-medium text-center">予約を完了にしますか？（枠が解放されます）</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmAction(null)}
+                        className="btn-secondary flex-1 text-sm"
+                      >
+                        戻る
+                      </button>
+                      <button
+                        onClick={() => handleComplete(selected)}
+                        disabled={processing}
+                        className="flex-1 text-sm bg-orange-500 text-white px-4 py-2 rounded-xl font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                      >
+                        {processing ? '処理中...' : '完了にする'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmAction('complete')}
+                    disabled={processing}
+                    className="w-full text-sm bg-orange-500 text-white px-4 py-2.5 rounded-xl hover:bg-orange-600 disabled:opacity-50 font-semibold transition-colors"
+                  >
+                    ✓ 完了にする（枠を解放）
+                  </button>
+                )
               )}
-              <button onClick={() => setSelected(null)} className="btn-secondary w-full">閉じる</button>
+              <button onClick={closeModal} className="btn-secondary w-full">閉じる</button>
             </div>
           </div>
         </div>
