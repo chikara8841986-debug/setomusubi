@@ -10,7 +10,7 @@ const supabase = createClient(
 )
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const FROM_EMAIL = 'noreply@setomusubi.jp'
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@setomusubi.jp'
 
 async function sendEmail(to: string, subject: string, body: string) {
   if (!RESEND_API_KEY) {

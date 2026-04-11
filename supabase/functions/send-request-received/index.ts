@@ -10,7 +10,7 @@ const supabase = createClient(
 )
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const FROM_EMAIL = 'noreply@setomusubi.jp'
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@setomusubi.jp'
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://setomusubi.vercel.app'
 
 async function sendEmail(to: string, subject: string, body: string) {
