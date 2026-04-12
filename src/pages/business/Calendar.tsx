@@ -146,7 +146,18 @@ export default function BusinessCalendar() {
         filter: `business_id=eq.${businessId}`,
       }, fetchSlots)
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',
+        schema: 'public',
+        table: 'reservations',
+        filter: `business_id=eq.${businessId}`,
+      }, (payload) => {
+        if (payload.new?.status === 'pending') {
+          showToast('新しい仮予約申請が届きました', 'info')
+        }
+        fetchSlots()
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
         schema: 'public',
         table: 'reservations',
         filter: `business_id=eq.${businessId}`,

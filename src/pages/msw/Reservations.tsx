@@ -73,7 +73,18 @@ export default function MswReservations() {
     const channel = supabase
       .channel('msw-reservations-' + hospitalId)
       .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'reservations',
+        event: 'UPDATE', schema: 'public', table: 'reservations',
+        filter: `hospital_id=eq.${hospitalId}`,
+      }, (payload) => {
+        if (payload.new?.status === 'confirmed') {
+          showToast('予約が確定されました', 'info')
+        } else if (payload.new?.status === 'rejected') {
+          showToast('申請が却下されました', 'error')
+        }
+        fetchReservations()
+      })
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'reservations',
         filter: `hospital_id=eq.${hospitalId}`,
       }, fetchReservations)
       .subscribe()
