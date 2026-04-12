@@ -791,10 +791,16 @@ export default function BusinessCalendar() {
             {recurError && <p className="text-xs text-red-600 mb-2">{recurError}</p>}
 
             {recurResult && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3 text-xs text-green-800">
-                ✓ {recurResult.added}枠を追加しました
-                {recurResult.skipped > 0 && ` （重複${recurResult.skipped}枠はスキップ）`}
-              </div>
+              recurResult.added === 0 ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 text-xs text-amber-800">
+                  すべて既存のスロットと重複していたためスキップしました（{recurResult.skipped}枠）
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3 text-xs text-green-800">
+                  ✓ {recurResult.added}枠を追加しました
+                  {recurResult.skipped > 0 && ` （重複${recurResult.skipped}枠はスキップ）`}
+                </div>
+              )
             )}
 
             <div className="flex gap-2">
