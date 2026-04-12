@@ -7,6 +7,7 @@ export default function ResetPassword() {
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ready, setReady] = useState(false)
@@ -76,9 +77,15 @@ export default function ResetPassword() {
               <h2 className="text-base font-bold text-slate-800 mb-5">新しいパスワードを入力</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="label">新しいパスワード（8文字以上）</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="label mb-0">新しいパスワード（8文字以上）</label>
+                    <button type="button" onClick={() => setShowPassword(v => !v)}
+                      className="text-xs text-gray-400 hover:text-gray-600">
+                      {showPassword ? '隠す' : '表示'}
+                    </button>
+                  </div>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     className="input-base"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -91,7 +98,7 @@ export default function ResetPassword() {
                 <div>
                   <label className="label">パスワード（確認）</label>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     className="input-base"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}

@@ -222,7 +222,15 @@ export default function BusinessProfile() {
 
         {/* Service areas */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">対応エリア</h2>
+          <div className="flex items-center justify-between border-b pb-2">
+            <h2 className="text-sm font-semibold text-gray-700">対応エリア</h2>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setForm(f => ({ ...f, service_areas: [...SERVICE_AREAS] }))}
+                className="text-xs text-teal-600 hover:underline">全選択</button>
+              <button type="button" onClick={() => setForm(f => ({ ...f, service_areas: [] }))}
+                className="text-xs text-gray-400 hover:underline">全解除</button>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {SERVICE_AREAS.map(area => (
               <label key={area} className="flex items-center gap-2 cursor-pointer">
