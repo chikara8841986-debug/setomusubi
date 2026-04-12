@@ -322,7 +322,25 @@ export default function MswSearch() {
           <div className="space-y-4">
             <div>
               <label className="label">希望日 <span className="text-red-500">*</span></label>
-              <input type="date" className="input-base" value={date} onChange={e => setDate(e.target.value)} min={today} />
+              <div className="flex gap-2">
+                <input type="date" className="input-base flex-1" value={date} onChange={e => setDate(e.target.value)} min={today} />
+                <button
+                  type="button"
+                  onClick={() => setDate(today)}
+                  className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex-shrink-0 ${
+                    date === today ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                  }`}
+                >今日</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tomorrow = new Date()
+                    tomorrow.setDate(tomorrow.getDate() + 1)
+                    setDate(format(tomorrow, 'yyyy-MM-dd'))
+                  }}
+                  className="px-3 py-2 rounded-xl text-xs font-medium border border-gray-300 bg-white text-gray-600 hover:border-teal-300 transition-colors flex-shrink-0"
+                >明日</button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
