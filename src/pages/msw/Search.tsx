@@ -59,10 +59,22 @@ export default function MswSearch() {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
+  function defaultStartTime() {
+    const now = new Date()
+    const h = now.getHours()
+    const next = h < 9 ? 9 : h >= 17 ? 10 : h + 1
+    return `${String(next).padStart(2, '0')}:00`
+  }
+  function addHour(time: string, hours = 1): string {
+    const [h, m] = time.split(':').map(Number)
+    const total = h + hours
+    return `${String(Math.min(total, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
   // Step 1
   const [date, setDate] = useState(today)
-  const [startTime, setStartTime] = useState('10:00')
-  const [endTime, setEndTime] = useState('11:00')
+  const [startTime, setStartTime] = useState(() => defaultStartTime())
+  const [endTime, setEndTime] = useState(() => addHour(defaultStartTime()))
   const [area, setArea] = useState('')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
@@ -315,11 +327,15 @@ export default function MswSearch() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">希望開始時間</label>
-                <input type="time" className="input-base" value={startTime} onChange={e => setStartTime(e.target.value)} />
+                <input type="time" className="input-base" value={startTime} onChange={e => {
+                  const t = e.target.value
+                  setStartTime(t)
+                  if (t >= endTime) setEndTime(addHour(t))
+                }} />
               </div>
               <div>
                 <label className="label">希望終了時間</label>
-                <input type="time" className="input-base" value={endTime} onChange={e => setEndTime(e.target.value)} />
+                <input type="time" className="input-base" value={endTime} onChange={e => setEndTime(e.target.value)} min={addHour(startTime, 0)} />
               </div>
             </div>
             <div>

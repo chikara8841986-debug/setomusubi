@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { Business } from '../../types/database'
 
 const SERVICE_AREAS = [
@@ -13,10 +14,9 @@ const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 
 export default function BusinessProfile() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState('')
 
   const [form, setForm] = useState<Partial<Business>>({
     name: '',
@@ -79,8 +79,6 @@ export default function BusinessProfile() {
     e.preventDefault()
     if (!user) return
     setSaving(true)
-    setError('')
-    setSuccess(false)
 
     const { error: err } = await supabase
       .from('businesses')
@@ -109,10 +107,9 @@ export default function BusinessProfile() {
 
     setSaving(false)
     if (err) {
-      setError('保存に失敗しました: ' + err.message)
+      showToast('保存に失敗しました', 'error')
     } else {
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      showToast('プロフィールを保存しました')
     }
   }
 
@@ -258,9 +255,6 @@ export default function BusinessProfile() {
             />
           </div>
         </div>
-
-        {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-        {success && <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">保存しました</p>}
 
         <button type="submit" className="btn-primary w-full" disabled={saving}>
           {saving ? '保存中...' : '保存する'}

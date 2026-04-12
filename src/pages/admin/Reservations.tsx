@@ -67,6 +67,12 @@ export default function AdminReservations() {
   const [selected, setSelected] = useState<ReservationFull | null>(null)
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  useEffect(() => {
     async function load() {
       setLoading(true)
       let query = supabase

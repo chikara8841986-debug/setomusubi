@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { Business } from '../../types/database'
 
 type IntroFields = Pick<Business,
@@ -22,9 +23,9 @@ const EQUIPMENT_LABELS: Record<string, string> = {
 
 export default function BusinessIntroduction() {
   const { businessId, user } = useAuth()
+  const { showToast } = useToast()
   const [data, setData] = useState<IntroFields | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [prText, setPrText] = useState('')
   const [profileImageUrl, setProfileImageUrl] = useState('')
@@ -96,8 +97,7 @@ export default function BusinessIntroduction() {
       vehicle_image_urls: vehicleImageUrls,
     }).eq('id', businessId)
     setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    showToast('紹介ページを保存しました')
   }
 
   if (!data) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
@@ -259,12 +259,6 @@ export default function BusinessIntroduction() {
             placeholder="https://example.com"
           />
         </div>
-
-        {saved && (
-          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
-            ✓ 保存しました
-          </div>
-        )}
 
         <button onClick={handleSave} disabled={saving || uploading} className="btn-primary w-full">
           {saving ? '保存中...' : '保存する'}
