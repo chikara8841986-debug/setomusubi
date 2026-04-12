@@ -75,7 +75,7 @@ export default function MswSearch() {
   const [date, setDate] = useState(today)
   const [startTime, setStartTime] = useState(() => defaultStartTime())
   const [endTime, setEndTime] = useState(() => addHour(defaultStartTime()))
-  const [area, setArea] = useState('')
+  const [area, setArea] = useState(() => localStorage.getItem('msw_last_area') ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
   const [needStretcher, setNeedStretcher] = useState(false)
@@ -160,6 +160,7 @@ export default function MswSearch() {
     if (startTime >= endTime) { setSearchError('終了時間は開始時間より後にしてください'); return }
     setSearchError('')
     setSearching(true)
+    localStorage.setItem('msw_last_area', area)
 
     type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
     const { data: rawSlots } = await supabase
