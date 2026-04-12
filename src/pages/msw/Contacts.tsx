@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { MswContact } from '../../types/database'
 
 export default function MswContacts() {
   const { hospitalId } = useAuth()
+  const { showToast } = useToast()
   const [contacts, setContacts] = useState<MswContact[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
@@ -46,6 +48,7 @@ export default function MswContacts() {
       setAddError('追加に失敗しました: ' + error.message)
     } else {
       setNewName('')
+      showToast('担当者を追加しました')
       await fetchContacts()
     }
     setAdding(false)
@@ -57,6 +60,7 @@ export default function MswContacts() {
     await supabase.from('msw_contacts').delete().eq('id', id)
     setContacts(prev => prev.filter(c => c.id !== id))
     setDeletingId(null)
+    showToast('担当者を削除しました', 'error')
   }
 
   const startEdit = (contact: MswContact) => {
@@ -72,6 +76,7 @@ export default function MswContacts() {
     setContacts(prev => prev.map(c => c.id === editingId ? { ...c, name } : c))
     setEditingId(null)
     setSavingEdit(false)
+    showToast('担当者名を更新しました')
   }
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
