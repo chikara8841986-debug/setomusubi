@@ -141,9 +141,26 @@ export default function BusinessProfile() {
     </label>
   )
 
+  const missingFields = [
+    !form.cancel_phone && 'キャンセル連絡先',
+    (!form.service_areas || form.service_areas.length === 0) && '対応エリア',
+    !form.phone && '電話番号',
+  ].filter(Boolean) as string[]
+
   return (
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-4">プロフィール設定</h1>
+
+      {missingFields.length > 0 && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-xs font-medium text-amber-800 mb-1.5">⚠️ 以下を設定するとMSWの検索に表示されます</p>
+          <div className="flex flex-wrap gap-1.5">
+            {missingFields.map(f => (
+              <span key={f} className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{f}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Basic info */}
