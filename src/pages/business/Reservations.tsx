@@ -26,6 +26,7 @@ export default function BusinessReservations() {
   const { businessId } = useAuth()
   const [reservations, setReservations] = useState<ReservationWithHospital[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [selected, setSelected] = useState<ReservationWithHospital | null>(null)
   const [tab, setTab] = useState<Tab>('pending')
   const [processing, setProcessing] = useState(false)
@@ -34,12 +35,14 @@ export default function BusinessReservations() {
 
   const fetchReservations = useCallback(async () => {
     if (!businessId) return
-    const { data } = await supabase
+    setLoadError(false)
+    const { data, error } = await supabase
       .from('reservations')
       .select('*, hospitals(name)')
       .eq('business_id', businessId)
       .order('reservation_date', { ascending: true })
       .order('start_time', { ascending: true })
+    if (error) { setLoadError(true); setLoading(false); return }
     setReservations((data as ReservationWithHospital[]) ?? [])
     setLoading(false)
   }, [businessId])
@@ -164,6 +167,12 @@ export default function BusinessReservations() {
   const list = tab === 'pending' ? pending : tab === 'upcoming' ? upcoming : past
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loadError) return (
+    <div className="card text-center py-10">
+      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <button onClick={fetchReservations} className="btn-secondary text-sm">再試行</button>
+    </div>
+  )
 
   return (
     <div>

@@ -88,6 +88,23 @@ function PendingBadge({ businessId }: { businessId: string }) {
   )
 }
 
+function OfflineBanner() {
+  const [offline, setOffline] = useState(!navigator.onLine)
+  useEffect(() => {
+    const on = () => setOffline(false)
+    const off = () => setOffline(true)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
+  if (!offline) return null
+  return (
+    <div className="bg-amber-500 text-white text-xs text-center py-1.5 px-4 font-medium">
+      オフライン中です。通信が回復すると自動的に更新されます。
+    </div>
+  )
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { role, businessId, signOut } = useAuth()
   const location = useLocation()
@@ -107,6 +124,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      <OfflineBanner />
       {/* Header */}
       <header className="bg-white border-b border-teal-100/60 sticky top-0 z-30" style={{ boxShadow: '0 1px 3px 0 rgba(13,148,136,.08)' }}>
         <div className="max-w-4xl mx-auto px-4 flex items-center justify-between h-14">

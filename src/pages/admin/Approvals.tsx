@@ -21,16 +21,19 @@ type ConfirmState = { id: string; action: 'approve' | 'reject' } | null
 export default function AdminApprovals() {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [tab, setTab] = useState<'pending' | 'approved'>('pending')
   const [processing, setProcessing] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [confirmState, setConfirmState] = useState<ConfirmState>(null)
 
   const fetchAll = async () => {
-    const { data } = await supabase
+    setLoadError(false)
+    const { data, error } = await supabase
       .from('businesses')
       .select('*')
       .order('created_at', { ascending: false })
+    if (error) { setLoadError(true); setLoading(false); return }
     setBusinesses(data ?? [])
     setLoading(false)
   }
@@ -61,6 +64,12 @@ export default function AdminApprovals() {
   const list = tab === 'pending' ? pending : approved
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loadError) return (
+    <div className="card text-center py-10">
+      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <button onClick={fetchAll} className="btn-secondary text-sm">再試行</button>
+    </div>
+  )
 
   return (
     <div>
