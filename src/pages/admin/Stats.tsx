@@ -101,7 +101,10 @@ export default function AdminStats() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">統計ダッシュボード</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-xl font-bold text-gray-900">統計ダッシュボード</h1>
+        <button onClick={load} className="text-xs text-teal-600 hover:text-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">↻ 更新</button>
+      </div>
       <p className="text-xs text-gray-400 mb-6">プラットフォーム全体の利用状況</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
