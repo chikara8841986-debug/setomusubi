@@ -413,7 +413,12 @@ export default function BusinessCalendar() {
                   {!past && (
                     <button
                       onClick={() => openAddModal(date)}
-                      className="flex items-center gap-1 text-xs bg-teal-50 text-teal-600 px-3 py-1.5 rounded-lg hover:bg-teal-100 font-medium transition-colors"
+                      className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                        isClosedDay
+                          ? 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                          : 'bg-teal-50 text-teal-600 hover:bg-teal-100'
+                      }`}
+                      title={isClosedDay ? '定休日ですが追加できます' : undefined}
                     >
                       <span>＋</span> 枠追加
                     </button>
