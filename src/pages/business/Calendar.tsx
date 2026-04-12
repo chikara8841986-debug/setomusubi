@@ -40,6 +40,7 @@ export default function BusinessCalendar() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [completeConfirm, setCompleteConfirm] = useState<{ reservationId: string; slotId: string } | null>(null)
   const [profileIncomplete, setProfileIncomplete] = useState(false)
+  const [closedDays, setClosedDays] = useState<number[]>([])
   const [monthStats, setMonthStats] = useState({ confirmed: 0, completed: 0, pending: 0 })
 
   // Recurring modal state
@@ -59,13 +60,14 @@ export default function BusinessCalendar() {
     if (!user) return
     supabase
       .from('businesses')
-      .select('service_areas, cancel_phone')
+      .select('service_areas, cancel_phone, closed_days')
       .eq('user_id', user.id)
       .single()
       .then(({ data }) => {
-        const biz = data as Pick<Business, 'service_areas' | 'cancel_phone'> | null
-        if (biz && (biz.service_areas.length === 0 || !biz.cancel_phone)) {
-          setProfileIncomplete(true)
+        const biz = data as Pick<Business, 'service_areas' | 'cancel_phone' | 'closed_days'> | null
+        if (biz) {
+          if (biz.service_areas.length === 0 || !biz.cancel_phone) setProfileIncomplete(true)
+          if (biz.closed_days?.length) setClosedDays(biz.closed_days)
         }
       })
   }, [user])
@@ -379,6 +381,7 @@ export default function BusinessCalendar() {
             const dayOfWeek = date.getDay()
             const isSun = dayOfWeek === 0
             const isSat = dayOfWeek === 6
+            const isClosedDay = closedDays.includes(dayOfWeek)
 
             return (
               <div
@@ -402,6 +405,7 @@ export default function BusinessCalendar() {
                       <span>{format(date, 'E', { locale: ja })}</span>
                     </div>
                     {todayFlag && <span className="badge-blue text-[10px]">今日</span>}
+                    {isClosedDay && <span className="text-[10px] bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-medium">定休日</span>}
                     {daySlots.length > 0 && (
                       <span className="text-xs text-gray-400">{daySlots.length}枠</span>
                     )}
