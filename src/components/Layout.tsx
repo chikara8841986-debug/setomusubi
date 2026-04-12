@@ -105,8 +105,40 @@ function OfflineBanner() {
   )
 }
 
+function MswPendingBadge({ hospitalId }: { hospitalId: string }) {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      const { count: c } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('hospital_id', hospitalId)
+        .eq('status', 'pending')
+      if (mounted) setCount(c ?? 0)
+    }
+    load()
+    const channel = supabase
+      .channel('msw-pending-badge-' + hospitalId)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'reservations',
+        filter: `hospital_id=eq.${hospitalId}`,
+      }, load)
+      .subscribe()
+    return () => { mounted = false; supabase.removeChannel(channel) }
+  }, [hospitalId])
+
+  if (count === 0) return null
+  return (
+    <span className="ml-1 text-[10px] bg-amber-500 text-white rounded-full w-4 h-4 inline-flex items-center justify-center font-bold">
+      {count > 9 ? '9+' : count}
+    </span>
+  )
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { role, businessId, signOut } = useAuth()
+  const { role, businessId, hospitalId, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -163,6 +195,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {label}
                   {isReservationsNav && businessId && (
                     <PendingBadge businessId={businessId} />
+                  )}
+                  {to === '/msw/reservations' && hospitalId && (
+                    <MswPendingBadge hospitalId={hospitalId} />
                   )}
                   {to === '/admin/approvals' && role === 'admin' && (
                     <AdminPendingBadge />
