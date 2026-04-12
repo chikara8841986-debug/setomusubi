@@ -188,6 +188,13 @@ export default function MswSearch() {
       matched.push({ ...biz, matchedSlot: slot as AvailabilitySlot })
     }
 
+    // お気に入りを上位表示
+    matched.sort((a, b) => {
+      const aFav = favorites.has(a.id) ? 0 : 1
+      const bFav = favorites.has(b.id) ? 0 : 1
+      return aFav - bFav
+    })
+
     setResults(matched)
     setSearching(false)
     setStep(2)
@@ -427,7 +434,14 @@ export default function MswSearch() {
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">{results.length}件の事業所が見つかりました</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-600">{results.length}件の事業所が見つかりました</p>
+                {results.filter(r => favorites.has(r.id)).length > 0 && (
+                  <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                    ⭐ {results.filter(r => favorites.has(r.id)).length}件はお気に入り
+                  </span>
+                )}
+              </div>
               {results.map(biz => (
                 <div key={biz.id} className="card hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-2">

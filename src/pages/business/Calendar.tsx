@@ -319,7 +319,17 @@ export default function BusinessCalendar() {
         <h1 className="text-xl font-bold text-gray-900">稼働カレンダー</h1>
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => { setShowRecurModal(true); setRecurResult(null); setRecurError('') }}
+            onClick={() => {
+            const defaults = [true, true, true, true, true, false, false]
+            const presetDays = defaults.map((def, i) => {
+              const jsDay = i < 6 ? i + 1 : 0
+              return closedDays.includes(jsDay) ? false : def
+            })
+            setRecurDays(presetDays)
+            setShowRecurModal(true)
+            setRecurResult(null)
+            setRecurError('')
+          }}
             className="px-3 h-8 rounded-lg border border-teal-200 bg-teal-50 text-xs text-teal-600 hover:bg-teal-100 font-medium"
           >
             週次設定
@@ -676,21 +686,33 @@ export default function BusinessCalendar() {
             <div className="mb-4">
               <p className="label mb-2">稼働曜日</p>
               <div className="flex gap-1.5">
-                {DAY_LABELS.map((label, i) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setRecurDays(prev => prev.map((v, idx) => idx === i ? !v : v))}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
-                      recurDays[i]
-                        ? i >= 5 ? 'bg-teal-600 text-white border-teal-600' : 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+                {DAY_LABELS.map((label, i) => {
+                  const jsDay = i < 6 ? i + 1 : 0
+                  const isProfileClosed = closedDays.includes(jsDay)
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setRecurDays(prev => prev.map((v, idx) => idx === i ? !v : v))}
+                      title={isProfileClosed ? '定休日（プロフィール設定）' : undefined}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                        recurDays[i]
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : isProfileClosed
+                          ? 'bg-red-50 text-red-300 border-red-200 hover:border-red-300'
+                          : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
+              {closedDays.length > 0 && (
+                <p className="text-[10px] text-gray-400 mt-1.5">
+                  ※ プロフィールの定休日は自動で除外されています（再チェックで追加可）
+                </p>
+              )}
             </div>
 
             {/* Time */}

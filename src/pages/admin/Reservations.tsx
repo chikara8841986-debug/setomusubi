@@ -4,6 +4,26 @@ import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import type { Reservation, ReservationStatus } from '../../types/database'
 
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: '申請中',
+  confirmed: '確定',
+  completed: '完了',
+  cancelled: 'キャンセル',
+  rejected: '却下',
+}
+
+const STATUS_BADGE: Record<string, string> = {
+  pending: 'badge-red',
+  confirmed: 'badge-blue',
+  completed: 'badge-green',
+  cancelled: 'badge-gray',
+  rejected: 'badge-gray',
+}
+
 type ReservationFull = Reservation & {
   businesses: { name: string } | null
   hospitals: { name: string } | null
@@ -16,12 +36,6 @@ const EQUIPMENT_LABELS: Record<string, string> = {
 }
 
 function exportCSV(reservations: ReservationFull[]) {
-  const EQUIPMENT_LABELS: Record<string, string> = {
-    wheelchair: '車椅子', reclining_wheelchair: 'リクライニング', stretcher: 'ストレッチャー',
-  }
-  const STATUS_LABELS: Record<string, string> = {
-    pending: '申請中', confirmed: '確定', completed: '完了', cancelled: 'キャンセル', rejected: '却下',
-  }
   const header = ['予約日', '開始時間', '終了時間', '事業所名', '病院名', '担当者', '患者氏名', '乗車地', '目的地', '使用機材', '機材貸出', 'ステータス', '備考', '作成日時']
   const rows = reservations.map(r => [
     r.reservation_date,
@@ -54,9 +68,11 @@ function exportCSV(reservations: ReservationFull[]) {
 
 const STATUS_OPTIONS = [
   { value: '', label: 'すべて' },
+  { value: 'pending', label: '申請中' },
   { value: 'confirmed', label: '確定' },
   { value: 'completed', label: '完了' },
   { value: 'cancelled', label: 'キャンセル' },
+  { value: 'rejected', label: '却下' },
 ]
 
 export default function AdminReservations() {
@@ -168,11 +184,8 @@ export default function AdminReservations() {
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment] ?? r.equipment}</p>
                   </div>
-                  <span className={`flex-shrink-0 ${
-                    r.status === 'confirmed' ? 'badge-blue' :
-                    r.status === 'completed' ? 'badge-green' : 'badge-gray'
-                  }`}>
-                    {r.status === 'confirmed' ? '確定' : r.status === 'completed' ? '完了' : 'キャンセル'}
+                  <span className={`flex-shrink-0 ${STATUS_BADGE[r.status] ?? 'badge-gray'}`}>
+                    {STATUS_LABELS[r.status] ?? r.status}
                   </span>
                 </div>
               </button>
@@ -191,13 +204,27 @@ export default function AdminReservations() {
             </div>
             <dl className="space-y-3 text-sm">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
-              <Row label="ステータス" value={selected.status === 'confirmed' ? '確定' : selected.status === 'completed' ? '完了' : 'キャンセル'} />
+              <Row label="ステータス" value={STATUS_LABELS[selected.status] ?? selected.status} />
               <Row label="事業所" value={selected.businesses?.name ?? '—'} />
               <Row label="病院" value={selected.hospitals?.name ?? '—'} />
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
-              <Row label="乗車地" value={selected.patient_address} />
-              <Row label="目的地" value={selected.destination} />
+              <div className="flex gap-3">
+                <dt className="text-gray-500 w-20 flex-shrink-0">乗車地</dt>
+                <dd className="font-medium break-all">
+                  <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline">
+                    📍 {selected.patient_address}
+                  </a>
+                </dd>
+              </div>
+              <div className="flex gap-3">
+                <dt className="text-gray-500 w-20 flex-shrink-0">目的地</dt>
+                <dd className="font-medium break-all">
+                  <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline">
+                    📍 {selected.destination}
+                  </a>
+                </dd>
+              </div>
               <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment] ?? selected.equipment} />
               <Row label="機材貸出" value={selected.equipment_rental ? 'あり' : 'なし'} />
               {selected.notes && <Row label="備考" value={selected.notes} />}

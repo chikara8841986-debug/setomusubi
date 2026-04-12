@@ -23,6 +23,7 @@ export default function MswBusinesses() {
   const [preview, setPreview] = useState<Business | null>(null)
   const [areaFilter, setAreaFilter] = useState('')
   const [equipFilter, setEquipFilter] = useState<string[]>([])
+  const [favOnly, setFavOnly] = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null) }
@@ -71,13 +72,16 @@ export default function MswBusinesses() {
     { key: 'same_day', label: '当日対応' },
   ] as const
 
-  const filtered = businesses.filter(biz => {
-    if (areaFilter && !biz.service_areas?.includes(areaFilter)) return false
-    for (const key of equipFilter) {
-      if (!biz[key as keyof Business]) return false
-    }
-    return true
-  })
+  const filtered = businesses
+    .filter(biz => {
+      if (favOnly && !favorites.has(biz.id)) return false
+      if (areaFilter && !biz.service_areas?.includes(areaFilter)) return false
+      for (const key of equipFilter) {
+        if (!biz[key as keyof Business]) return false
+      }
+      return true
+    })
+    .sort((a, b) => (favorites.has(a.id) ? 0 : 1) - (favorites.has(b.id) ? 0 : 1))
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
@@ -121,7 +125,21 @@ export default function MswBusinesses() {
         </div>
       </div>
 
-      <p className="text-sm text-gray-500 mb-3">{filtered.length}件</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm text-gray-500">{filtered.length}件</p>
+        {favorites.size > 0 && (
+          <button
+            onClick={() => setFavOnly(v => !v)}
+            className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+              favOnly
+                ? 'bg-amber-500 text-white border-amber-500'
+                : 'bg-white text-gray-500 border-gray-300 hover:border-amber-300'
+            }`}
+          >
+            ⭐ お気に入りのみ
+          </button>
+        )}
+      </div>
 
       {filtered.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
