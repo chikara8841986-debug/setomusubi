@@ -128,7 +128,12 @@ export default function MswSearch() {
       .select('*')
       .eq('hospital_id', hospitalId)
       .order('created_at')
-      .then(({ data }) => setContacts(data ?? []))
+      .then(({ data }) => {
+        setContacts(data ?? [])
+        if (data?.length === 1 && !prefill?.contactName) {
+          setForm(f => ({ ...f, contactName: data[0].name }))
+        }
+      })
     supabase
       .from('favorites')
       .select('business_id')

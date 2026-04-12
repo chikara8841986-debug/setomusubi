@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { format, parseISO, isPast } from 'date-fns'
+import { format, parseISO, isPast, isToday } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -20,7 +20,7 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   stretcher: 'ストレッチャー',
 }
 
-type Tab = 'pending' | 'upcoming' | 'past'
+type Tab = 'pending' | 'today' | 'upcoming' | 'past'
 type ConfirmAction = 'reject' | 'complete' | null
 
 export default function BusinessReservations() {
@@ -94,8 +94,12 @@ export default function BusinessReservations() {
   }
 
   const pending = reservations.filter(r => r.status === 'pending')
+  const today = reservations.filter(r =>
+    r.status === 'confirmed' && isToday(parseISO(r.reservation_date))
+  )
   const upcoming = reservations.filter(r => {
     if (r.status !== 'confirmed') return false
+    if (isToday(parseISO(r.reservation_date))) return false
     const dt = new Date(`${r.reservation_date}T${r.end_time}`)
     return !isPast(dt)
   })
@@ -179,7 +183,7 @@ export default function BusinessReservations() {
     fetchReservations()
   }
 
-  const list = tab === 'pending' ? pending : tab === 'upcoming' ? upcoming : past
+  const list = tab === 'pending' ? pending : tab === 'today' ? today : tab === 'upcoming' ? upcoming : past
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
@@ -197,6 +201,7 @@ export default function BusinessReservations() {
       <div className="flex gap-2 mb-4 overflow-x-auto">
         {([
           { key: 'pending' as Tab, label: '申請中', count: pending.length, alert: pending.length > 0 },
+          { key: 'today' as Tab, label: '今日', count: today.length, alert: today.length > 0 },
           { key: 'upcoming' as Tab, label: '確定済み', count: upcoming.length, alert: false },
           { key: 'past' as Tab, label: '過去', count: past.length, alert: false },
         ] as const).map(({ key, label, count, alert }) => (
@@ -232,6 +237,7 @@ export default function BusinessReservations() {
       {list.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
           {tab === 'pending' ? '新しい申請はありません' :
+           tab === 'today' ? '今日の予約はありません' :
            tab === 'upcoming' ? '確定済みの予約はありません' : '過去の予約はありません'}
         </div>
       ) : (
