@@ -13,6 +13,7 @@ export default function MswRegister() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   // Step 2: Hospital info
   const [hospitalName, setHospitalName] = useState('')
@@ -117,13 +118,19 @@ export default function MswRegister() {
                     onChange={e => setEmail(e.target.value)} required placeholder="msw@hospital.jp" />
                 </div>
                 <div>
-                  <label className="label">パスワード（8文字以上）</label>
-                  <input type="password" className="input-base" value={password}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="label mb-0">パスワード（8文字以上）</label>
+                    <button type="button" onClick={() => setShowPassword(v => !v)}
+                      className="text-xs text-gray-400 hover:text-gray-600">
+                      {showPassword ? '隠す' : '表示'}
+                    </button>
+                  </div>
+                  <input type={showPassword ? 'text' : 'password'} className="input-base" value={password}
                     onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
                 </div>
                 <div>
                   <label className="label">パスワード（確認）</label>
-                  <input type="password" className="input-base" value={passwordConfirm}
+                  <input type={showPassword ? 'text' : 'password'} className="input-base" value={passwordConfirm}
                     onChange={e => setPasswordConfirm(e.target.value)} required placeholder="••••••••" />
                 </div>
                 {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}

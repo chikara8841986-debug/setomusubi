@@ -9,6 +9,7 @@ export default function Login() {
   const notice = (location.state as { message?: string } | null)?.message ?? ''
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -82,15 +83,25 @@ export default function Login() {
             </div>
             <div>
               <label className="label">パスワード</label>
-              <input
-                type="password"
-                className="input-base"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="input-base pr-10"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                  tabIndex={-1}
+                >
+                  {showPassword ? '隠す' : '表示'}
+                </button>
+              </div>
             </div>
             {error && (
               <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>
