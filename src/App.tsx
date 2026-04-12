@@ -1,40 +1,47 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
-// Auth pages
+// Auth pages (静的 import: 初回アクセス時に必要)
 import Login from './pages/auth/Login'
 import BusinessRegister from './pages/auth/BusinessRegister'
 import MswRegister from './pages/auth/MswRegister'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 
-// Business pages
-import BusinessCalendar from './pages/business/Calendar'
-import BusinessProfile from './pages/business/Profile'
-import BusinessReservations from './pages/business/Reservations'
-import BusinessIntroduction from './pages/business/Introduction'
+// Business pages (lazy)
+const BusinessCalendar     = lazy(() => import('./pages/business/Calendar'))
+const BusinessProfile      = lazy(() => import('./pages/business/Profile'))
+const BusinessReservations = lazy(() => import('./pages/business/Reservations'))
+const BusinessIntroduction = lazy(() => import('./pages/business/Introduction'))
 
-// MSW pages
-import MswSearch from './pages/msw/Search'
-import MswReservations from './pages/msw/Reservations'
-import MswContacts from './pages/msw/Contacts'
-import MswFavorites from './pages/msw/Favorites'
-import MswBusinesses from './pages/msw/Businesses'
-import HospitalProfile from './pages/msw/HospitalProfile'
+// MSW pages (lazy)
+const MswSearch      = lazy(() => import('./pages/msw/Search'))
+const MswReservations = lazy(() => import('./pages/msw/Reservations'))
+const MswContacts    = lazy(() => import('./pages/msw/Contacts'))
+const MswFavorites   = lazy(() => import('./pages/msw/Favorites'))
+const MswBusinesses  = lazy(() => import('./pages/msw/Businesses'))
+const HospitalProfile = lazy(() => import('./pages/msw/HospitalProfile'))
 
-// Admin pages
-import AdminApprovals from './pages/admin/Approvals'
-import AdminReservations from './pages/admin/Reservations'
-import AdminStats from './pages/admin/Stats'
+// Admin pages (lazy)
+const AdminApprovals    = lazy(() => import('./pages/admin/Approvals'))
+const AdminReservations = lazy(() => import('./pages/admin/Reservations'))
+const AdminStats        = lazy(() => import('./pages/admin/Stats'))
 
 // Other pages
-import NotFound from './pages/NotFound'
+const NotFound = lazy(() => import('./pages/NotFound'))
+
+const Loader = () => (
+  <div className="min-h-screen flex items-center justify-center text-gray-400 text-sm">
+    読み込み中...
+  </div>
+)
 
 function RootRedirect() {
   const { user, role, loading } = useAuth()
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">読み込み中...</div>
+  if (loading) return <Loader />
   if (!user) return <Navigate to="/login" replace />
   if (role === 'business') return <Navigate to="/business/calendar" replace />
   if (role === 'msw') return <Navigate to="/msw/search" replace />
@@ -44,62 +51,64 @@ function RootRedirect() {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-      <Route path="/auth/reset-password" element={<ResetPassword />} />
-      <Route path="/register/business" element={<BusinessRegister />} />
-      <Route path="/register/msw" element={<MswRegister />} />
+    <Suspense fallback={<Loader />}>
+      <Routes>
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
+        <Route path="/register/business" element={<BusinessRegister />} />
+        <Route path="/register/msw" element={<MswRegister />} />
 
-      {/* Business routes */}
-      <Route path="/business/*" element={
-        <ProtectedRoute allowedRoles={['business']}>
-          <Layout>
-            <Routes>
-              <Route path="calendar" element={<BusinessCalendar />} />
-              <Route path="profile" element={<BusinessProfile />} />
-              <Route path="reservations" element={<BusinessReservations />} />
-              <Route path="introduction" element={<BusinessIntroduction />} />
-              <Route path="*" element={<Navigate to="calendar" replace />} />
-            </Routes>
-          </Layout>
-        </ProtectedRoute>
-      } />
+        {/* Business routes */}
+        <Route path="/business/*" element={
+          <ProtectedRoute allowedRoles={['business']}>
+            <Layout>
+              <Routes>
+                <Route path="calendar"      element={<BusinessCalendar />} />
+                <Route path="profile"       element={<BusinessProfile />} />
+                <Route path="reservations"  element={<BusinessReservations />} />
+                <Route path="introduction"  element={<BusinessIntroduction />} />
+                <Route path="*"             element={<Navigate to="calendar" replace />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
+        } />
 
-      {/* MSW routes */}
-      <Route path="/msw/*" element={
-        <ProtectedRoute allowedRoles={['msw']}>
-          <Layout>
-            <Routes>
-              <Route path="search" element={<MswSearch />} />
-              <Route path="reservations" element={<MswReservations />} />
-              <Route path="favorites" element={<MswFavorites />} />
-              <Route path="businesses" element={<MswBusinesses />} />
-              <Route path="contacts" element={<MswContacts />} />
-              <Route path="profile" element={<HospitalProfile />} />
-              <Route path="*" element={<Navigate to="search" replace />} />
-            </Routes>
-          </Layout>
-        </ProtectedRoute>
-      } />
+        {/* MSW routes */}
+        <Route path="/msw/*" element={
+          <ProtectedRoute allowedRoles={['msw']}>
+            <Layout>
+              <Routes>
+                <Route path="search"       element={<MswSearch />} />
+                <Route path="reservations" element={<MswReservations />} />
+                <Route path="favorites"    element={<MswFavorites />} />
+                <Route path="businesses"   element={<MswBusinesses />} />
+                <Route path="contacts"     element={<MswContacts />} />
+                <Route path="profile"      element={<HospitalProfile />} />
+                <Route path="*"            element={<Navigate to="search" replace />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
+        } />
 
-      {/* Admin routes */}
-      <Route path="/admin/*" element={
-        <ProtectedRoute allowedRoles={['admin']}>
-          <Layout>
-            <Routes>
-              <Route path="approvals" element={<AdminApprovals />} />
-              <Route path="reservations" element={<AdminReservations />} />
-              <Route path="stats" element={<AdminStats />} />
-              <Route path="*" element={<Navigate to="approvals" replace />} />
-            </Routes>
-          </Layout>
-        </ProtectedRoute>
-      } />
+        {/* Admin routes */}
+        <Route path="/admin/*" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Layout>
+              <Routes>
+                <Route path="approvals"    element={<AdminApprovals />} />
+                <Route path="reservations" element={<AdminReservations />} />
+                <Route path="stats"        element={<AdminStats />} />
+                <Route path="*"            element={<Navigate to="approvals" replace />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
+        } />
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   )
 }
 
