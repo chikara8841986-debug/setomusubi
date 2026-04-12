@@ -607,6 +607,9 @@ export default function MswSearch() {
               <textarea className="input-base resize-none" rows={3} value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 placeholder="酸素吸入が必要 / エレベーターなし など" />
+              {form.notes.length > 0 && (
+                <p className="text-xs text-gray-400 mt-1 text-right">{form.notes.length} 文字</p>
+              )}
             </div>
 
             {submitError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{submitError}</p>}

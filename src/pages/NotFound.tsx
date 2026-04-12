@@ -9,7 +9,7 @@ export default function NotFound() {
     : '/login'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-emerald-50 flex items-center justify-center p-4">
       <div className="text-center">
         <div className="text-6xl mb-4">🌊</div>
         <h1 className="text-2xl font-bold text-teal-700 mb-2">せとむすび</h1>
