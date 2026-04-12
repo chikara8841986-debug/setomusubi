@@ -39,6 +39,7 @@ export default function MswReservations() {
   const [tab, setTab] = useState<Tab>('active')
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   const fetchReservations = useCallback(async () => {
     if (!hospitalId) return
@@ -51,6 +52,15 @@ export default function MswReservations() {
     setReservations((data as ReservationWithBusiness[]) ?? [])
     setLoading(false)
   }, [hospitalId])
+
+  // ESCキーでモーダルを閉じる
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setSelected(null); setShowCancelConfirm(false) }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
 
   useEffect(() => {
     fetchReservations()
@@ -86,7 +96,7 @@ export default function MswReservations() {
   const list = tab === 'active' ? active : past
 
   const handleCancel = async (r: ReservationWithBusiness) => {
-    if (!confirm('この申請/予約をキャンセルしますか？')) return
+    setShowCancelConfirm(false)
     setCancelling(true)
     setCancelError('')
     await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', r.id)
@@ -117,18 +127,18 @@ export default function MswReservations() {
       <div className="flex gap-2 mb-4">
         <button onClick={() => setTab('active')}
           className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+            tab === 'active' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
           }`}>
           進行中
           {active.length > 0 && (
             <span className={`text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ${
-              tab === 'active' ? 'bg-white text-blue-600' : 'bg-blue-100 text-blue-700'
+              tab === 'active' ? 'bg-white text-teal-600' : 'bg-teal-50 text-teal-700'
             }`}>{active.length}</span>
           )}
         </button>
         <button onClick={() => setTab('past')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === 'past' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+            tab === 'past' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
           }`}>
           過去の予約 ({past.length})
         </button>
@@ -178,7 +188,7 @@ export default function MswReservations() {
                   {STATUS_MAP[selected.status]?.label ?? selected.status}
                 </span>
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+              <button onClick={() => { setSelected(null); setShowCancelConfirm(false) }} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
 
             {selected.status === 'pending' && (
@@ -201,7 +211,7 @@ export default function MswReservations() {
                 <dt className="text-gray-500 w-20 flex-shrink-0">乗車地</dt>
                 <dd className="font-medium break-all">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline">
+                    className="text-teal-700 hover:underline">
                     📍 {selected.patient_address}
                   </a>
                 </dd>
@@ -210,7 +220,7 @@ export default function MswReservations() {
                 <dt className="text-gray-500 w-20 flex-shrink-0">目的地</dt>
                 <dd className="font-medium break-all">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline">
+                    className="text-teal-700 hover:underline">
                     📍 {selected.destination}
                   </a>
                 </dd>
@@ -221,11 +231,11 @@ export default function MswReservations() {
             </dl>
 
             {selected.businesses?.cancel_phone && (selected.status === 'pending' || selected.status === 'confirmed') && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                <p className="text-xs font-medium text-blue-800 mb-1">
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mt-4">
+                <p className="text-xs font-medium text-teal-800 mb-1">
                   {selected.status === 'pending' ? '急ぎの場合は直接お電話ください' : 'キャンセルの場合は直接お電話ください'}
                 </p>
-                <a href={`tel:${selected.businesses.cancel_phone}`} className="text-base font-bold text-blue-900">
+                <a href={`tel:${selected.businesses.cancel_phone}`} className="text-base font-bold text-teal-900">
                   📞 {selected.businesses.cancel_phone}
                 </a>
               </div>
@@ -250,7 +260,7 @@ export default function MswReservations() {
                   }
                 })
               }}
-              className="w-full mt-4 text-sm border border-blue-300 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium transition-colors"
+              className="w-full mt-4 text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
             >
               同じ内容で再申請する
             </button>
@@ -258,13 +268,27 @@ export default function MswReservations() {
             <div className="flex gap-2 mt-2">
               <button onClick={() => { setSelected(null); setCancelError('') }} className="btn-secondary flex-1">閉じる</button>
               {(selected.status === 'pending' || selected.status === 'confirmed') && (
-                <button
-                  onClick={() => handleCancel(selected)}
-                  disabled={cancelling}
-                  className="btn-danger flex-1 text-sm"
-                >
-                  {cancelling ? '処理中...' : 'キャンセル'}
-                </button>
+                showCancelConfirm ? (
+                  <div className="w-full bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
+                    <p className="text-sm text-red-700 font-medium text-center">キャンセルしますか？</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowCancelConfirm(false)} className="btn-secondary flex-1 text-sm">戻る</button>
+                      <button
+                        onClick={() => handleCancel(selected)}
+                        disabled={cancelling}
+                        className="flex-1 text-sm bg-red-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+                      >{cancelling ? '処理中...' : 'キャンセルする'}</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    disabled={cancelling}
+                    className="btn-danger flex-1 text-sm"
+                  >
+                    キャンセル
+                  </button>
+                )
               )}
             </div>
           </div>

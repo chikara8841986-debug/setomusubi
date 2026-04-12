@@ -121,8 +121,8 @@ export default function AdminReservations() {
               onClick={() => setStatusFilter(opt.value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 statusFilter === opt.value
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
               }`}
             >
               {opt.label}

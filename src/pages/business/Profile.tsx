@@ -125,7 +125,7 @@ export default function BusinessProfile() {
         type="button"
         onClick={() => toggleBool(field)}
         className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-          form[field] ? 'bg-blue-500' : 'bg-gray-200'
+          form[field] ? 'bg-teal-500' : 'bg-gray-200'
         }`}
       >
         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${
@@ -207,7 +207,7 @@ export default function BusinessProfile() {
                   type="checkbox"
                   checked={form.service_areas?.includes(area) ?? false}
                   onChange={() => toggleArea(area)}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  className="w-4 h-4 rounded border-gray-300 text-teal-600"
                 />
                 <span className="text-sm text-gray-700">{area}</span>
               </label>

@@ -63,7 +63,7 @@ function PendingApproval({ userId }: { userId: string }) {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
         <div className="text-5xl mb-4">⏳</div>
-        <h1 className="text-2xl font-bold text-blue-700 mb-2">せとむすび</h1>
+        <h1 className="text-2xl font-bold text-teal-700 mb-2">せとむすび</h1>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-base font-semibold text-gray-800 mb-3">承認待ちです</h2>
           <p className="text-sm text-gray-600 mb-4">

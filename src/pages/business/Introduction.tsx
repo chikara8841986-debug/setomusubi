@@ -110,14 +110,14 @@ export default function BusinessIntroduction() {
       <p className="text-xs text-gray-400 mb-5">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
 
       {/* Preview section */}
-      <div className="card mb-5 border-blue-100">
-        <p className="text-xs font-semibold text-blue-600 mb-3 uppercase tracking-wide">プレビュー（MSWに見える画面）</p>
+      <div className="card mb-5 border-teal-100">
+        <p className="text-xs font-semibold text-teal-600 mb-3 uppercase tracking-wide">プレビュー（MSWに見える画面）</p>
 
         <div className="flex items-start gap-3 mb-3">
           {profileImageUrl ? (
             <img src={profileImageUrl} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
           ) : (
-            <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-400 text-2xl">🚐</div>
+            <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
           )}
           <div>
             <h2 className="font-bold text-gray-900 text-base">{data.name}</h2>
@@ -126,7 +126,7 @@ export default function BusinessIntroduction() {
                 href={`https://maps.google.com/maps?q=${encodeURIComponent(data.address)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:underline block mt-0.5"
+                className="text-xs text-teal-700 hover:underline block mt-0.5"
               >
                 📍 {data.address}
               </a>
@@ -136,7 +136,7 @@ export default function BusinessIntroduction() {
             )}
             {websiteUrl && (
               <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-blue-600 underline mt-0.5 inline-block">🔗 ホームページ</a>
+                className="text-xs text-teal-700 underline mt-0.5 inline-block">🔗 ホームページ</a>
             )}
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function BusinessIntroduction() {
                 >×</button>
               </div>
             ) : (
-              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs text-center cursor-pointer hover:border-blue-300 transition-colors"
+              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs text-center cursor-pointer hover:border-teal-300 transition-colors"
                 onClick={() => profileInputRef.current?.click()}>
                 写真を<br />追加
               </div>
@@ -225,7 +225,7 @@ export default function BusinessIntroduction() {
             <button
               onClick={() => vehicleInputRef.current?.click()}
               disabled={uploading || vehicleImageUrls.length >= 6}
-              className="aspect-video rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs hover:border-blue-300 transition-colors disabled:opacity-40"
+              className="aspect-video rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs hover:border-teal-300 transition-colors disabled:opacity-40"
             >
               ＋ 追加
             </button>

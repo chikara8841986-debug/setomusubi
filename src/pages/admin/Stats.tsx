@@ -81,10 +81,10 @@ export default function AdminStats() {
   const lastMonth = format(subMonths(new Date(), 1), 'M月', { locale: ja })
 
   const blocks: StatBlock[] = [
-    { label: '承認済み事業所', value: stats.totalApproved, sub: '件', color: 'text-blue-600' },
+    { label: '承認済み事業所', value: stats.totalApproved, sub: '件', color: 'text-teal-600' },
     { label: '承認待ち事業所', value: stats.totalPending, sub: '件', color: stats.totalPending > 0 ? 'text-red-500' : 'text-gray-500' },
     { label: '病院・MSW', value: stats.totalHospitals, sub: '病院', color: 'text-green-600' },
-    { label: `${thisMonth}の予約`, value: stats.totalReservationsThisMonth, sub: '件', color: 'text-blue-600' },
+    { label: `${thisMonth}の予約`, value: stats.totalReservationsThisMonth, sub: '件', color: 'text-teal-600' },
     { label: `${lastMonth}の予約`, value: stats.totalReservationsLastMonth, sub: '件', color: 'text-gray-500' },
     { label: '累計予約', value: stats.totalReservationsAllTime, sub: '件', color: 'text-indigo-600' },
     { label: `${thisMonth}完了`, value: stats.completedThisMonth, sub: '件', color: 'text-green-600' },
@@ -115,7 +115,7 @@ export default function AdminStats() {
           <div className="flex items-center gap-3">
             <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
               <div
-                className="bg-blue-500 h-3 rounded-full transition-all"
+                className="bg-teal-500 h-3 rounded-full transition-all"
                 style={{
                   width: `${Math.min(100, (stats.totalReservationsThisMonth / Math.max(stats.totalReservationsLastMonth, 1)) * 100)}%`
                 }}

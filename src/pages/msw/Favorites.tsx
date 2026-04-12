@@ -25,6 +25,7 @@ export default function MswFavorites() {
   const [favorites, setFavorites] = useState<FavoriteWithBusiness[]>([])
   const [loading, setLoading] = useState(true)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Business | null>(null)
 
   const fetchFavorites = async () => {
@@ -40,8 +41,14 @@ export default function MswFavorites() {
 
   useEffect(() => { fetchFavorites() }, [hospitalId])
 
-  const handleRemove = async (favoriteId: string, name: string) => {
-    if (!confirm(`「${name}」をお気に入りから削除しますか？`)) return
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  const handleRemove = async (favoriteId: string) => {
+    setRemoveConfirmId(null)
     setRemovingId(favoriteId)
     await supabase.from('favorites').delete().eq('id', favoriteId)
     setFavorites(prev => prev.filter(f => f.id !== favoriteId))
@@ -79,7 +86,7 @@ export default function MswFavorites() {
                     className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-gray-100"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-400 text-xl">
+                  <div className="w-14 h-14 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-xl">
                     🚐
                   </div>
                 )}
@@ -95,19 +102,30 @@ export default function MswFavorites() {
                           href={mapsUrl(biz.address)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline mt-0.5 inline-block"
+                          className="text-xs text-teal-700 hover:underline mt-0.5 inline-block"
                         >
                           📍 {biz.address}
                         </a>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleRemove(id, biz.name)}
-                      disabled={removingId === id}
-                      className="text-xs text-gray-300 hover:text-red-400 flex-shrink-0 transition-colors pt-0.5"
-                    >
-                      {removingId === id ? '...' : '削除'}
-                    </button>
+                    {removeConfirmId === id ? (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => setRemoveConfirmId(null)} className="text-xs text-gray-400 hover:text-gray-600">戻る</button>
+                        <button
+                          onClick={() => handleRemove(id)}
+                          disabled={removingId === id}
+                          className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-0.5 rounded-lg font-medium"
+                        >{removingId === id ? '...' : '確定'}</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setRemoveConfirmId(id)}
+                        disabled={removingId === id}
+                        className="text-xs text-gray-300 hover:text-red-400 flex-shrink-0 transition-colors pt-0.5"
+                      >
+                        {removingId === id ? '...' : '削除'}
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap gap-1 mt-2">
@@ -129,7 +147,7 @@ export default function MswFavorites() {
                     )}
                     <button
                       onClick={() => setPreview(biz)}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-teal-700 hover:underline"
                     >
                       詳細を見る →
                     </button>
@@ -158,7 +176,7 @@ export default function MswFavorites() {
                   className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-400 text-2xl">🚐</div>
+                <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
               )}
               <div className="min-w-0">
                 <p className="font-bold text-gray-900">{preview.name}</p>
@@ -167,13 +185,13 @@ export default function MswFavorites() {
                     href={mapsUrl(preview.address)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline block mt-0.5"
+                    className="text-xs text-teal-700 hover:underline block mt-0.5"
                   >
                     📍 {preview.address}
                   </a>
                 )}
                 {preview.cancel_phone && (
-                  <a href={`tel:${preview.cancel_phone}`} className="text-xs text-blue-600 block mt-0.5">
+                  <a href={`tel:${preview.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">
                     📞 {preview.cancel_phone}
                   </a>
                 )}
@@ -182,7 +200,7 @@ export default function MswFavorites() {
                     href={preview.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 underline block mt-0.5"
+                    className="text-xs text-teal-700 underline block mt-0.5"
                   >
                     🔗 ホームページ
                   </a>

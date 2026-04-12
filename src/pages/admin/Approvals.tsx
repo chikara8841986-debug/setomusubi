@@ -16,14 +16,17 @@ const EQUIPMENT_MAP = [
   { key: 'same_day', label: '当日対応' },
 ] as const
 
+type ConfirmState = { id: string; action: 'approve' | 'reject' } | null
+
 export default function AdminApprovals() {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'pending' | 'approved'>('pending')
   const [processing, setProcessing] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [confirmState, setConfirmState] = useState<ConfirmState>(null)
 
-  const fetch = async () => {
+  const fetchAll = async () => {
     const { data } = await supabase
       .from('businesses')
       .select('*')
@@ -32,25 +35,24 @@ export default function AdminApprovals() {
     setLoading(false)
   }
 
-  useEffect(() => { fetch() }, [])
+  useEffect(() => { fetchAll() }, [])
 
   const handleApprove = async (id: string) => {
-    if (!confirm('この事業所を承認しますか？')) return
     setProcessing(id)
+    setConfirmState(null)
     await supabase.from('businesses').update({ approved: true }).eq('id', id)
-    // Notify business (non-blocking)
     supabase.functions.invoke('send-business-approved', { body: { business_id: id } }).catch(() => {})
-    await fetch()
+    await fetchAll()
     setProcessing(null)
   }
 
   const handleReject = async (id: string) => {
-    if (!confirm('この事業所を却下・削除しますか？\nこの操作は取り消せません。')) return
     setProcessing(id)
+    setConfirmState(null)
     const { data: biz } = await supabase.from('businesses').select('user_id').eq('id', id).single()
     await supabase.from('businesses').delete().eq('id', id)
     if (biz) await supabase.from('profiles').delete().eq('id', biz.user_id)
-    await fetch()
+    await fetchAll()
     setProcessing(null)
   }
 
@@ -71,13 +73,13 @@ export default function AdminApprovals() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              tab === t ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+              tab === t ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
             }`}
           >
             {t === 'pending' ? '承認待ち' : '承認済み'}
             {t === 'pending' && pending.length > 0 && (
               <span className={`text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold ${
-                tab === 'pending' ? 'bg-white text-blue-600' : 'bg-red-500 text-white'
+                tab === 'pending' ? 'bg-white text-teal-600' : 'bg-red-500 text-white'
               }`}>
                 {pending.length}
               </span>
@@ -116,17 +118,17 @@ export default function AdminApprovals() {
                   </div>
 
                   <div className="flex flex-col gap-1.5 flex-shrink-0">
-                    {!biz.approved && (
+                    {!biz.approved && confirmState?.id !== biz.id && (
                       <>
                         <button
-                          onClick={() => handleApprove(biz.id)}
+                          onClick={() => setConfirmState({ id: biz.id, action: 'approve' })}
                           disabled={processing === biz.id}
                           className="btn-primary text-sm px-4 py-1.5 min-w-[60px]"
                         >
                           {processing === biz.id ? '...' : '承認'}
                         </button>
                         <button
-                          onClick={() => handleReject(biz.id)}
+                          onClick={() => setConfirmState({ id: biz.id, action: 'reject' })}
                           disabled={processing === biz.id}
                           className="btn-danger text-sm px-4 py-1.5 min-w-[60px]"
                         >
@@ -136,12 +138,48 @@ export default function AdminApprovals() {
                     )}
                     <button
                       onClick={() => setExpanded(isExpanded ? null : biz.id)}
-                      className="text-xs text-blue-600 hover:underline text-center"
+                      className="text-xs text-teal-700 hover:underline text-center"
                     >
                       {isExpanded ? '閉じる' : '詳細'}
                     </button>
                   </div>
                 </div>
+
+                {/* Inline confirmation */}
+                {confirmState?.id === biz.id && (
+                  <div className={`mt-3 pt-3 border-t rounded-xl p-3 ${
+                    confirmState.action === 'reject'
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-teal-50 border-teal-200'
+                  }`}>
+                    <p className={`text-sm font-medium text-center mb-2 ${
+                      confirmState.action === 'reject' ? 'text-red-700' : 'text-teal-700'
+                    }`}>
+                      {confirmState.action === 'approve'
+                        ? 'この事業所を承認しますか？'
+                        : '却下・削除します。この操作は取り消せません。'}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmState(null)}
+                        className="btn-secondary flex-1 text-sm"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        onClick={() => confirmState.action === 'approve' ? handleApprove(biz.id) : handleReject(biz.id)}
+                        disabled={processing === biz.id}
+                        className={`flex-1 text-sm px-4 py-2 rounded-xl font-semibold text-white disabled:opacity-50 transition-colors ${
+                          confirmState.action === 'reject'
+                            ? 'bg-red-600 hover:bg-red-700'
+                            : 'bg-teal-600 hover:bg-teal-700'
+                        }`}
+                      >
+                        {processing === biz.id ? '処理中...' : confirmState.action === 'approve' ? '承認する' : '却下する'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Expanded details */}
                 {isExpanded && (
@@ -168,7 +206,7 @@ export default function AdminApprovals() {
                     {biz.cancel_phone && (
                       <div>
                         <span className="font-medium text-gray-700">キャンセル連絡先: </span>
-                        <a href={`tel:${biz.cancel_phone}`} className="text-blue-600">{biz.cancel_phone}</a>
+                        <a href={`tel:${biz.cancel_phone}`} className="text-teal-700">{biz.cancel_phone}</a>
                       </div>
                     )}
                     {biz.pricing && (

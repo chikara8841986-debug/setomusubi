@@ -24,6 +24,12 @@ export default function MswBusinesses() {
   const [equipFilter, setEquipFilter] = useState<string[]>([])
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  useEffect(() => {
     const loadAll = async () => {
       const [{ data: bizData }, { data: favData }] = await Promise.all([
         supabase.from('businesses').select('*').eq('approved', true).order('name'),
@@ -96,8 +102,8 @@ export default function MswBusinesses() {
                 onClick={() => toggleEquip(key)}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                   equipFilter.includes(key)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'
+                    ? 'bg-teal-600 text-white border-teal-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
                 }`}
               >
                 {label}
@@ -122,7 +128,7 @@ export default function MswBusinesses() {
                   <img src={biz.profile_image_url} alt={biz.name}
                     className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
                 ) : (
-                  <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-400 text-lg">
+                  <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-lg">
                     🚐
                   </div>
                 )}
@@ -132,7 +138,7 @@ export default function MswBusinesses() {
                       <h3 className="font-semibold text-gray-900">{biz.name}</h3>
                       {biz.address && (
                         <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline block mt-0.5">
+                          className="text-xs text-teal-700 hover:underline block mt-0.5">
                           📍 {biz.address}
                         </a>
                       )}
@@ -163,7 +169,7 @@ export default function MswBusinesses() {
                       </a>
                     )}
                     <button onClick={() => setPreview(biz)}
-                      className="text-xs text-blue-600 hover:underline">
+                      className="text-xs text-teal-700 hover:underline">
                       詳細を見る →
                     </button>
                   </div>
@@ -188,18 +194,18 @@ export default function MswBusinesses() {
                 <img src={preview.profile_image_url} alt={preview.name}
                   className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-400 text-2xl">🚐</div>
+                <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
               )}
               <div className="min-w-0">
                 <p className="font-bold text-gray-900">{preview.name}</p>
                 {preview.address && (
                   <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline block mt-0.5">
+                    className="text-xs text-teal-700 hover:underline block mt-0.5">
                     📍 {preview.address}
                   </a>
                 )}
                 {preview.cancel_phone && (
-                  <a href={`tel:${preview.cancel_phone}`} className="text-xs text-blue-600 block mt-0.5">
+                  <a href={`tel:${preview.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">
                     📞 {preview.cancel_phone}
                   </a>
                 )}
@@ -210,7 +216,7 @@ export default function MswBusinesses() {
                 )}
                 {preview.website_url && (
                   <a href={preview.website_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-blue-600 underline block mt-0.5">🔗 ホームページ</a>
+                    className="text-xs text-teal-700 underline block mt-0.5">🔗 ホームページ</a>
                 )}
               </div>
             </div>

@@ -35,6 +35,8 @@ export default function BusinessCalendar() {
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState('')
   const [completingId, setCompletingId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [completeConfirm, setCompleteConfirm] = useState<{ reservationId: string; slotId: string } | null>(null)
   const [profileIncomplete, setProfileIncomplete] = useState(false)
   const [monthStats, setMonthStats] = useState({ confirmed: 0, completed: 0, pending: 0 })
 
@@ -110,10 +112,15 @@ export default function BusinessCalendar() {
     setLoading(false)
   }, [businessId, weekStart])
 
-  // ESCキーでモーダルを閉じる
+  // ESCキーでモーダルと確認UIを閉じる
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setShowAddModal(false); setShowRecurModal(false) }
+      if (e.key === 'Escape') {
+        setShowAddModal(false)
+        setShowRecurModal(false)
+        setDeleteConfirmId(null)
+        setCompleteConfirm(null)
+      }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
@@ -185,13 +192,13 @@ export default function BusinessCalendar() {
   }
 
   const handleDeleteSlot = async (slotId: string) => {
-    if (!confirm('この枠を削除しますか？')) return
+    setDeleteConfirmId(null)
     await supabase.from('availability_slots').delete().eq('id', slotId)
     fetchSlots()
   }
 
   const handleComplete = async (reservation: Reservation, slotId: string) => {
-    if (!confirm('予約を完了にしますか？')) return
+    setCompleteConfirm(null)
     setCompletingId(reservation.id)
     await supabase.from('reservations').update({ status: 'completed' }).eq('id', reservation.id)
     // confirmed_count を1減らし、is_available を true に戻す
@@ -447,12 +454,25 @@ export default function BusinessCalendar() {
                               )}
                             </div>
                             {confirmedCount === 0 && !hasPending && !past && (
-                              <button
-                                onClick={() => handleDeleteSlot(slot.id)}
-                                className="text-xs text-red-300 hover:text-red-500 flex-shrink-0"
-                              >
-                                削除
-                              </button>
+                              deleteConfirmId === slot.id ? (
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <button
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded"
+                                  >戻る</button>
+                                  <button
+                                    onClick={() => handleDeleteSlot(slot.id)}
+                                    className="text-xs bg-red-500 text-white px-2 py-0.5 rounded font-medium hover:bg-red-600"
+                                  >削除確定</button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeleteConfirmId(slot.id)}
+                                  className="text-xs text-red-300 hover:text-red-500 flex-shrink-0"
+                                >
+                                  削除
+                                </button>
+                              )
                             )}
                           </div>
 
@@ -476,13 +496,30 @@ export default function BusinessCalendar() {
                                     className="block truncate text-teal-700 hover:underline">
                                     📍 目的地：{res.destination}
                                   </a>
-                                  <button
-                                    onClick={() => handleComplete(res, slot.id)}
-                                    disabled={completingId === res.id}
-                                    className="mt-1.5 w-full text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium transition-colors"
-                                  >
-                                    {completingId === res.id ? '処理中...' : '✓ 完了にする'}
-                                  </button>
+                                  {completeConfirm?.reservationId === res.id ? (
+                                    <div className="mt-1.5 bg-orange-50 border border-orange-200 rounded-lg p-2 space-y-1.5">
+                                      <p className="text-[11px] text-orange-700 text-center font-medium">予約を完了にしますか？</p>
+                                      <div className="flex gap-1.5">
+                                        <button
+                                          onClick={() => setCompleteConfirm(null)}
+                                          className="flex-1 text-xs bg-white border border-gray-200 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50"
+                                        >戻る</button>
+                                        <button
+                                          onClick={() => handleComplete(res, slot.id)}
+                                          disabled={completingId === res.id}
+                                          className="flex-1 text-xs bg-orange-500 text-white px-2 py-1 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium"
+                                        >{completingId === res.id ? '処理中...' : '完了にする'}</button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => setCompleteConfirm({ reservationId: res.id, slotId: slot.id })}
+                                      disabled={completingId === res.id}
+                                      className="mt-1.5 w-full text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-50 font-medium transition-colors"
+                                    >
+                                      {completingId === res.id ? '処理中...' : '✓ 完了にする'}
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>

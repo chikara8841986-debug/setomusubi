@@ -11,6 +11,7 @@ export default function MswContacts() {
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
@@ -46,8 +47,8 @@ export default function MswContacts() {
     setAdding(false)
   }
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`「${name}」を削除しますか？`)) return
+  const handleDelete = async (id: string) => {
+    setDeleteConfirmId(null)
     setDeletingId(id)
     await supabase.from('msw_contacts').delete().eq('id', id)
     setContacts(prev => prev.filter(c => c.id !== id))
@@ -136,23 +137,34 @@ export default function MswContacts() {
                   </>
                 ) : (
                   <>
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 text-xs font-bold flex-shrink-0">
                       {contact.name.slice(0, 1)}
                     </div>
                     <span className="flex-1 text-sm text-gray-900 font-medium">{contact.name}</span>
                     <button
                       onClick={() => startEdit(contact)}
-                      className="text-xs text-gray-400 hover:text-blue-600 px-2 py-1 transition-colors"
+                      className="text-xs text-gray-400 hover:text-teal-700 px-2 py-1 transition-colors"
                     >
                       編集
                     </button>
-                    <button
-                      onClick={() => handleDelete(contact.id, contact.name)}
-                      disabled={deletingId === contact.id}
-                      className="text-xs text-gray-400 hover:text-red-500 px-2 py-1 transition-colors"
-                    >
-                      {deletingId === contact.id ? '...' : '削除'}
-                    </button>
+                    {deleteConfirmId === contact.id ? (
+                      <>
+                        <button onClick={() => setDeleteConfirmId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-1">戻る</button>
+                        <button
+                          onClick={() => handleDelete(contact.id)}
+                          disabled={deletingId === contact.id}
+                          className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded-lg font-medium"
+                        >{deletingId === contact.id ? '...' : '削除確定'}</button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirmId(contact.id)}
+                        disabled={deletingId === contact.id}
+                        className="text-xs text-gray-400 hover:text-red-500 px-2 py-1 transition-colors"
+                      >
+                        {deletingId === contact.id ? '...' : '削除'}
+                      </button>
+                    )}
                   </>
                 )}
               </li>
