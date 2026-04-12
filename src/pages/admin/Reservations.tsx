@@ -62,6 +62,7 @@ const STATUS_OPTIONS = [
 export default function AdminReservations() {
   const [reservations, setReservations] = useState<ReservationFull[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [monthFilter, setMonthFilter] = useState(() => format(new Date(), 'yyyy-MM'))
   const [selected, setSelected] = useState<ReservationFull | null>(null)
@@ -72,32 +73,33 @@ export default function AdminReservations() {
     return () => document.removeEventListener('keydown', handler)
   }, [])
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      let query = supabase
-        .from('reservations')
-        .select('*, businesses(name), hospitals(name)')
-        .order('reservation_date', { ascending: false })
-        .order('start_time', { ascending: false })
+  const loadReservations = async () => {
+    setLoading(true)
+    setLoadError(false)
+    let query = supabase
+      .from('reservations')
+      .select('*, businesses(name), hospitals(name)')
+      .order('reservation_date', { ascending: false })
+      .order('start_time', { ascending: false })
 
-      if (monthFilter) {
-        const [y, m] = monthFilter.split('-').map(Number)
-        const from = `${y}-${String(m).padStart(2, '0')}-01`
-        const lastDay = new Date(y, m, 0).getDate()
-        const to = `${y}-${String(m).padStart(2, '0')}-${lastDay}`
-        query = query.gte('reservation_date', from).lte('reservation_date', to)
-      }
-      if (statusFilter) {
-        query = query.eq('status', statusFilter as ReservationStatus)
-      }
-
-      const { data } = await query
-      setReservations((data as ReservationFull[]) ?? [])
-      setLoading(false)
+    if (monthFilter) {
+      const [y, m] = monthFilter.split('-').map(Number)
+      const from = `${y}-${String(m).padStart(2, '0')}-01`
+      const lastDay = new Date(y, m, 0).getDate()
+      const to = `${y}-${String(m).padStart(2, '0')}-${lastDay}`
+      query = query.gte('reservation_date', from).lte('reservation_date', to)
     }
-    load()
-  }, [statusFilter, monthFilter])
+    if (statusFilter) {
+      query = query.eq('status', statusFilter as ReservationStatus)
+    }
+
+    const { data, error } = await query
+    if (error) { setLoadError(true); setLoading(false); return }
+    setReservations((data as ReservationFull[]) ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadReservations() }, [statusFilter, monthFilter])
 
   return (
     <div>
@@ -139,6 +141,11 @@ export default function AdminReservations() {
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">読み込み中...</div>
+      ) : loadError ? (
+        <div className="card text-center py-10">
+          <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+          <button onClick={loadReservations} className="btn-secondary text-sm">再試行</button>
+        </div>
       ) : reservations.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">予約が見つかりません</div>
       ) : (

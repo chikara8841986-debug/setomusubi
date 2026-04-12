@@ -25,6 +25,7 @@ export default function BusinessIntroduction() {
   const { businessId, user } = useAuth()
   const { showToast } = useToast()
   const [data, setData] = useState<IntroFields | null>(null)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [prText, setPrText] = useState('')
@@ -34,19 +35,21 @@ export default function BusinessIntroduction() {
   const profileInputRef = useRef<HTMLInputElement>(null)
   const vehicleInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!businessId) return
-    supabase.from('businesses').select('*').eq('id', businessId).single()
-      .then(({ data: biz }) => {
-        if (!biz) return
-        const b = biz as IntroFields
-        setData(b)
-        setWebsiteUrl(b.website_url ?? '')
-        setPrText(b.pr_text ?? '')
-        setProfileImageUrl(b.profile_image_url ?? '')
-        setVehicleImageUrls(b.vehicle_image_urls ?? [])
-      })
-  }, [businessId])
+    setLoadError(false)
+    const { data: biz, error } = await supabase.from('businesses').select('*').eq('id', businessId).single()
+    if (error) { setLoadError(true); return }
+    if (!biz) return
+    const b = biz as IntroFields
+    setData(b)
+    setWebsiteUrl(b.website_url ?? '')
+    setPrText(b.pr_text ?? '')
+    setProfileImageUrl(b.profile_image_url ?? '')
+    setVehicleImageUrls(b.vehicle_image_urls ?? [])
+  }
+
+  useEffect(() => { fetchData() }, [businessId])
 
   const uploadImage = async (file: File, path: string): Promise<string | null> => {
     const { error } = await supabase.storage
@@ -100,6 +103,12 @@ export default function BusinessIntroduction() {
     showToast('紹介ページを保存しました')
   }
 
+  if (loadError) return (
+    <div className="card text-center py-10">
+      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <button onClick={fetchData} className="btn-secondary text-sm">再試行</button>
+    </div>
+  )
   if (!data) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
 
   const features = Object.entries(EQUIPMENT_LABELS).filter(([key]) => data[key as keyof IntroFields])
