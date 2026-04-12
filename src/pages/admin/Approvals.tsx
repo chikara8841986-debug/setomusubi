@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../contexts/ToastContext'
 import type { Business } from '../../types/database'
 
 const EQUIPMENT_MAP = [
@@ -19,6 +20,7 @@ const EQUIPMENT_MAP = [
 type ConfirmState = { id: string; action: 'approve' | 'reject' } | null
 
 export default function AdminApprovals() {
+  const { showToast } = useToast()
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -47,6 +49,7 @@ export default function AdminApprovals() {
     supabase.functions.invoke('send-business-approved', { body: { business_id: id } }).catch(() => {})
     await fetchAll()
     setProcessing(null)
+    showToast('事業所を承認しました')
   }
 
   const handleReject = async (id: string) => {
@@ -57,6 +60,7 @@ export default function AdminApprovals() {
     if (biz) await supabase.from('profiles').delete().eq('id', biz.user_id)
     await fetchAll()
     setProcessing(null)
+    showToast('事業所を却下・削除しました', 'error')
   }
 
   const pending = businesses.filter(b => !b.approved)

@@ -4,6 +4,7 @@ import { ja } from 'date-fns/locale'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { Reservation } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -32,6 +33,7 @@ type Tab = 'active' | 'past'
 
 export default function MswReservations() {
   const { hospitalId } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [reservations, setReservations] = useState<ReservationWithBusiness[]>([])
   const [loading, setLoading] = useState(true)
@@ -119,6 +121,7 @@ export default function MswReservations() {
     setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: 'cancelled' as const } : x))
     setCancelling(false)
     setSelected(null)
+    showToast('予約をキャンセルしました', 'error')
   }
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>

@@ -3,6 +3,7 @@ import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { Reservation } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -24,6 +25,7 @@ type ConfirmAction = 'reject' | 'complete' | null
 
 export default function BusinessReservations() {
   const { businessId } = useAuth()
+  const { showToast } = useToast()
   const [reservations, setReservations] = useState<ReservationWithHospital[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -132,6 +134,7 @@ export default function BusinessReservations() {
 
     closeModal()
     setProcessing(false)
+    showToast('予約を承認しました')
     fetchReservations()
   }
 
@@ -141,6 +144,7 @@ export default function BusinessReservations() {
     supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
     closeModal()
     setProcessing(false)
+    showToast('申請を却下しました', 'error')
     fetchReservations()
   }
 
@@ -161,6 +165,7 @@ export default function BusinessReservations() {
     }
     closeModal()
     setProcessing(false)
+    showToast('完了にしました')
     fetchReservations()
   }
 
