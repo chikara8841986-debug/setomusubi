@@ -67,7 +67,12 @@ export default function BusinessReservations() {
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'reservations',
         filter: `business_id=eq.${businessId}`,
-      }, fetchReservations)
+      }, (payload) => {
+        if (payload.new?.status === 'cancelled') {
+          showToast('予約がキャンセルされました', 'error')
+        }
+        fetchReservations()
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [fetchReservations, businessId])
