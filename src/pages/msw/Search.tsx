@@ -342,18 +342,39 @@ export default function MswSearch() {
                 >明日</button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">希望開始時間</label>
-                <input type="time" className="input-base" value={startTime} onChange={e => {
-                  const t = e.target.value
-                  setStartTime(t)
-                  if (t >= endTime) setEndTime(addHour(t))
-                }} />
+            <div>
+              <label className="label">希望時間帯</label>
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {[
+                  { label: '午前中', start: '09:00', end: '12:00' },
+                  { label: '午後', start: '13:00', end: '17:00' },
+                  { label: '終日', start: '09:00', end: '18:00' },
+                ].map(({ label, start, end }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => { setStartTime(start); setEndTime(end) }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      startTime === start && endTime === end
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                    }`}
+                  >{label}</button>
+                ))}
               </div>
-              <div>
-                <label className="label">希望終了時間</label>
-                <input type="time" className="input-base" value={endTime} onChange={e => setEndTime(e.target.value)} min={addHour(startTime, 0)} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">開始時間</label>
+                  <input type="time" className="input-base" value={startTime} onChange={e => {
+                    const t = e.target.value
+                    setStartTime(t)
+                    if (t >= endTime) setEndTime(addHour(t))
+                  }} />
+                </div>
+                <div>
+                  <label className="label">終了時間</label>
+                  <input type="time" className="input-base" value={endTime} onChange={e => setEndTime(e.target.value)} min={addHour(startTime, 0)} />
+                </div>
               </div>
             </div>
             <div>
