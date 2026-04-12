@@ -450,7 +450,16 @@ export default function MswSearch() {
               </div>
               {results.map(biz => (
                 <div key={biz.id} className="card hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-start gap-3 mb-2">
+                    {biz.profile_image_url ? (
+                      <img src={biz.profile_image_url} alt={biz.name}
+                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100 mt-0.5" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-lg mt-0.5">
+                        🚐
+                      </div>
+                    )}
+                  <div className="flex-1 min-w-0 flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900">{biz.name}</h3>
@@ -485,6 +494,7 @@ export default function MswSearch() {
                     >
                       申請する
                     </button>
+                  </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
                     {biz.has_wheelchair && <span className="badge-blue">車椅子</span>}
