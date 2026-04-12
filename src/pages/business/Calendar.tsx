@@ -8,6 +8,7 @@ function mapsUrl(address: string) {
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import type { AvailabilitySlot, Reservation, Business } from '../../types/database'
 
 type SlotWithReservation = AvailabilitySlot & {
@@ -24,6 +25,7 @@ const DAY_LABELS = ['月', '火', '水', '木', '金', '土', '日']
 
 export default function BusinessCalendar() {
   const { businessId, user } = useAuth()
+  const { showToast } = useToast()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [slots, setSlots] = useState<SlotWithReservation[]>([])
   const [loading, setLoading] = useState(true)
@@ -191,6 +193,7 @@ export default function BusinessCalendar() {
       setAddError('追加に失敗しました: ' + error.message)
     } else {
       setShowAddModal(false)
+      showToast('空き枠を追加しました')
       fetchSlots()
     }
   }
@@ -204,6 +207,7 @@ export default function BusinessCalendar() {
   const handleComplete = async (reservation: Reservation, slotId: string) => {
     setCompleteConfirm(null)
     setCompletingId(reservation.id)
+    showToast('完了にしました')
     await supabase.from('reservations').update({ status: 'completed' }).eq('id', reservation.id)
     // confirmed_count を1減らし、is_available を true に戻す
     const { data: slot } = await supabase
@@ -285,6 +289,7 @@ export default function BusinessCalendar() {
 
     setRecurResult({ added: newDates.length, skipped })
     setRecurSaving(false)
+    if (newDates.length > 0) showToast(`${newDates.length}件の空き枠を追加しました`)
     fetchSlots()
   }
 
