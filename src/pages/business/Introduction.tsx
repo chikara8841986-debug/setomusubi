@@ -113,10 +113,42 @@ export default function BusinessIntroduction() {
 
   const features = Object.entries(EQUIPMENT_LABELS).filter(([key]) => data[key as keyof IntroFields])
 
+  // Completeness check
+  const checks = [
+    { done: !!profileImageUrl, label: '代表写真' },
+    { done: vehicleImageUrls.length > 0, label: '車両写真' },
+    { done: prText.length >= 20, label: 'PR文（20文字以上）' },
+    { done: !!websiteUrl, label: 'ホームページURL' },
+  ]
+  const completedCount = checks.filter(c => c.done).length
+
   return (
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-1">事業所紹介ページ</h1>
       <p className="text-xs text-gray-400 mb-5">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
+
+      {/* Completeness indicator */}
+      {completedCount < checks.length && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-medium text-amber-800">紹介ページの充実度</p>
+            <p className="text-xs font-bold text-amber-700">{completedCount}/{checks.length}</p>
+          </div>
+          <div className="w-full h-1.5 bg-amber-200 rounded-full overflow-hidden mb-2">
+            <div className="h-1.5 bg-amber-500 rounded-full transition-all" style={{ width: `${(completedCount / checks.length) * 100}%` }} />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {checks.filter(c => !c.done).map(c => (
+              <span key={c.label} className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{c.label}</span>
+            ))}
+          </div>
+        </div>
+      )}
+      {completedCount === checks.length && (
+        <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
+          ✓ 紹介ページが充実しています！
+        </div>
+      )}
 
       {/* Preview section */}
       <div className="card mb-5 border-teal-100">
