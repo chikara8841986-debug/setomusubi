@@ -16,6 +16,7 @@ export default function BusinessProfile() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState<Partial<Business>>({
@@ -40,18 +41,20 @@ export default function BusinessProfile() {
     cancel_phone: '',
   })
 
-  useEffect(() => {
+  const fetchProfile = async () => {
     if (!user) return
-    supabase
+    setLoadError(false)
+    const { data, error } = await supabase
       .from('businesses')
       .select('*')
       .eq('user_id', user.id)
       .single()
-      .then(({ data }) => {
-        if (data) setForm(data)
-        setLoading(false)
-      })
-  }, [user])
+    if (error && error.code !== 'PGRST116') { setLoadError(true); setLoading(false); return }
+    if (data) setForm(data)
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchProfile() }, [user])
 
   const toggleArea = (area: string) => {
     setForm(f => ({
@@ -114,6 +117,12 @@ export default function BusinessProfile() {
   }
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loadError) return (
+    <div className="card text-center py-10">
+      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <button onClick={fetchProfile} className="btn-secondary text-sm">再試行</button>
+    </div>
+  )
 
   const BoolRow = ({ label, field }: { label: string; field: keyof Business }) => (
     <label className="flex items-center justify-between py-2.5 border-b border-gray-100 cursor-pointer">

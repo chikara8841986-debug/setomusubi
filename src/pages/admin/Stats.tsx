@@ -12,6 +12,7 @@ type StatBlock = {
 
 export default function AdminStats() {
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [stats, setStats] = useState({
     totalApproved: 0,
     totalPending: 0,
@@ -24,58 +25,56 @@ export default function AdminStats() {
     pendingRequestsNow: 0,
   })
 
-  useEffect(() => {
-    async function load() {
-      const now = new Date()
-      const thisMonthStart = format(startOfMonth(now), 'yyyy-MM-dd')
-      const thisMonthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
-      const lastMonthStart = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd')
-      const lastMonthEnd = format(endOfMonth(subMonths(now, 1)), 'yyyy-MM-dd')
+  const load = async () => {
+    setLoadError(false)
+    const now = new Date()
+    const thisMonthStart = format(startOfMonth(now), 'yyyy-MM-dd')
+    const thisMonthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
+    const lastMonthStart = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd')
+    const lastMonthEnd = format(endOfMonth(subMonths(now, 1)), 'yyyy-MM-dd')
 
-      const [
-        { count: approved },
-        { count: pending },
-        { count: hospitals },
-        { count: resThisMonth },
-        { count: resLastMonth },
-        { count: resAll },
-        { count: completed },
-        { count: cancelled },
-        { count: pendingRequests },
-      ] = await Promise.all([
-        supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', true),
-        supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', false),
-        supabase.from('hospitals').select('*', { count: 'exact', head: true }),
-        supabase.from('reservations').select('*', { count: 'exact', head: true })
-          .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
-        supabase.from('reservations').select('*', { count: 'exact', head: true })
-          .gte('reservation_date', lastMonthStart).lte('reservation_date', lastMonthEnd),
-        supabase.from('reservations').select('*', { count: 'exact', head: true }),
-        supabase.from('reservations').select('*', { count: 'exact', head: true })
-          .eq('status', 'completed')
-          .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
-        supabase.from('reservations').select('*', { count: 'exact', head: true })
-          .eq('status', 'cancelled')
-          .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
-        supabase.from('reservations').select('*', { count: 'exact', head: true })
-          .eq('status', 'pending'),
-      ])
+    const results = await Promise.all([
+      supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', true),
+      supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', false),
+      supabase.from('hospitals').select('*', { count: 'exact', head: true }),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .gte('reservation_date', lastMonthStart).lte('reservation_date', lastMonthEnd),
+      supabase.from('reservations').select('*', { count: 'exact', head: true }),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .eq('status', 'cancelled')
+        .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .eq('status', 'pending'),
+    ])
 
-      setStats({
-        totalApproved: approved ?? 0,
-        totalPending: pending ?? 0,
-        totalHospitals: hospitals ?? 0,
-        totalReservationsThisMonth: resThisMonth ?? 0,
-        totalReservationsLastMonth: resLastMonth ?? 0,
-        totalReservationsAllTime: resAll ?? 0,
-        completedThisMonth: completed ?? 0,
-        cancelledThisMonth: cancelled ?? 0,
-        pendingRequestsNow: pendingRequests ?? 0,
-      })
-      setLoading(false)
-    }
-    load()
-  }, [])
+    if (results.some(r => r.error)) { setLoadError(true); setLoading(false); return }
+
+    const [
+      { count: approved }, { count: pending }, { count: hospitals },
+      { count: resThisMonth }, { count: resLastMonth }, { count: resAll },
+      { count: completed }, { count: cancelled }, { count: pendingRequests },
+    ] = results
+
+    setStats({
+      totalApproved: approved ?? 0,
+      totalPending: pending ?? 0,
+      totalHospitals: hospitals ?? 0,
+      totalReservationsThisMonth: resThisMonth ?? 0,
+      totalReservationsLastMonth: resLastMonth ?? 0,
+      totalReservationsAllTime: resAll ?? 0,
+      completedThisMonth: completed ?? 0,
+      cancelledThisMonth: cancelled ?? 0,
+      pendingRequestsNow: pendingRequests ?? 0,
+    })
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
 
   const thisMonth = format(new Date(), 'M月', { locale: ja })
   const lastMonth = format(subMonths(new Date(), 1), 'M月', { locale: ja })
@@ -93,6 +92,12 @@ export default function AdminStats() {
   ]
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loadError) return (
+    <div className="card text-center py-10">
+      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <button onClick={load} className="btn-secondary text-sm">再試行</button>
+    </div>
+  )
 
   return (
     <div>
