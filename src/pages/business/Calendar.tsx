@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks, startOfMonth, endOfMonth } from 'date-fns'
-
-function mapsUrl(address: string) {
-  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
-}
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import type { AvailabilitySlot, Reservation, Business } from '../../types/database'
+
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
 
 type SlotWithReservation = AvailabilitySlot & {
   reservation?: Array<Reservation & { hospitals: { name: string } | null }>

@@ -55,7 +55,17 @@ export default function BusinessReservations() {
     const channel = supabase
       .channel('business-reservations-' + businessId)
       .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'reservations',
+        event: 'INSERT', schema: 'public', table: 'reservations',
+        filter: `business_id=eq.${businessId}`,
+      }, (payload) => {
+        if (payload.new?.status === 'pending') {
+          setTab('pending')
+          showToast('新しい仮予約申請が届きました', 'info')
+        }
+        fetchReservations()
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'reservations',
         filter: `business_id=eq.${businessId}`,
       }, fetchReservations)
       .subscribe()
