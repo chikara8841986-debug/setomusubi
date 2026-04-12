@@ -14,6 +14,12 @@ function mapsUrl(address: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
 }
 
+const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
+function closedDaysText(days: number[]): string {
+  if (!days?.length) return ''
+  return '定休: ' + days.sort((a, b) => a - b).map(d => DAY_LABELS[d]).join('・')
+}
+
 export default function MswBusinesses() {
   const { hospitalId } = useAuth()
   const [businesses, setBusinesses] = useState<Business[]>([])
@@ -161,7 +167,14 @@ export default function MswBusinesses() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                        {biz.closed_days?.length > 0 && (
+                          <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">
+                            {closedDaysText(biz.closed_days)}
+                          </span>
+                        )}
+                      </div>
                       {biz.address && (
                         <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-teal-700 hover:underline block mt-0.5">
