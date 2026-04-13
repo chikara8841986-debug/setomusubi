@@ -19,6 +19,8 @@ export default function MswContacts() {
   const [savingEdit, setSavingEdit] = useState(false)
 
   const [loadError, setLoadError] = useState(false)
+  // 担当者名 → 進行中予約件数のマップ
+  const [activeResCounts, setActiveResCounts] = useState<Record<string, number>>({})
 
   const fetchContacts = async () => {
     if (!hospitalId) return
@@ -29,8 +31,25 @@ export default function MswContacts() {
       .eq('hospital_id', hospitalId)
       .order('created_at')
     if (error) { setLoadError(true); setLoading(false); return }
-    setContacts(data ?? [])
+    const list = data ?? []
+    setContacts(list)
     setLoading(false)
+
+    // 各担当者の進行中予約件数を取得
+    if (list.length > 0) {
+      const { data: resData } = await supabase
+        .from('reservations')
+        .select('contact_name')
+        .eq('hospital_id', hospitalId)
+        .in('status', ['pending', 'confirmed'])
+      if (resData) {
+        const counts: Record<string, number> = {}
+        for (const r of resData) {
+          counts[r.contact_name] = (counts[r.contact_name] ?? 0) + 1
+        }
+        setActiveResCounts(counts)
+      }
+    }
   }
 
   useEffect(() => { fetchContacts() }, [hospitalId])
@@ -155,7 +174,15 @@ export default function MswContacts() {
                     <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 text-xs font-bold flex-shrink-0">
                       {contact.name.slice(0, 1)}
                     </div>
-                    <span className="flex-1 text-sm text-gray-900 font-medium">{contact.name}</span>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      <span className="text-sm text-gray-900 font-medium">{contact.name}</span>
+                      {(activeResCounts[contact.name] ?? 0) > 0 && (
+                        <span className="text-[10px] bg-teal-50 border border-teal-200 text-teal-700 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0"
+                          title="進行中の予約で使用中">
+                          申請中/確定 {activeResCounts[contact.name]}件
+                        </span>
+                      )}
+                    </div>
                     <button
                       onClick={() => startEdit(contact)}
                       className="text-xs text-gray-400 hover:text-teal-700 px-2 py-1 transition-colors"
@@ -163,14 +190,19 @@ export default function MswContacts() {
                       編集
                     </button>
                     {deleteConfirmId === contact.id ? (
-                      <>
-                        <button onClick={() => setDeleteConfirmId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-1">戻る</button>
-                        <button
-                          onClick={() => handleDelete(contact.id)}
-                          disabled={deletingId === contact.id}
-                          className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded-lg font-medium"
-                        >{deletingId === contact.id ? '...' : '削除確定'}</button>
-                      </>
+                      <div className="flex flex-col items-end gap-1">
+                        {(activeResCounts[contact.name] ?? 0) > 0 && (
+                          <p className="text-[10px] text-amber-600">進行中の予約があります</p>
+                        )}
+                        <div className="flex gap-1">
+                          <button onClick={() => setDeleteConfirmId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-1">戻る</button>
+                          <button
+                            onClick={() => handleDelete(contact.id)}
+                            disabled={deletingId === contact.id}
+                            className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded-lg font-medium"
+                          >{deletingId === contact.id ? '...' : '削除確定'}</button>
+                        </div>
+                      </div>
                     ) : (
                       <button
                         onClick={() => setDeleteConfirmId(contact.id)}
