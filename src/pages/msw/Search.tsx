@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { format } from 'date-fns'
 import { useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { jstTodayStr, jstHour, jstDateOffsetStr } from '../../lib/jst'
 import type { Business, AvailabilitySlot, MswContact } from '../../types/database'
 
 type FavoriteEntry = { business_id: string }
@@ -57,11 +57,10 @@ export default function MswSearch() {
   const prefill = (location.state as { prefill?: PrefillState } | null)?.prefill
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = jstTodayStr()
 
   function defaultStartTime() {
-    const now = new Date()
-    const h = now.getHours()
+    const h = jstHour() // JST基準で現在時刻（時）を取得
     const next = h < 9 ? 9 : h >= 17 ? 10 : h + 1
     return `${String(next).padStart(2, '0')}:00`
   }
@@ -346,11 +345,7 @@ export default function MswSearch() {
                 >今日</button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const tomorrow = new Date()
-                    tomorrow.setDate(tomorrow.getDate() + 1)
-                    setDate(format(tomorrow, 'yyyy-MM-dd'))
-                  }}
+                  onClick={() => setDate(jstDateOffsetStr(1))}
                   className="px-3 py-2 rounded-xl text-xs font-medium border border-gray-300 bg-white text-gray-600 hover:border-teal-300 transition-colors flex-shrink-0"
                 >明日</button>
               </div>

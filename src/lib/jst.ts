@@ -46,3 +46,26 @@ export function jstTimeStr(): string {
     minute: '2-digit',
   })
 }
+
+/** 現在のJST時（0〜23）を返す */
+export function jstHour(): number {
+  return parseInt(
+    new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Tokyo',
+      hour: 'numeric',
+      hour12: false,
+    }),
+    10,
+  )
+}
+
+/** JST基準で n日後の日付文字列 "YYYY-MM-DD" を返す（デフォルト: 明日）*/
+export function jstDateOffsetStr(offsetDays = 1): string {
+  const today = jstTodayStr()
+  const [y, m, d] = today.split('-').map(Number)
+  const date = new Date(y, m - 1, d + offsetDays)
+  const yy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
