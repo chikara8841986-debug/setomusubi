@@ -69,3 +69,11 @@ export function jstDateOffsetStr(offsetDays = 1): string {
   const dd = String(date.getDate()).padStart(2, '0')
   return `${yy}-${mm}-${dd}`
 }
+
+/** JST基準で "N月" 形式の月ラベルを返す（offsetMonths: -1=先月, 0=今月, 1=来月）*/
+export function jstMonthLabel(offsetMonths = 0): string {
+  const monthStr = jstMonthStr(offsetMonths) // "YYYY-MM"
+  const m = parseInt(monthStr.split('-')[1], 10)
+  return `${m}月`
+}
+

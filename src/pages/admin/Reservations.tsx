@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
+import { jstTodayStr, jstMonthStr } from '../../lib/jst'
 import type { Reservation, ReservationStatus } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -61,7 +62,7 @@ function exportCSV(reservations: ReservationFull[]) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `reservations_${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `reservations_${jstTodayStr()}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -80,7 +81,7 @@ export default function AdminReservations() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
-  const [monthFilter, setMonthFilter] = useState(() => format(new Date(), 'yyyy-MM'))
+  const [monthFilter, setMonthFilter] = useState(() => jstMonthStr(0))
   const [selected, setSelected] = useState<ReservationFull | null>(null)
 
   useEffect(() => {

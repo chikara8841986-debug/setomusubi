@@ -5,7 +5,7 @@ import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { jstMonthRange } from '../../lib/jst'
+import { jstMonthRange, jstMonthLabel } from '../../lib/jst'
 import type { AvailabilitySlot, Reservation, Business } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -357,8 +357,8 @@ export default function BusinessCalendar() {
       {/* Monthly stats mini-cards */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { label: `${format(new Date(), 'M月')}確定`, value: monthStats.confirmed, color: 'text-teal-600' },
-          { label: `${format(new Date(), 'M月')}完了`, value: monthStats.completed, color: 'text-green-600' },
+          { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600' },
+          { label: `${jstMonthLabel()}完了`, value: monthStats.completed, color: 'text-green-600' },
           { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-100 py-2 px-3 text-center shadow-sm">

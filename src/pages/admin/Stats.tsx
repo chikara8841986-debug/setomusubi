@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
-import { format, subMonths } from 'date-fns'
-import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
-import { jstMonthRange } from '../../lib/jst'
+import { jstMonthRange, jstMonthLabel } from '../../lib/jst'
 
 type StatBlock = {
   label: string
@@ -77,8 +75,8 @@ export default function AdminStats() {
 
   useEffect(() => { load() }, [])
 
-  const thisMonth = format(new Date(), 'M月', { locale: ja })
-  const lastMonth = format(subMonths(new Date(), 1), 'M月', { locale: ja })
+  const thisMonth = jstMonthLabel(0)
+  const lastMonth = jstMonthLabel(-1)
 
   const blocks: StatBlock[] = [
     { label: '承認済み事業所', value: stats.totalApproved, sub: '件', color: 'text-teal-600' },
