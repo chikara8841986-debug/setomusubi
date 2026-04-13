@@ -91,6 +91,7 @@ export default function MswSearch() {
   const [searchError, setSearchError] = useState('')
   const [selectedBusiness, setSelectedBusiness] = useState<SearchResult | null>(null)
   const [previewBusiness, setPreviewBusiness] = useState<SearchResult | null>(null)
+  const [favOnlyResults, setFavOnlyResults] = useState(false)
 
   // Step 3
   const [contacts, setContacts] = useState<MswContact[]>([])
@@ -435,15 +436,27 @@ export default function MswSearch() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-gray-600">{results.length}件の事業所が見つかりました</p>
-                {results.filter(r => favorites.has(r.id)).length > 0 && (
-                  <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                    ⭐ {results.filter(r => favorites.has(r.id)).length}件はお気に入り
-                  </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm text-gray-600">
+                  {favOnlyResults
+                    ? `⭐ ${results.filter(r => favorites.has(r.id)).length}件（お気に入りのみ）`
+                    : `${results.length}件の事業所が見つかりました`
+                  }
+                </p>
+                {results.some(r => favorites.has(r.id)) && (
+                  <button
+                    onClick={() => setFavOnlyResults(v => !v)}
+                    className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
+                      favOnlyResults
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                    }`}
+                  >
+                    ⭐ お気に入りのみ
+                  </button>
                 )}
               </div>
-              {results.map(biz => (
+              {results.filter(biz => !favOnlyResults || favorites.has(biz.id)).map(biz => (
                 <div key={biz.id} className="card hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-3 mb-2">
                     {biz.profile_image_url ? (
