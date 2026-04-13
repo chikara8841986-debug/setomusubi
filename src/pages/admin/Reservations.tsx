@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
-import { jstTodayStr, jstMonthStr } from '../../lib/jst'
+import { jstTodayStr, jstMonthStr, jstMonthLabel } from '../../lib/jst'
 import type { Reservation, ReservationStatus } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -125,12 +125,38 @@ export default function AdminReservations() {
 
       {/* Filters + Export */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <input
-          type="month"
-          className="input-base w-auto"
-          value={monthFilter}
-          onChange={e => setMonthFilter(e.target.value)}
-        />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              const [y, m] = monthFilter.split('-').map(Number)
+              const d = new Date(y, m - 2, 1)
+              setMonthFilter(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+            }}
+            className="px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-white text-gray-600 hover:border-teal-300 transition-colors"
+            title="前月"
+          >‹</button>
+          <input
+            type="month"
+            className="input-base w-auto"
+            value={monthFilter}
+            onChange={e => setMonthFilter(e.target.value)}
+          />
+          <button
+            onClick={() => {
+              const [y, m] = monthFilter.split('-').map(Number)
+              const d = new Date(y, m, 1)
+              setMonthFilter(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+            }}
+            className="px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-white text-gray-600 hover:border-teal-300 transition-colors"
+            title="翌月"
+          >›</button>
+          {monthFilter !== jstMonthStr(0) && (
+            <button
+              onClick={() => setMonthFilter(jstMonthStr(0))}
+              className="px-2.5 py-1.5 rounded-lg text-xs border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 transition-colors"
+            >{jstMonthLabel(0)}</button>
+          )}
+        </div>
         {reservations.length > 0 && (
           <button
             onClick={() => exportCSV(reservations)}
