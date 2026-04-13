@@ -30,6 +30,7 @@ export default function MswBusinesses() {
   const [areaFilter, setAreaFilter] = useState('')
   const [equipFilter, setEquipFilter] = useState<string[]>([])
   const [favOnly, setFavOnly] = useState(false)
+  const [nameSearch, setNameSearch] = useState('')
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null) }
@@ -82,6 +83,7 @@ export default function MswBusinesses() {
     .filter(biz => {
       if (favOnly && !favorites.has(biz.id)) return false
       if (areaFilter && !biz.service_areas?.includes(areaFilter)) return false
+      if (nameSearch && !biz.name.includes(nameSearch)) return false
       for (const key of equipFilter) {
         if (!biz[key as keyof Business]) return false
       }
@@ -104,6 +106,16 @@ export default function MswBusinesses() {
 
       {/* Filters */}
       <div className="card mb-4 space-y-3">
+        <div>
+          <label className="label">事業所名で検索</label>
+          <input
+            type="text"
+            className="input-base"
+            placeholder="事業所名を入力..."
+            value={nameSearch}
+            onChange={e => setNameSearch(e.target.value)}
+          />
+        </div>
         <div>
           <label className="label">エリア</label>
           <select className="input-base" value={areaFilter} onChange={e => setAreaFilter(e.target.value)}>

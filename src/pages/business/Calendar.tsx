@@ -119,7 +119,7 @@ export default function BusinessCalendar() {
     setLoading(false)
   }, [businessId, weekStart])
 
-  // ESCキーでモーダルと確認UIを閉じる
+  // ESCキーでモーダルと確認UIを閉じる / 左右矢印で週移動
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -128,10 +128,16 @@ export default function BusinessCalendar() {
         setDeleteConfirmId(null)
         setCompleteConfirm(null)
       }
+      // モーダル表示中・入力欄フォーカス中は矢印キーをスキップ
+      const tag = (e.target as HTMLElement).tagName
+      if (showAddModal || showRecurModal) return
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === 'ArrowLeft') setWeekStart(w => addDays(w, -7))
+      if (e.key === 'ArrowRight') setWeekStart(w => addDays(w, 7))
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [])
+  }, [showAddModal, showRecurModal])
 
   useEffect(() => {
     fetchSlots()
@@ -336,6 +342,7 @@ export default function BusinessCalendar() {
           <button
             onClick={() => setWeekStart(d => addDays(d, -7))}
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-sm"
+            title="前の週（←キー）"
           >
             ◀
           </button>
@@ -348,6 +355,7 @@ export default function BusinessCalendar() {
           <button
             onClick={() => setWeekStart(d => addDays(d, 7))}
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-sm"
+            title="次の週（→キー）"
           >
             ▶
           </button>
