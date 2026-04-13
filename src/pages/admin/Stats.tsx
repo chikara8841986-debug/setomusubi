@@ -13,6 +13,7 @@ type StatBlock = {
 export default function AdminStats() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [stats, setStats] = useState({
     totalApproved: 0,
     totalPending: 0,
@@ -71,6 +72,7 @@ export default function AdminStats() {
       cancelledThisMonth: cancelled ?? 0,
       pendingRequestsNow: pendingRequests ?? 0,
     })
+    setLastUpdated(new Date())
     setLoading(false)
   }
 
@@ -105,7 +107,14 @@ export default function AdminStats() {
         <h1 className="text-xl font-bold text-gray-900">統計ダッシュボード</h1>
         <button onClick={load} className="text-xs text-teal-600 hover:text-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">↻ 更新</button>
       </div>
-      <p className="text-xs text-gray-400 mb-6">プラットフォーム全体の利用状況</p>
+      <p className="text-xs text-gray-400 mb-6">
+        プラットフォーム全体の利用状況
+        {lastUpdated && (
+          <span className="ml-2">
+            ・最終更新: {lastUpdated.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
+      </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {blocks.map(b => (

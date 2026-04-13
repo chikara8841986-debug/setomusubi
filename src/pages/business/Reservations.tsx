@@ -31,6 +31,7 @@ export default function BusinessReservations() {
   const [loadError, setLoadError] = useState(false)
   const [selected, setSelected] = useState<ReservationWithHospital | null>(null)
   const [tab, setTab] = useState<Tab>('pending')
+  const [initialTabSet, setInitialTabSet] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [actionError, setActionError] = useState('')
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
@@ -85,6 +86,19 @@ export default function BusinessReservations() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
+
+  // 初回ロード後: 申請中がなく今日の予約があれば「今日」タブに自動切替
+  useEffect(() => {
+    if (loading || initialTabSet) return
+    setInitialTabSet(true)
+    const pendingCount = reservations.filter(r => r.status === 'pending').length
+    const todayCount = reservations.filter(r =>
+      r.status === 'confirmed' && isToday(parseISO(r.reservation_date))
+    ).length
+    if (pendingCount === 0 && todayCount > 0) {
+      setTab('today')
+    }
+  }, [loading, reservations])
 
   const openModal = (r: ReservationWithHospital) => {
     setSelected(r)

@@ -109,7 +109,14 @@ export default function MswReservations() {
     return true
   })
 
-  const list = tab === 'active' ? active : past
+  // 進行中は直近の予約が先頭になるよう昇順ソート
+  const list = tab === 'active'
+    ? [...active].sort((a, b) => {
+        const da = `${a.reservation_date}T${a.start_time}`
+        const db = `${b.reservation_date}T${b.start_time}`
+        return da.localeCompare(db)
+      })
+    : past
 
   const handleCancel = async (r: ReservationWithBusiness) => {
     setShowCancelConfirm(false)
