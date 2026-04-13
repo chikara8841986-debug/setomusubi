@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { format, parseISO, isPast, isToday } from 'date-fns'
+import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import { isTodayJST } from '../../lib/jst'
 import type { Reservation } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -93,7 +94,7 @@ export default function BusinessReservations() {
     setInitialTabSet(true)
     const pendingCount = reservations.filter(r => r.status === 'pending').length
     const todayCount = reservations.filter(r =>
-      r.status === 'confirmed' && isToday(parseISO(r.reservation_date))
+      r.status === 'confirmed' && isTodayJST(r.reservation_date)
     ).length
     if (pendingCount === 0 && todayCount > 0) {
       setTab('today')
@@ -114,11 +115,11 @@ export default function BusinessReservations() {
 
   const pending = reservations.filter(r => r.status === 'pending')
   const today = reservations.filter(r =>
-    r.status === 'confirmed' && isToday(parseISO(r.reservation_date))
+    r.status === 'confirmed' && isTodayJST(r.reservation_date)
   )
   const upcoming = reservations.filter(r => {
     if (r.status !== 'confirmed') return false
-    if (isToday(parseISO(r.reservation_date))) return false
+    if (isTodayJST(r.reservation_date)) return false
     const dt = new Date(`${r.reservation_date}T${r.end_time}`)
     return !isPast(dt)
   })

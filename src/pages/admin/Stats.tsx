@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { format, subMonths } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
+import { jstMonthRange } from '../../lib/jst'
 
 type StatBlock = {
   label: string
@@ -28,11 +29,9 @@ export default function AdminStats() {
 
   const load = async () => {
     setLoadError(false)
-    const now = new Date()
-    const thisMonthStart = format(startOfMonth(now), 'yyyy-MM-dd')
-    const thisMonthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
-    const lastMonthStart = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd')
-    const lastMonthEnd = format(endOfMonth(subMonths(now, 1)), 'yyyy-MM-dd')
+    // JST基準で月の範囲を計算
+    const { start: thisMonthStart, end: thisMonthEnd } = jstMonthRange(0)
+    const { start: lastMonthStart, end: lastMonthEnd } = jstMonthRange(-1)
 
     const results = await Promise.all([
       supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', true),

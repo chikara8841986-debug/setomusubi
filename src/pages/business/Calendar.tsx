@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks, startOfMonth, endOfMonth } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import { jstMonthRange } from '../../lib/jst'
 import type { AvailabilitySlot, Reservation, Business } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -72,12 +73,10 @@ export default function BusinessCalendar() {
       })
   }, [user])
 
-  // Fetch this month's reservation stats
+  // Fetch this month's reservation stats（JST基準）
   useEffect(() => {
     if (!businessId) return
-    const now = new Date()
-    const from = format(startOfMonth(now), 'yyyy-MM-dd')
-    const to = format(endOfMonth(now), 'yyyy-MM-dd')
+    const { start: from, end: to } = jstMonthRange(0)
     Promise.all([
       supabase.from('reservations').select('*', { count: 'exact', head: true })
         .eq('business_id', businessId).eq('status', 'confirmed')
