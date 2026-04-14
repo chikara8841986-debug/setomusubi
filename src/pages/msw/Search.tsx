@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { format, parseISO } from 'date-fns'
+import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { jstTodayStr, jstHour, jstDateOffsetStr } from '../../lib/jst'
 import type { Business, AvailabilitySlot, MswContact } from '../../types/database'
+
+function fmtDate(dateStr: string) {
+  return format(parseISO(dateStr), 'M月d日（E）', { locale: ja })
+}
 
 type FavoriteEntry = { business_id: string }
 
@@ -310,7 +316,7 @@ export default function MswSearch() {
             <div className="flex gap-3">
               <span className="text-gray-500 w-16 flex-shrink-0">日時</span>
               <span className="font-semibold text-gray-900">
-                {confirmed.date} {confirmed.startTime.slice(0,5)}〜{confirmed.endTime.slice(0,5)}
+                {fmtDate(confirmed.date)} {confirmed.startTime.slice(0,5)}〜{confirmed.endTime.slice(0,5)}
               </span>
             </div>
           </div>
@@ -468,7 +474,7 @@ export default function MswSearch() {
           <div className="flex items-center gap-3 mb-4">
             <button onClick={() => setStep(1)} className="text-teal-600 text-sm hover:underline">← 検索に戻る</button>
             <span className="text-sm text-gray-500">
-              {date} {startTime}〜{endTime} / {area}
+              {fmtDate(date)} {startTime}〜{endTime} / {area}
             </span>
           </div>
 
@@ -476,7 +482,7 @@ export default function MswSearch() {
             <div className="card py-6 text-center">
               <p className="text-gray-500 text-sm font-medium mb-1">空き事業所が見つかりませんでした</p>
               <p className="text-gray-400 text-xs mb-4">
-                {date} {startTime}〜{endTime} / {area}
+                {fmtDate(date)} {startTime}〜{endTime} / {area}
               </p>
               <div className="flex flex-col gap-2 text-sm">
                 <button onClick={() => setStep(1)}
@@ -615,7 +621,7 @@ export default function MswSearch() {
           {/* Summary + phone option */}
           <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 mb-4">
             <p className="font-semibold text-teal-800 text-sm">{selectedBusiness.name}</p>
-            <p className="text-teal-600 text-xs">{date} {startTime}〜{endTime}</p>
+            <p className="text-teal-600 text-xs">{fmtDate(date)} {startTime}〜{endTime}</p>
             {selectedBusiness.cancel_phone && (
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-teal-200">
                 <p className="text-xs text-teal-700">急ぎの場合は直接電話でご確認ください</p>
