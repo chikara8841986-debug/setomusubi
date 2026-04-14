@@ -151,6 +151,17 @@ export default function BusinessIntroduction() {
       {isDirty && (
         <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
           <span className="text-sm text-blue-700 font-medium">未保存の変更があります</span>
+          <button
+            type="button"
+            onClick={() => {
+              const snap = JSON.parse(savedSnapshot)
+              setWebsiteUrl(snap.website_url ?? '')
+              setPrText(snap.pr_text ?? '')
+              setProfileImageUrl(snap.profile_image_url ?? '')
+              setVehicleImageUrls(snap.vehicle_image_urls ?? [])
+            }}
+            className="text-xs text-blue-500 hover:text-blue-700 hover:underline ml-2 flex-shrink-0"
+          >元に戻す</button>
         </div>
       )}
 
