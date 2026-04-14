@@ -624,8 +624,14 @@ export default function BusinessCalendar() {
             {/* Quick time buttons */}
             <div className="mb-3">
               <p className="text-xs text-gray-500 mb-1.5">クイック選択</p>
-              <div className="flex gap-2">
-                {QUICK_TIMES.map(qt => (
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { label: '営業時間', start: bizHoursStart, end: bizHoursEnd },
+                  ...QUICK_TIMES,
+                ].filter((qt, i, arr) =>
+                  // 営業時間とQUICK_TIMESが重複しない場合のみ全表示
+                  i === 0 || !(qt.start === arr[0].start && qt.end === arr[0].end)
+                ).map(qt => (
                   <button
                     key={qt.label}
                     type="button"
