@@ -479,22 +479,26 @@ export default function MswSearch() {
           </div>
 
           {results.length === 0 ? (
-            <div className="card py-6 text-center">
-              <p className="text-gray-500 text-sm font-medium mb-1">空き事業所が見つかりませんでした</p>
-              <p className="text-gray-400 text-xs mb-4">
-                {fmtDate(date)} {startTime}〜{endTime} / {area}
+            <div className="card py-6 text-center space-y-3">
+              <p className="text-2xl">🔍</p>
+              <p className="text-gray-700 text-sm font-medium">空き枠が見つかりませんでした</p>
+              <p className="text-gray-400 text-xs">
+                {fmtDate(date)} {startTime}〜{endTime} ／ {area}
               </p>
-              <div className="flex flex-col gap-2 text-sm">
-                <button onClick={() => setStep(1)}
-                  className="text-teal-600 hover:underline">← 時間帯を変えて再検索</button>
-                <button onClick={() => { setStep(1) }}
-                  className="text-teal-600 hover:underline">← エリアを変えて再検索</button>
-                <div className="border-t pt-3 mt-1">
-                  <p className="text-xs text-gray-400 mb-2">直接電話でも受付可能です</p>
-                  <button onClick={() => setStep(1)}
-                    className="btn-secondary text-xs px-4">検索条件を変更する</button>
-                </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <button onClick={() => setStep(1)} className="btn-primary text-sm">
+                  ← 検索条件を変更する
+                </button>
+                <button
+                  onClick={() => navigate('/msw/businesses')}
+                  className="btn-secondary text-sm"
+                >
+                  事業所一覧で直接電話する
+                </button>
               </div>
+              <p className="text-xs text-gray-400">
+                空き枠のない事業所でも電話での相談を受け付けている場合があります
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
