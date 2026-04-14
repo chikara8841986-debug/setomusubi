@@ -117,7 +117,13 @@ export default function MswSearch() {
   const [submitError, setSubmitError] = useState('')
 
   // Confirmed state
-  const [confirmed, setConfirmed] = useState<{ cancelPhone: string | null } | null>(null)
+  const [confirmed, setConfirmed] = useState<{
+    cancelPhone: string | null
+    businessName: string
+    date: string
+    startTime: string
+    endTime: string
+  } | null>(null)
 
   // ESCキーでプレビューモーダルを閉じる
   useEffect(() => {
@@ -276,18 +282,39 @@ export default function MswSearch() {
       }).catch(() => {})
     }
 
-    setConfirmed({ cancelPhone: selectedBusiness.cancel_phone })
+    setConfirmed({
+      cancelPhone: selectedBusiness.cancel_phone,
+      businessName: selectedBusiness.name,
+      date,
+      startTime,
+      endTime,
+    })
     setSubmitting(false)
   }
 
   if (confirmed) {
     return (
       <div className="max-w-md mx-auto">
-        <div className="card text-center py-8">
-          <div className="text-5xl mb-4">📋</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">仮予約の申請が完了しました</h2>
-          <p className="text-sm text-gray-500 mb-1">事業所からの確定連絡をお待ちください</p>
-          <p className="text-xs text-gray-400 mb-5">予約の確定・却下は「予約履歴」で確認できます</p>
+        <div className="card py-8">
+          <div className="text-5xl mb-4 text-center">📋</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">仮予約の申請が完了しました</h2>
+          <p className="text-sm text-gray-500 mb-4 text-center">事業所からの確定連絡をお待ちください</p>
+
+          {/* Booking summary */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
+            <div className="flex gap-3">
+              <span className="text-gray-500 w-16 flex-shrink-0">事業所</span>
+              <span className="font-semibold text-gray-900">{confirmed.businessName}</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-gray-500 w-16 flex-shrink-0">日時</span>
+              <span className="font-semibold text-gray-900">
+                {confirmed.date} {confirmed.startTime.slice(0,5)}〜{confirmed.endTime.slice(0,5)}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-400 mb-4 text-center">予約の確定・却下は「予約履歴」で確認できます</p>
 
           {confirmed.cancelPhone && (
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-left text-sm mb-5">

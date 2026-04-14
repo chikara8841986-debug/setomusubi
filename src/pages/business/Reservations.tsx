@@ -273,6 +273,12 @@ export default function BusinessReservations() {
                   (1000 * 60 * 60 * 24)
                 )
               : null
+            const hoursUntil = (tab === 'today' && r.status === 'confirmed')
+              ? Math.ceil(
+                  (new Date(`${r.reservation_date}T${r.start_time}`).getTime() - Date.now()) /
+                  (1000 * 60 * 60)
+                )
+              : null
             return (
             <button key={r.id} onClick={() => openModal(r)}
               className="card w-full text-left hover:shadow-md transition-shadow">
@@ -291,6 +297,12 @@ export default function BusinessReservations() {
                   )}
                   {daysUntil !== null && daysUntil <= 0 && (
                     <span className="text-[10px] text-amber-600 font-bold">まもなく</span>
+                  )}
+                  {hoursUntil !== null && hoursUntil > 0 && (
+                    <span className="text-[10px] text-teal-600 font-medium">あと{hoursUntil}時間</span>
+                  )}
+                  {hoursUntil !== null && hoursUntil <= 0 && (
+                    <span className="text-[10px] text-amber-600 font-bold">時間になりました</span>
                   )}
                 </div>
               </div>
