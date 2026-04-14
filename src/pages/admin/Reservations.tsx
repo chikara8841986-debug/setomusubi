@@ -139,6 +139,16 @@ export default function AdminReservations() {
     setUpdatingStatus(false)
   }
 
+  const q = nameSearch.trim().toLowerCase()
+  const filtered = q
+    ? reservations.filter(r =>
+        r.patient_name.toLowerCase().includes(q) ||
+        (r.businesses?.name ?? '').toLowerCase().includes(q) ||
+        (r.hospitals?.name ?? '').toLowerCase().includes(q) ||
+        r.contact_name.toLowerCase().includes(q)
+      )
+    : reservations
+
   return (
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-1">全予約一覧</h1>
@@ -178,12 +188,13 @@ export default function AdminReservations() {
             >{jstMonthLabel(0)}</button>
           )}
         </div>
-        {reservations.length > 0 && (
+        {filtered.length > 0 && (
           <button
-            onClick={() => exportCSV(reservations)}
+            onClick={() => exportCSV(filtered)}
             className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1.5"
+            title={q ? `絞り込み結果 ${filtered.length}件をエクスポート` : `${filtered.length}件をエクスポート`}
           >
-            ↓ CSV
+            ↓ CSV{q ? ` (${filtered.length})` : ''}
           </button>
         )}
         <div className="flex gap-1">
@@ -223,25 +234,15 @@ export default function AdminReservations() {
         </div>
       ) : reservations.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">予約が見つかりません</div>
+      ) : filtered.length === 0 ? (
+        <div className="card text-center py-8 text-gray-400 text-sm">該当する予約がありません</div>
       ) : (
         <>
-          {(() => {
-            const q = nameSearch.trim().toLowerCase()
-            const filtered = q
-              ? reservations.filter(r =>
-                  r.patient_name.toLowerCase().includes(q) ||
-                  (r.businesses?.name ?? '').toLowerCase().includes(q) ||
-                  (r.hospitals?.name ?? '').toLowerCase().includes(q) ||
-                  r.contact_name.toLowerCase().includes(q)
-                )
-              : reservations
-            return (
-              <>
-                <p className="text-xs text-gray-400 mb-2">
-                  {filtered.length}件{q && reservations.length !== filtered.length ? ` / 全${reservations.length}件` : ''}
-                </p>
-                <div className="space-y-2">
-                  {filtered.map(r => (
+          <p className="text-xs text-gray-400 mb-2">
+            {filtered.length}件{q && reservations.length !== filtered.length ? ` / 全${reservations.length}件` : ''}
+          </p>
+          <div className="space-y-2">
+            {filtered.map(r => (
               <button
                 key={r.id}
                 onClick={() => setSelected(r)}
@@ -262,14 +263,8 @@ export default function AdminReservations() {
                   </span>
                 </div>
               </button>
-                  ))}
-                </div>
-                {filtered.length === 0 && (
-                  <div className="card text-center py-8 text-gray-400 text-sm">該当する予約がありません</div>
-                )}
-              </>
-            )
-          })()}
+            ))}
+          </div>
         </>
       )}
 
