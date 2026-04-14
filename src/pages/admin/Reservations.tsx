@@ -84,6 +84,8 @@ export default function AdminReservations() {
   const [monthFilter, setMonthFilter] = useState(() => jstMonthStr(0))
   const [nameSearch, setNameSearch] = useState('')
   const [selected, setSelected] = useState<ReservationFull | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [statusUpdateError, setStatusUpdateError] = useState('')
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null) }
@@ -118,6 +120,24 @@ export default function AdminReservations() {
   }
 
   useEffect(() => { loadReservations() }, [statusFilter, monthFilter])
+
+  const handleStatusUpdate = async (newStatus: ReservationStatus) => {
+    if (!selected) return
+    setUpdatingStatus(true)
+    setStatusUpdateError('')
+    const { error } = await supabase
+      .from('reservations')
+      .update({ status: newStatus })
+      .eq('id', selected.id)
+    if (error) {
+      setStatusUpdateError('更新に失敗しました')
+      setUpdatingStatus(false)
+      return
+    }
+    setSelected(prev => prev ? { ...prev, status: newStatus } : null)
+    setReservations(prev => prev.map(r => r.id === selected.id ? { ...r, status: newStatus } : r))
+    setUpdatingStatus(false)
+  }
 
   return (
     <div>
@@ -289,7 +309,27 @@ export default function AdminReservations() {
               {selected.notes && <Row label="備考" value={selected.notes} />}
               <Row label="作成日時" value={format(parseISO(selected.created_at), 'yyyy/M/d HH:mm', { locale: ja })} />
             </dl>
-            <button onClick={() => setSelected(null)} className="btn-secondary w-full mt-4">閉じる</button>
+            <div className="mt-5 border-t pt-4">
+              <p className="text-xs text-gray-500 font-medium mb-2">ステータスを変更</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(['confirmed', 'completed', 'cancelled'] as ReservationStatus[]).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => handleStatusUpdate(s)}
+                    disabled={updatingStatus || selected.status === s}
+                    className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors disabled:opacity-40 ${
+                      selected.status === s
+                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-default'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400 hover:text-teal-700'
+                    }`}
+                  >
+                    {updatingStatus ? '...' : STATUS_LABELS[s]}
+                  </button>
+                ))}
+              </div>
+              {statusUpdateError && <p className="text-xs text-red-600 mt-1">{statusUpdateError}</p>}
+            </div>
+            <button onClick={() => { setSelected(null); setStatusUpdateError('') }} className="btn-secondary w-full mt-3">閉じる</button>
           </div>
         </div>
       )}
