@@ -545,14 +545,28 @@ export default function BusinessCalendar() {
                                     {res.hospitals?.name ?? '—'} ／ {res.contact_name}
                                   </p>
                                   <p>患者：{res.patient_name}</p>
-                                  <a href={mapsUrl(res.patient_address)} target="_blank" rel="noopener noreferrer"
-                                    className="block truncate text-teal-700 hover:underline">
-                                    📍 乗車地：{res.patient_address}
-                                  </a>
-                                  <a href={mapsUrl(res.destination)} target="_blank" rel="noopener noreferrer"
-                                    className="block truncate text-teal-700 hover:underline">
-                                    📍 目的地：{res.destination}
-                                  </a>
+                                  <div className="flex items-center gap-1">
+                                    <a href={mapsUrl(res.patient_address)} target="_blank" rel="noopener noreferrer"
+                                      className="flex-1 truncate text-teal-700 hover:underline">
+                                      📍 乗車地：{res.patient_address}
+                                    </a>
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(res.patient_address).catch(() => {})}
+                                      className="text-gray-300 hover:text-gray-600 flex-shrink-0 text-[11px] px-1"
+                                      title="コピー"
+                                    >コピー</button>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <a href={mapsUrl(res.destination)} target="_blank" rel="noopener noreferrer"
+                                      className="flex-1 truncate text-teal-700 hover:underline">
+                                      📍 目的地：{res.destination}
+                                    </a>
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(res.destination).catch(() => {})}
+                                      className="text-gray-300 hover:text-gray-600 flex-shrink-0 text-[11px] px-1"
+                                      title="コピー"
+                                    >コピー</button>
+                                  </div>
                                   {completeConfirm?.reservationId === res.id ? (
                                     <div className="mt-1.5 bg-orange-50 border border-orange-200 rounded-lg p-2 space-y-1.5">
                                       <p className="text-[11px] text-orange-700 text-center font-medium">予約を完了にしますか？</p>

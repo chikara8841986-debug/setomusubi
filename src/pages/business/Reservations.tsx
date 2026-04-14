@@ -358,20 +358,28 @@ export default function BusinessReservations() {
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
                 <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
-                <dd className="font-medium text-sm">
+                <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
                   </a>
+                  <button onClick={() => navigator.clipboard.writeText(selected.patient_address).catch(() => {})}
+                    className="ml-2 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    コピー
+                  </button>
                 </dd>
               </div>
               <div className="flex gap-3">
                 <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">目的地</dt>
-                <dd className="font-medium text-sm">
+                <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
                   </a>
+                  <button onClick={() => navigator.clipboard.writeText(selected.destination).catch(() => {})}
+                    className="ml-2 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    コピー
+                  </button>
                 </dd>
               </div>
               <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment]} />
