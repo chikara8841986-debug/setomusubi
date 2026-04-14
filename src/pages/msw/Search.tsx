@@ -705,6 +705,19 @@ export default function MswSearch() {
                 className="w-4 h-4 rounded" />
               <span className="text-sm text-gray-700">機材の貸出が必要</span>
             </label>
+            {form.equipmentRental && selectedBusiness && (() => {
+              const rentalKey = form.equipment === 'wheelchair' ? 'rental_wheelchair'
+                : form.equipment === 'reclining_wheelchair' ? 'rental_reclining_wheelchair'
+                : 'rental_stretcher'
+              if (!selectedBusiness[rentalKey as keyof typeof selectedBusiness]) {
+                return (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                    ⚠️ この事業所は該当機材の貸出を登録していません。事前に直接ご確認ください。
+                  </div>
+                )
+              }
+              return null
+            })()}
             <div>
               <label className="label">備考（任意）</label>
               <textarea className="input-base resize-none" rows={3} value={form.notes}
