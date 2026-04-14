@@ -101,6 +101,11 @@ export default function MswReservations() {
     return false
   })
 
+  const switchTab = (t: Tab) => {
+    setTab(t)
+    setNameSearch('')
+  }
+
   // Past: confirmed past + completed + cancelled + rejected
   const past = reservations.filter(r => {
     if (r.status === 'pending') return false
@@ -164,7 +169,7 @@ export default function MswReservations() {
       <h1 className="text-xl font-bold text-gray-900 mb-4">予約履歴</h1>
 
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('active')}
+        <button onClick={() => switchTab('active')}
           className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
             tab === 'active' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
           }`}>
@@ -175,11 +180,14 @@ export default function MswReservations() {
             }`}>{active.length}</span>
           )}
         </button>
-        <button onClick={() => setTab('past')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+        <button onClick={() => switchTab('past')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
             tab === 'past' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
           }`}>
-          過去の予約 ({past.length})
+          過去の予約
+          {past.length > 0 && (
+            <span className={`text-xs opacity-60`}>({past.length})</span>
+          )}
         </button>
       </div>
 
@@ -190,8 +198,8 @@ export default function MswReservations() {
         </div>
       )}
 
-      {/* Name search (past tab only) */}
-      {tab === 'past' && past.length > 0 && (
+      {/* Name search */}
+      {((tab === 'past' && past.length > 0) || (tab === 'active' && active.length > 2)) && (
         <div className="mb-3">
           <input
             type="text"
@@ -202,7 +210,7 @@ export default function MswReservations() {
           />
           {q && (
             <p className="text-xs text-gray-400 mt-1">
-              {list.length}件 / 全{past.length}件
+              {list.length}件 / 全{tab === 'active' ? active.length : past.length}件
             </p>
           )}
         </div>
@@ -301,21 +309,29 @@ export default function MswReservations() {
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
-                <dt className="text-gray-500 w-20 flex-shrink-0">乗車地</dt>
-                <dd className="font-medium break-all">
+                <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
+                <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
-                    className="text-teal-700 hover:underline">
+                    className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
                   </a>
+                  <button onClick={() => navigator.clipboard.writeText(selected.patient_address).catch(() => {})}
+                    className="ml-2 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    コピー
+                  </button>
                 </dd>
               </div>
               <div className="flex gap-3">
-                <dt className="text-gray-500 w-20 flex-shrink-0">目的地</dt>
-                <dd className="font-medium break-all">
+                <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">目的地</dt>
+                <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
-                    className="text-teal-700 hover:underline">
+                    className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
                   </a>
+                  <button onClick={() => navigator.clipboard.writeText(selected.destination).catch(() => {})}
+                    className="ml-2 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    コピー
+                  </button>
                 </dd>
               </div>
               <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment]} />

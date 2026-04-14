@@ -12,7 +12,7 @@ function mapsUrl(address: string) {
 }
 
 type ReservationWithHospital = Reservation & {
-  hospitals: { name: string } | null
+  hospitals: { name: string; phone: string | null } | null
 }
 
 const EQUIPMENT_LABELS: Record<string, string> = {
@@ -43,7 +43,7 @@ export default function BusinessReservations() {
     setLoadError(false)
     const { data, error } = await supabase
       .from('reservations')
-      .select('*, hospitals(name)')
+      .select('*, hospitals(name, phone)')
       .eq('business_id', businessId)
       .order('reservation_date', { ascending: true })
       .order('start_time', { ascending: true })
@@ -381,6 +381,16 @@ export default function BusinessReservations() {
             <dl className="space-y-3 text-sm">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
               <Row label="病院" value={selected.hospitals?.name ?? '—'} />
+              {selected.hospitals?.phone && (
+                <div className="flex gap-3">
+                  <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">病院電話</dt>
+                  <dd className="font-medium text-sm">
+                    <a href={`tel:${selected.hospitals.phone}`} className="text-teal-700 hover:underline">
+                      📞 {selected.hospitals.phone}
+                    </a>
+                  </dd>
+                </div>
+              )}
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
