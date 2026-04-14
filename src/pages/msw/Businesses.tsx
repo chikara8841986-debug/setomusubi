@@ -377,7 +377,16 @@ export default function MswBusinesses() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">事業所詳細</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900">事業所詳細</h3>
+                <button
+                  onClick={() => toggleFavorite(preview.id)}
+                  className="text-lg leading-none"
+                  title={favorites.has(preview.id) ? 'お気に入り解除' : 'お気に入り登録'}
+                >
+                  {favorites.has(preview.id) ? '⭐' : '☆'}
+                </button>
+              </div>
               <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
 
@@ -452,7 +461,23 @@ export default function MswBusinesses() {
               </div>
             )}
 
-            <button onClick={() => setPreview(null)} className="btn-secondary w-full mt-4">閉じる</button>
+            <div className="mt-4 space-y-2">
+              {availCheck && availMap[preview.id] && (
+                <button
+                  onClick={() => { setPreview(null); navigate('/msw/search', { state: { searchPrefill: { date: availDate, startTime: availStart, endTime: availEnd } } }) }}
+                  className="btn-primary w-full"
+                >
+                  この枠で申請する →
+                </button>
+              )}
+              <button
+                onClick={() => { setPreview(null); navigate('/msw/search') }}
+                className="w-full text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                申請ページで検索する
+              </button>
+              <button onClick={() => setPreview(null)} className="btn-secondary w-full">閉じる</button>
+            </div>
           </div>
         </div>
       )}
