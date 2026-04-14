@@ -265,8 +265,23 @@ export default function MswBusinesses() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">
-          条件に合う事業所が見つかりませんでした
+        <div className="card text-center py-8 space-y-3">
+          <p className="text-gray-400 text-sm">条件に合う事業所が見つかりませんでした</p>
+          <div className="flex justify-center gap-2 flex-wrap">
+            {(areaFilter || equipFilter.length > 0 || nameSearch || favOnly) && (
+              <button
+                onClick={() => { setAreaFilter(''); setEquipFilter([]); setNameSearch(''); setFavOnly(false) }}
+                className="btn-secondary text-xs px-3"
+              >
+                フィルターをリセット
+              </button>
+            )}
+            {availCheck && Object.keys(availMap).length > 0 && (
+              <button onClick={() => setAvailCheck(false)} className="btn-secondary text-xs px-3">
+                空き確認を解除
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
