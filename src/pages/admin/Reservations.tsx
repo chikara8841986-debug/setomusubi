@@ -82,6 +82,7 @@ export default function AdminReservations() {
   const [loadError, setLoadError] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [monthFilter, setMonthFilter] = useState(() => jstMonthStr(0))
+  const [nameSearch, setNameSearch] = useState('')
   const [selected, setSelected] = useState<ReservationFull | null>(null)
 
   useEffect(() => {
@@ -182,6 +183,17 @@ export default function AdminReservations() {
         </div>
       </div>
 
+      {/* Name search */}
+      <div className="mb-3">
+        <input
+          type="text"
+          className="input-base"
+          placeholder="患者名・事業所名・病院名で絞り込み..."
+          value={nameSearch}
+          onChange={e => setNameSearch(e.target.value)}
+        />
+      </div>
+
       {loading ? (
         <div className="text-center py-12 text-gray-400">読み込み中...</div>
       ) : loadError ? (
@@ -193,9 +205,23 @@ export default function AdminReservations() {
         <div className="card text-center py-8 text-gray-400 text-sm">予約が見つかりません</div>
       ) : (
         <>
-          <p className="text-xs text-gray-400 mb-2">{reservations.length}件</p>
-          <div className="space-y-2">
-            {reservations.map(r => (
+          {(() => {
+            const q = nameSearch.trim().toLowerCase()
+            const filtered = q
+              ? reservations.filter(r =>
+                  r.patient_name.toLowerCase().includes(q) ||
+                  (r.businesses?.name ?? '').toLowerCase().includes(q) ||
+                  (r.hospitals?.name ?? '').toLowerCase().includes(q) ||
+                  r.contact_name.toLowerCase().includes(q)
+                )
+              : reservations
+            return (
+              <>
+                <p className="text-xs text-gray-400 mb-2">
+                  {filtered.length}件{q && reservations.length !== filtered.length ? ` / 全${reservations.length}件` : ''}
+                </p>
+                <div className="space-y-2">
+                  {filtered.map(r => (
               <button
                 key={r.id}
                 onClick={() => setSelected(r)}
@@ -216,8 +242,14 @@ export default function AdminReservations() {
                   </span>
                 </div>
               </button>
-            ))}
-          </div>
+                  ))}
+                </div>
+                {filtered.length === 0 && (
+                  <div className="card text-center py-8 text-gray-400 text-sm">該当する予約がありません</div>
+                )}
+              </>
+            )
+          })()}
         </>
       )}
 

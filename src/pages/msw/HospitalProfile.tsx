@@ -10,10 +10,14 @@ export default function HospitalProfile() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savedSnapshot, setSavedSnapshot] = useState('')
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
+
+  const snapshot = () => JSON.stringify({ name, address, phone })
+  const isDirty = snapshot() !== savedSnapshot
 
   const fetchProfile = async () => {
     if (!user) return
@@ -28,6 +32,7 @@ export default function HospitalProfile() {
       setName(data.name)
       setAddress(data.address ?? '')
       setPhone(data.phone ?? '')
+      setSavedSnapshot(JSON.stringify({ name: data.name, address: data.address ?? '', phone: data.phone ?? '' }))
     }
     setLoading(false)
   }
@@ -48,8 +53,16 @@ export default function HospitalProfile() {
     if (error) {
       showToast('保存に失敗しました', 'error')
     } else {
+      setSavedSnapshot(snapshot())
       showToast('病院情報を保存しました')
     }
+  }
+
+  const handleReset = () => {
+    const s = JSON.parse(savedSnapshot)
+    setName(s.name)
+    setAddress(s.address)
+    setPhone(s.phone)
   }
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
@@ -63,6 +76,14 @@ export default function HospitalProfile() {
   return (
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-4">病院情報</h1>
+
+      {isDirty && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+          <span className="text-sm text-blue-700 font-medium">未保存の変更があります</span>
+          <button onClick={handleReset} className="text-xs text-blue-500 hover:text-blue-700 underline">元に戻す</button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="card space-y-3">
           <div>
@@ -79,7 +100,11 @@ export default function HospitalProfile() {
           </div>
         </div>
 
-        <button type="submit" className="btn-primary w-full" disabled={saving}>
+        <button
+          type="submit"
+          className={`btn-primary w-full transition-opacity ${!isDirty ? 'opacity-40 cursor-not-allowed' : ''}`}
+          disabled={saving || !isDirty}
+        >
           {saving ? '保存中...' : '保存する'}
         </button>
       </form>

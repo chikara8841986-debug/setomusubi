@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { jstTodayStr, jstHour, jstDateOffsetStr } from '../../lib/jst'
 import type { Business } from '../../types/database'
 
 type FavoriteWithBusiness = { id: string; business_id: string; businesses: Business }
@@ -35,6 +36,17 @@ export default function MswFavorites() {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Business | null>(null)
+  const [availCheck, setAvailCheck] = useState(false)
+  const [availDate, setAvailDate] = useState(jstTodayStr)
+  const [availStart, setAvailStart] = useState(() => {
+    const h = jstHour(); const next = Math.min(h + 1, 23)
+    return `${String(next).padStart(2, '0')}:00`
+  })
+  const [availEnd, setAvailEnd] = useState(() => {
+    const h = jstHour(); const next = Math.min(h + 2, 23)
+    return `${String(next).padStart(2, '0')}:00`
+  })
+  const [availMap, setAvailMap] = useState<Record<string, boolean>>({})
 
   const fetchFavorites = async () => {
     if (!hospitalId) return
@@ -57,6 +69,27 @@ export default function MswFavorites() {
     return () => document.removeEventListener('keydown', handler)
   }, [])
 
+  const checkAvailability = async () => {
+    const ids = favorites.map(f => f.business_id)
+    if (!ids.length) return
+    const { data } = await supabase
+      .from('availability_slots')
+      .select('business_id')
+      .in('business_id', ids)
+      .eq('date', availDate)
+      .eq('is_available', true)
+      .lte('start_time', availStart)
+      .gte('end_time', availEnd)
+    const map: Record<string, boolean> = {}
+    for (const row of data ?? []) map[row.business_id] = true
+    setAvailMap(map)
+  }
+
+  useEffect(() => {
+    if (!availCheck) { setAvailMap({}); return }
+    checkAvailability()
+  }, [availCheck, availDate, availStart, availEnd, favorites.length])
+
   const handleRemove = async (favoriteId: string) => {
     setRemoveConfirmId(null)
     setRemovingId(favoriteId)
@@ -78,8 +111,43 @@ export default function MswFavorites() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">お気に入り事業所</h1>
-      <p className="text-xs text-gray-400 mb-5">よく使う事業所を登録しておくと検索結果で目印になります</p>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-xl font-bold text-gray-900">お気に入り事業所</h1>
+        {favorites.length > 0 && (
+          <button
+            onClick={() => setAvailCheck(v => !v)}
+            className={`text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+              availCheck
+                ? 'bg-teal-600 text-white border-teal-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
+            }`}
+          >
+            {availCheck ? '✓ 空き確認中' : '空き確認'}
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-gray-400 mb-3">よく使う事業所を登録しておくと検索結果で目印になります</p>
+
+      {availCheck && (
+        <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="date"
+              className="input-base w-auto text-sm"
+              value={availDate}
+              min={jstTodayStr()}
+              onChange={e => setAvailDate(e.target.value)}
+            />
+            <button onClick={() => setAvailDate(jstTodayStr())} className="text-xs px-2 py-1 rounded-lg bg-white border border-teal-300 text-teal-600 hover:bg-teal-50">今日</button>
+            <button onClick={() => setAvailDate(jstDateOffsetStr(1))} className="text-xs px-2 py-1 rounded-lg bg-white border border-teal-300 text-teal-600 hover:bg-teal-50">明日</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="time" className="input-base w-auto text-sm" value={availStart} onChange={e => setAvailStart(e.target.value)} />
+            <span className="text-sm text-gray-500">〜</span>
+            <input type="time" className="input-base w-auto text-sm" value={availEnd} onChange={e => setAvailEnd(e.target.value)} />
+          </div>
+        </div>
+      )}
 
       {favorites.length === 0 ? (
         <div className="card text-center py-10">
@@ -91,7 +159,14 @@ export default function MswFavorites() {
         </div>
       ) : (
         <div className="space-y-3">
-          {favorites.map(({ id, businesses: biz }) => (
+          {[...favorites]
+            .sort((a, b) => {
+              if (!availCheck) return 0
+              const aAvail = availMap[a.business_id] ?? false
+              const bAvail = availMap[b.business_id] ?? false
+              return bAvail === aAvail ? 0 : bAvail ? 1 : -1
+            })
+            .map(({ id, business_id, businesses: biz }) => (
             <div key={id} className="card">
               <div className="flex items-start gap-3">
                 {/* Profile image */}
@@ -114,6 +189,11 @@ export default function MswFavorites() {
                         <h3 className="font-semibold text-gray-900 flex items-center gap-1">
                           <span>⭐</span> {biz.name}
                         </h3>
+                        {availCheck && (
+                          availMap[business_id]
+                            ? <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-300 px-1.5 py-0.5 rounded-full">空きあり</span>
+                            : <span className="text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">空きなし</span>
+                        )}
                         {biz.closed_days?.length > 0 && (
                           <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">
                             {closedDaysText(biz.closed_days)}
