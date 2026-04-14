@@ -27,6 +27,7 @@ export default function BusinessIntroduction() {
   const [data, setData] = useState<IntroFields | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savedSnapshot, setSavedSnapshot] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [prText, setPrText] = useState('')
   const [profileImageUrl, setProfileImageUrl] = useState('')
@@ -47,6 +48,12 @@ export default function BusinessIntroduction() {
     setPrText(b.pr_text ?? '')
     setProfileImageUrl(b.profile_image_url ?? '')
     setVehicleImageUrls(b.vehicle_image_urls ?? [])
+    setSavedSnapshot(JSON.stringify({
+      website_url: b.website_url ?? '',
+      pr_text: b.pr_text ?? '',
+      profile_image_url: b.profile_image_url ?? '',
+      vehicle_image_urls: b.vehicle_image_urls ?? [],
+    }))
   }
 
   useEffect(() => { fetchData() }, [businessId])
@@ -99,9 +106,23 @@ export default function BusinessIntroduction() {
       profile_image_url: profileImageUrl || null,
       vehicle_image_urls: vehicleImageUrls,
     }).eq('id', businessId)
+    setSavedSnapshot(JSON.stringify({
+      website_url: websiteUrl.trim() || '',
+      pr_text: prText.trim() || '',
+      profile_image_url: profileImageUrl || '',
+      vehicle_image_urls: vehicleImageUrls,
+    }))
     setSaving(false)
     showToast('紹介ページを保存しました')
   }
+
+  const currentSnapshot = JSON.stringify({
+    website_url: websiteUrl,
+    pr_text: prText,
+    profile_image_url: profileImageUrl,
+    vehicle_image_urls: vehicleImageUrls,
+  })
+  const isDirty = savedSnapshot !== '' && currentSnapshot !== savedSnapshot
 
   if (loadError) return (
     <div className="card text-center py-10">
@@ -125,7 +146,13 @@ export default function BusinessIntroduction() {
   return (
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-1">事業所紹介ページ</h1>
-      <p className="text-xs text-gray-400 mb-5">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
+      <p className="text-xs text-gray-400 mb-3">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
+
+      {isDirty && (
+        <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+          <span className="text-sm text-blue-700 font-medium">未保存の変更があります</span>
+        </div>
+      )}
 
       {/* Completeness indicator */}
       {completedCount < checks.length && (
@@ -301,8 +328,11 @@ export default function BusinessIntroduction() {
           />
         </div>
 
-        <button onClick={handleSave} disabled={saving || uploading} className="btn-primary w-full">
-          {saving ? '保存中...' : '保存する'}
+        <button onClick={handleSave} disabled={saving || uploading || !isDirty}
+          className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
+            isDirty ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}>
+          {saving ? '保存中...' : isDirty ? '変更を保存する' : '保存済み'}
         </button>
 
         <p className="text-xs text-gray-400 text-center">
