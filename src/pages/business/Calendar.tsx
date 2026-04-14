@@ -616,6 +616,7 @@ export default function BusinessCalendar() {
                               {pendingList.slice(0, 2).map(r => (
                                 <p key={r.id} className="text-amber-600 mt-0.5">
                                   {r.hospitals?.name ?? '—'} ／ {r.patient_name}
+                                  <span className="ml-1 text-amber-500">({EQUIPMENT_LABELS[r.equipment] ?? r.equipment})</span>
                                 </p>
                               ))}
                               {pendingList.length > 2 && (
