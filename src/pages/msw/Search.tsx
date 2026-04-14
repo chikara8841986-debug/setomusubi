@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
@@ -114,7 +114,7 @@ export default function MswSearch() {
     patientName: prefill?.patientName ?? '',
     patientAddress: prefill?.patientAddress ?? '',
     destination: prefill?.destination ?? '',
-    equipment: prefill?.equipment ?? 'wheelchair',
+    equipment: prefill?.equipment ?? (localStorage.getItem('msw_last_equipment') as BookingForm['equipment'] | null) ?? 'wheelchair',
     equipmentRental: prefill?.equipmentRental ?? false,
     notes: prefill?.notes ?? '',
   })
@@ -241,6 +241,7 @@ export default function MswSearch() {
 
     setSubmitting(true)
     setSubmitError('')
+    localStorage.setItem('msw_last_equipment', form.equipment)
 
     const slot = selectedBusiness.matchedSlot
 
@@ -667,6 +668,12 @@ export default function MswSearch() {
                       className="btn-secondary text-sm px-3 whitespace-nowrap">一覧から選択</button>
                   )}
                 </div>
+              )}
+              {contacts.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  <Link to="/msw/contacts" className="text-teal-600 hover:underline">担当者管理</Link>
+                  でよく使う担当者を登録しておくと次回から選択できます
+                </p>
               )}
             </div>
 
