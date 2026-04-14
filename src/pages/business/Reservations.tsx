@@ -311,6 +311,15 @@ export default function BusinessReservations() {
                       ✓ 完了
                     </button>
                   )}
+                  {tab === 'pending' && r.status === 'pending' && (
+                    <button
+                      onClick={e => { e.stopPropagation(); handleApprove(r) }}
+                      disabled={processing}
+                      className="mt-0.5 text-[10px] bg-teal-600 text-white px-2 py-0.5 rounded-full font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                    >
+                      ✓ 承認
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
