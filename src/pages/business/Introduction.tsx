@@ -8,14 +8,18 @@ type IntroFields = Pick<Business,
   'name' | 'address' | 'cancel_phone' | 'website_url' |
   'profile_image_url' | 'vehicle_image_urls' | 'pr_text' |
   'qualifications' | 'pricing' | 'has_wheelchair' |
-  'has_reclining_wheelchair' | 'has_stretcher' | 'has_female_caregiver' |
-  'long_distance' | 'same_day'
+  'has_reclining_wheelchair' | 'has_stretcher' |
+  'rental_wheelchair' | 'rental_reclining_wheelchair' | 'rental_stretcher' |
+  'has_female_caregiver' | 'long_distance' | 'same_day'
 >
 
 const EQUIPMENT_LABELS: Record<string, string> = {
   has_wheelchair: '車椅子対応',
   has_reclining_wheelchair: 'リクライニング対応',
   has_stretcher: 'ストレッチャー対応',
+  rental_wheelchair: '車椅子貸出',
+  rental_reclining_wheelchair: 'リクライニング貸出',
+  rental_stretcher: 'ストレッチャー貸出',
   has_female_caregiver: '女性介護者在籍',
   long_distance: '長距離対応',
   same_day: '当日対応',
