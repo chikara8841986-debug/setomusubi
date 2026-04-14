@@ -430,9 +430,22 @@ export default function MswSearch() {
           </div>
 
           {results.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-gray-500 text-sm">条件に合う空き事業所が見つかりませんでした</p>
-              <p className="text-gray-400 text-xs mt-1">条件を変更して再度検索してください</p>
+            <div className="card py-6 text-center">
+              <p className="text-gray-500 text-sm font-medium mb-1">空き事業所が見つかりませんでした</p>
+              <p className="text-gray-400 text-xs mb-4">
+                {date} {startTime}〜{endTime} / {area}
+              </p>
+              <div className="flex flex-col gap-2 text-sm">
+                <button onClick={() => setStep(1)}
+                  className="text-teal-600 hover:underline">← 時間帯を変えて再検索</button>
+                <button onClick={() => { setStep(1) }}
+                  className="text-teal-600 hover:underline">← エリアを変えて再検索</button>
+                <div className="border-t pt-3 mt-1">
+                  <p className="text-xs text-gray-400 mb-2">直接電話でも受付可能です</p>
+                  <button onClick={() => setStep(1)}
+                    className="btn-secondary text-xs px-4">検索条件を変更する</button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">

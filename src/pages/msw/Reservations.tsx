@@ -187,23 +187,39 @@ export default function MswReservations() {
         </div>
       ) : (
         <div className="space-y-2">
-          {list.map(r => (
-            <button key={r.id} onClick={() => { setSelected(r); setCancelError('') }}
-              className="card w-full text-left hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">{r.businesses?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
+          {list.map(r => {
+            const daysUntil = r.status === 'confirmed'
+              ? Math.ceil(
+                  (new Date(`${r.reservation_date}T${r.start_time}`).getTime() - Date.now()) /
+                  (1000 * 60 * 60 * 24)
+                )
+              : null
+            return (
+              <button key={r.id} onClick={() => { setSelected(r); setCancelError('') }}
+                className="card w-full text-left hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">{r.businesses?.name ?? '—'}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className={STATUS_MAP[r.status]?.cls ?? 'badge-gray'}>
+                      {STATUS_MAP[r.status]?.label ?? r.status}
+                    </span>
+                    {daysUntil !== null && daysUntil > 0 && (
+                      <span className="text-[10px] text-teal-600 font-medium">あと{daysUntil}日</span>
+                    )}
+                    {daysUntil !== null && daysUntil === 0 && (
+                      <span className="text-[10px] text-amber-600 font-bold">今日</span>
+                    )}
+                  </div>
                 </div>
-                <span className={STATUS_MAP[r.status]?.cls ?? 'badge-gray'}>
-                  {STATUS_MAP[r.status]?.label ?? r.status}
-                </span>
-              </div>
-            </button>
-          ))}
+              </button>
+            )
+          })}
         </div>
       )}
 

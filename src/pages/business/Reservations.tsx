@@ -203,7 +203,11 @@ export default function BusinessReservations() {
     fetchReservations()
   }
 
-  const list = tab === 'pending' ? pending : tab === 'today' ? today : tab === 'upcoming' ? upcoming : past
+  // 過去タブは直近が先頭（降順）
+  const list = tab === 'pending' ? pending
+    : tab === 'today' ? today
+    : tab === 'upcoming' ? upcoming
+    : [...past].reverse()
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (

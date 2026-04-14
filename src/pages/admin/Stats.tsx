@@ -73,7 +73,12 @@ export default function AdminStats() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    // 5分おきに自動更新
+    const interval = setInterval(load, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const thisMonth = jstMonthLabel(0)
   const lastMonth = jstMonthLabel(-1)

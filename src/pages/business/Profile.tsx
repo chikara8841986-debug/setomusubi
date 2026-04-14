@@ -18,6 +18,7 @@ export default function BusinessProfile() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savedSnapshot, setSavedSnapshot] = useState('')
 
   const [form, setForm] = useState<Partial<Business>>({
     name: '',
@@ -50,7 +51,7 @@ export default function BusinessProfile() {
       .eq('user_id', user.id)
       .single()
     if (error && error.code !== 'PGRST116') { setLoadError(true); setLoading(false); return }
-    if (data) setForm(data)
+    if (data) { setForm(data); setSavedSnapshot(JSON.stringify(data)) }
     setLoading(false)
   }
 
@@ -112,9 +113,12 @@ export default function BusinessProfile() {
     if (err) {
       showToast('保存に失敗しました', 'error')
     } else {
+      setSavedSnapshot(JSON.stringify(form))
       showToast('プロフィールを保存しました')
     }
   }
+
+  const isDirty = JSON.stringify(form) !== savedSnapshot
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
@@ -150,6 +154,20 @@ export default function BusinessProfile() {
   return (
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-4">プロフィール設定</h1>
+
+      {isDirty && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+          <p className="text-xs font-medium text-blue-700">未保存の変更があります</p>
+          <button
+            type="button"
+            onClick={() => {
+              const snap = JSON.parse(savedSnapshot || '{}')
+              setForm(snap)
+            }}
+            className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+          >元に戻す</button>
+        </div>
+      )}
 
       {missingFields.length > 0 && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
@@ -290,8 +308,12 @@ export default function BusinessProfile() {
           </div>
         </div>
 
-        <button type="submit" className="btn-primary w-full" disabled={saving}>
-          {saving ? '保存中...' : '保存する'}
+        <button type="submit" className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
+          isDirty
+            ? 'bg-teal-600 text-white hover:bg-teal-700'
+            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+        }`} disabled={saving || !isDirty}>
+          {saving ? '保存中...' : isDirty ? '変更を保存する' : '保存済み'}
         </button>
       </form>
     </div>
