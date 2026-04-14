@@ -435,6 +435,9 @@ export default function MswBusinesses() {
               {preview.has_wheelchair && <span className="badge-blue">車椅子</span>}
               {preview.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
               {preview.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
+              {preview.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
+              {preview.rental_reclining_wheelchair && <span className="badge-green">リクライニング貸出</span>}
+              {preview.rental_stretcher && <span className="badge-green">ストレッチャー貸出</span>}
               {preview.has_female_caregiver && <span className="badge-green">女性介護者</span>}
               {preview.long_distance && <span className="badge-gray">長距離対応</span>}
               {preview.same_day && <span className="badge-gray">当日対応</span>}
