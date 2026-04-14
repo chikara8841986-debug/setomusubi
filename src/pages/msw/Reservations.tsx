@@ -200,6 +200,11 @@ export default function MswReservations() {
             value={nameSearch}
             onChange={e => setNameSearch(e.target.value)}
           />
+          {q && (
+            <p className="text-xs text-gray-400 mt-1">
+              {list.length}件 / 全{past.length}件
+            </p>
+          )}
         </div>
       )}
 
