@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { jstTodayStr, jstHour, jstDateOffsetStr } from '../../lib/jst'
@@ -60,6 +60,7 @@ type SearchPrefillState = {
 export default function MswSearch() {
   const { hospitalId } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const prefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.prefill
   const searchPrefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.searchPrefill
   const [step, setStep] = useState<1 | 2 | 3>(1)
@@ -325,19 +326,27 @@ export default function MswSearch() {
             </div>
           )}
 
-          <button
-            onClick={() => {
-              setStep(1)
-              setConfirmed(null)
-              setSelectedBusiness(null)
-              setForm({ contactName: '', patientName: '', patientAddress: '', destination: '', equipment: 'wheelchair', equipmentRental: false, notes: '' })
-              setNewContactName('')
-              setIsNewContact(false)
-            }}
-            className="btn-primary"
-          >
-            続けて申請する
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate('/msw/reservations')}
+              className="btn-secondary flex-1"
+            >
+              予約履歴を見る
+            </button>
+            <button
+              onClick={() => {
+                setStep(1)
+                setConfirmed(null)
+                setSelectedBusiness(null)
+                setForm({ contactName: '', patientName: '', patientAddress: '', destination: '', equipment: 'wheelchair', equipmentRental: false, notes: '' })
+                setNewContactName('')
+                setIsNewContact(false)
+              }}
+              className="btn-primary flex-1"
+            >
+              続けて申請する
+            </button>
+          </div>
         </div>
       </div>
     )
