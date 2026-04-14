@@ -254,6 +254,16 @@ export default function MswFavorites() {
                     >
                       詳細を見る →
                     </button>
+                    {availCheck && availMap[business_id] && (
+                      <button
+                        onClick={() => navigate('/msw/search', {
+                          state: { searchPrefill: { date: availDate, startTime: availStart, endTime: availEnd } }
+                        })}
+                        className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                      >
+                        この枠で申請 →
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -343,14 +353,22 @@ export default function MswFavorites() {
               </div>
             )}
 
-            <div className="flex gap-2 mt-4">
-              <button onClick={() => setPreview(null)} className="btn-secondary flex-1">閉じる</button>
+            <div className="mt-4 space-y-2">
+              {availCheck && availMap[preview.id] && (
+                <button
+                  onClick={() => { setPreview(null); navigate('/msw/search', { state: { searchPrefill: { date: availDate, startTime: availStart, endTime: availEnd } } }) }}
+                  className="btn-primary w-full"
+                >
+                  この枠で申請する →
+                </button>
+              )}
               <button
                 onClick={() => { navigate('/msw/search'); setPreview(null) }}
-                className="btn-primary flex-1"
+                className="w-full text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
               >
-                予約を検索する
+                申請ページで検索する
               </button>
+              <button onClick={() => setPreview(null)} className="btn-secondary w-full">閉じる</button>
             </div>
           </div>
         </div>
