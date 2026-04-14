@@ -516,7 +516,7 @@ export default function MswSearch() {
                     : `${results.length}件の事業所が見つかりました`
                   }
                 </p>
-                {results.some(r => favorites.has(r.id)) && (
+                {results.some(r => favorites.has(r.id)) && results.some(r => !favorites.has(r.id)) && (
                   <button
                     onClick={() => setFavOnlyResults(v => !v)}
                     className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
