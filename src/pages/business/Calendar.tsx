@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek, isSameDay, parseISO, isBefore, startOfDay, addWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
@@ -27,6 +27,7 @@ const DAY_LABELS = ['月', '火', '水', '木', '金', '土', '日']
 export default function BusinessCalendar() {
   const { businessId, user } = useAuth()
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [slots, setSlots] = useState<SlotWithReservation[]>([])
   const [loading, setLoading] = useState(true)
@@ -371,10 +372,16 @@ export default function BusinessCalendar() {
       {/* Monthly stats mini-cards */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600' },
-          { label: `${jstMonthLabel()}完了`, value: monthStats.completed, color: 'text-green-600' },
-          { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400' },
-        ].map(s => (
+          { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600', href: null },
+          { label: `${jstMonthLabel()}完了`, value: monthStats.completed, color: 'text-green-600', href: null },
+          { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400', href: monthStats.pending > 0 ? '/business/reservations' : null },
+        ].map(s => s.href ? (
+          <button key={s.label} onClick={() => navigate(s.href!)}
+            className="bg-white rounded-xl border border-amber-200 py-2 px-3 text-center shadow-sm hover:bg-amber-50 transition-colors">
+            <p className="text-xs text-gray-400">{s.label}</p>
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+          </button>
+        ) : (
           <div key={s.label} className="bg-white rounded-xl border border-gray-100 py-2 px-3 text-center shadow-sm">
             <p className="text-xs text-gray-400">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -608,9 +615,10 @@ export default function BusinessCalendar() {
                               {pendingList.length > 2 && (
                                 <p className="text-amber-500 mt-0.5">他{pendingList.length - 2}件…</p>
                               )}
-                              <p className="text-[10px] text-amber-500 mt-1">
-                                予約管理から承認または却下してください
-                              </p>
+                              <Link to="/business/reservations"
+                                className="inline-block text-[10px] text-amber-600 underline mt-1 hover:text-amber-800">
+                                予約管理で承認・却下する →
+                              </Link>
                             </div>
                           )}
                         </div>
