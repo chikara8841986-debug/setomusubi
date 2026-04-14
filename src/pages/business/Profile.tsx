@@ -40,6 +40,8 @@ export default function BusinessProfile() {
     qualifications: '',
     pricing: '',
     cancel_phone: '',
+    website_url: '',
+    pr_text: '',
   })
 
   const fetchProfile = async () => {
@@ -106,6 +108,8 @@ export default function BusinessProfile() {
         qualifications: form.qualifications,
         pricing: form.pricing,
         cancel_phone: form.cancel_phone,
+        website_url: form.website_url?.trim() || null,
+        pr_text: form.pr_text?.trim() || null,
       })
       .eq('user_id', user.id)
 
@@ -304,6 +308,32 @@ export default function BusinessProfile() {
               value={form.pricing ?? ''}
               onChange={e => setForm(f => ({ ...f, pricing: e.target.value }))}
               placeholder="基本料金〇〇円＋距離料金〇〇円/km など"
+            />
+          </div>
+        </div>
+
+        {/* PR / Web */}
+        <div className="card space-y-3">
+          <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">PR・ウェブサイト</h2>
+          <div>
+            <label className="label">PRテキスト</label>
+            <p className="text-xs text-gray-400 mb-1">MSWの事業所一覧・詳細ページに表示されます</p>
+            <textarea
+              className="input-base resize-none"
+              rows={4}
+              value={form.pr_text ?? ''}
+              onChange={e => setForm(f => ({ ...f, pr_text: e.target.value }))}
+              placeholder="当社の特徴・強み・利用者へのメッセージなど"
+            />
+          </div>
+          <div>
+            <label className="label">ホームページURL</label>
+            <input
+              type="url"
+              className="input-base"
+              value={form.website_url ?? ''}
+              onChange={e => setForm(f => ({ ...f, website_url: e.target.value }))}
+              placeholder="https://example.com"
             />
           </div>
         </div>
