@@ -22,6 +22,12 @@ const QUICK_TIMES = [
   { label: '終日', start: '09:00', end: '18:00' },
 ]
 
+const EQUIPMENT_LABELS: Record<string, string> = {
+  wheelchair: '車椅子',
+  reclining_wheelchair: 'リクライニング車椅子',
+  stretcher: 'ストレッチャー',
+}
+
 const DAY_LABELS = ['月', '火', '水', '木', '金', '土', '日']
 
 export default function BusinessCalendar() {
@@ -372,7 +378,7 @@ export default function BusinessCalendar() {
       {/* Monthly stats mini-cards */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600', href: null },
+          { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600', href: monthStats.confirmed > 0 ? '/business/reservations' : null },
           { label: `${jstMonthLabel()}完了`, value: monthStats.completed, color: 'text-green-600', href: null },
           { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400', href: monthStats.pending > 0 ? '/business/reservations' : null },
         ].map(s => s.href ? (
@@ -551,7 +557,7 @@ export default function BusinessCalendar() {
                                   <p className="font-medium text-gray-700">
                                     {res.hospitals?.name ?? '—'} ／ {res.contact_name}
                                   </p>
-                                  <p>患者：{res.patient_name}</p>
+                                  <p>患者：{res.patient_name}　<span className="text-gray-400">{EQUIPMENT_LABELS[res.equipment] ?? res.equipment}{res.equipment_rental ? '（貸出あり）' : ''}</span></p>
                                   <div className="flex items-center gap-1">
                                     <a href={mapsUrl(res.patient_address)} target="_blank" rel="noopener noreferrer"
                                       className="flex-1 truncate text-teal-700 hover:underline">
