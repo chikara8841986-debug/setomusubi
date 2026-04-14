@@ -126,7 +126,7 @@ export default function MswBusinesses() {
     .filter(biz => {
       if (favOnly && !favorites.has(biz.id)) return false
       if (areaFilter && !biz.service_areas?.includes(areaFilter)) return false
-      if (nameSearch && !biz.name.includes(nameSearch)) return false
+      if (nameSearch && !biz.name.toLowerCase().includes(nameSearch.toLowerCase())) return false
       for (const key of equipFilter) {
         if (!biz[key as keyof Business]) return false
       }
@@ -213,13 +213,21 @@ export default function MswBusinesses() {
       <div className="card mb-4 space-y-3">
         <div>
           <label className="label">事業所名で検索</label>
-          <input
-            type="text"
-            className="input-base"
-            placeholder="事業所名を入力..."
-            value={nameSearch}
-            onChange={e => setNameSearch(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              className="input-base pr-8"
+              placeholder="事業所名を入力..."
+              value={nameSearch}
+              onChange={e => setNameSearch(e.target.value)}
+            />
+            {nameSearch && (
+              <button
+                onClick={() => setNameSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-5 h-5 flex items-center justify-center"
+              >×</button>
+            )}
+          </div>
         </div>
         <div>
           <label className="label">エリア</label>

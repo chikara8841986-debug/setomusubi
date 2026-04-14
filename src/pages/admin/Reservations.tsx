@@ -215,15 +215,23 @@ export default function AdminReservations() {
       </div>
 
       {/* Name search */}
-      <div className="mb-3">
-        <input
-          type="text"
-          className="input-base"
-          placeholder="患者名・事業所名・病院名で絞り込み..."
-          value={nameSearch}
-          onChange={e => setNameSearch(e.target.value)}
-        />
-      </div>
+      {!loading && !loadError && reservations.length > 0 && (
+        <div className="mb-3 relative">
+          <input
+            type="text"
+            className="input-base pr-8"
+            placeholder="患者名・事業所名・病院名で絞り込み..."
+            value={nameSearch}
+            onChange={e => setNameSearch(e.target.value)}
+          />
+          {nameSearch && (
+            <button
+              onClick={() => setNameSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-5 h-5 flex items-center justify-center"
+            >×</button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">読み込み中...</div>
