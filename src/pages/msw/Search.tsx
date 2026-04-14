@@ -51,10 +51,17 @@ type PrefillState = {
   contactName?: string
 }
 
+type SearchPrefillState = {
+  date?: string
+  startTime?: string
+  endTime?: string
+}
+
 export default function MswSearch() {
   const { hospitalId } = useAuth()
   const location = useLocation()
-  const prefill = (location.state as { prefill?: PrefillState } | null)?.prefill
+  const prefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.prefill
+  const searchPrefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.searchPrefill
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
   const today = jstTodayStr()
@@ -71,9 +78,9 @@ export default function MswSearch() {
   }
 
   // Step 1
-  const [date, setDate] = useState(today)
-  const [startTime, setStartTime] = useState(() => defaultStartTime())
-  const [endTime, setEndTime] = useState(() => addHour(defaultStartTime()))
+  const [date, setDate] = useState(searchPrefill?.date ?? today)
+  const [startTime, setStartTime] = useState(searchPrefill?.startTime ?? defaultStartTime())
+  const [endTime, setEndTime] = useState(searchPrefill?.endTime ?? addHour(defaultStartTime()))
   const [area, setArea] = useState(() => localStorage.getItem('msw_last_area') ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)

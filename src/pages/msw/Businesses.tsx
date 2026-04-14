@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { jstTodayStr, jstDateOffsetStr, jstHour } from '../../lib/jst'
@@ -23,6 +24,7 @@ function closedDaysText(days: number[]): string {
 
 export default function MswBusinesses() {
   const { hospitalId } = useAuth()
+  const navigate = useNavigate()
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -331,6 +333,22 @@ export default function MswBusinesses() {
                       className="text-xs text-teal-700 hover:underline">
                       詳細を見る →
                     </button>
+                    {availCheck && availMap[biz.id] && (
+                      <button
+                        onClick={() => navigate('/msw/search', {
+                          state: {
+                            searchPrefill: {
+                              date: availDate,
+                              startTime: availStart,
+                              endTime: availEnd,
+                            }
+                          }
+                        })}
+                        className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                      >
+                        この枠で申請 →
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
