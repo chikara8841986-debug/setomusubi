@@ -36,6 +36,7 @@ export default function BusinessReservations() {
   const [processing, setProcessing] = useState(false)
   const [actionError, setActionError] = useState('')
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
+  const [nameSearch, setNameSearch] = useState('')
 
   const fetchReservations = useCallback(async () => {
     if (!businessId) return
@@ -204,10 +205,18 @@ export default function BusinessReservations() {
   }
 
   // 過去タブは直近が先頭（降順）
-  const list = tab === 'pending' ? pending
+  const rawList = tab === 'pending' ? pending
     : tab === 'today' ? today
     : tab === 'upcoming' ? upcoming
     : [...past].reverse()
+  const nq = nameSearch.trim().toLowerCase()
+  const list = tab === 'past' && nq
+    ? rawList.filter(r =>
+        r.patient_name.toLowerCase().includes(nq) ||
+        (r.hospitals?.name ?? '').toLowerCase().includes(nq) ||
+        r.contact_name.toLowerCase().includes(nq)
+      )
+    : rawList
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
@@ -249,6 +258,19 @@ export default function BusinessReservations() {
           </button>
         ))}
       </div>
+
+      {/* Past tab name search */}
+      {tab === 'past' && past.length > 0 && (
+        <div className="mb-3">
+          <input
+            type="text"
+            className="input-base"
+            placeholder="患者名・病院名で絞り込み..."
+            value={nameSearch}
+            onChange={e => setNameSearch(e.target.value)}
+          />
+        </div>
+      )}
 
       {/* Pending notice */}
       {tab === 'pending' && pending.length > 0 && (
