@@ -6,8 +6,9 @@ import { supabase } from '../../lib/supabase'
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const notice = (location.state as { message?: string } | null)?.message ?? ''
-  const [email, setEmail] = useState('')
+  const locationState = location.state as { message?: string; email?: string } | null
+  const notice = locationState?.message ?? ''
+  const [email, setEmail] = useState(locationState?.email ?? '')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')

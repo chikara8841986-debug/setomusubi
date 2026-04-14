@@ -64,7 +64,7 @@ export default function BusinessRegister() {
         })
       if (bizError) throw bizError
 
-      navigate('/login', { state: { message: '登録申請が完了しました。管理者の承認をお待ちください。' } })
+      navigate('/login', { state: { message: '登録申請が完了しました。管理者の承認をお待ちください。', email } })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '登録に失敗しました'
       if (msg.includes('already registered')) {

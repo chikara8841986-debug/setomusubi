@@ -42,11 +42,13 @@ export default function MswFavorites() {
   const [availCheck, setAvailCheck] = useState(false)
   const [availDate, setAvailDate] = useState(jstTodayStr)
   const [availStart, setAvailStart] = useState(() => {
-    const h = jstHour(); const next = Math.min(h + 1, 23)
+    const h = jstHour()
+    const next = h < 9 ? 9 : h >= 17 ? 9 : h + 1
     return `${String(next).padStart(2, '0')}:00`
   })
   const [availEnd, setAvailEnd] = useState(() => {
-    const h = jstHour(); const next = Math.min(h + 2, 23)
+    const h = jstHour()
+    const next = h < 9 ? 12 : h >= 17 ? 12 : Math.min(h + 3, 20)
     return `${String(next).padStart(2, '0')}:00`
   })
   const [availMap, setAvailMap] = useState<Record<string, boolean>>({})
