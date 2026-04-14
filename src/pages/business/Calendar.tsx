@@ -751,8 +751,10 @@ export default function BusinessCalendar() {
             {/* Time */}
             <div className="mb-3">
               <p className="label mb-1.5">クイック選択</p>
-              <div className="flex gap-2 mb-3">
-                {QUICK_TIMES.map(qt => (
+              <div className="flex gap-2 mb-3 flex-wrap">
+                {[{ label: '営業時間', start: bizHoursStart, end: bizHoursEnd }, ...QUICK_TIMES]
+                  .filter((qt, i, arr) => i === 0 || !(qt.start === arr[0].start && qt.end === arr[0].end))
+                  .map(qt => (
                   <button
                     key={qt.label}
                     type="button"
