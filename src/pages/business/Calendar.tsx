@@ -42,6 +42,8 @@ export default function BusinessCalendar() {
   const [completeConfirm, setCompleteConfirm] = useState<{ reservationId: string; slotId: string } | null>(null)
   const [profileIncomplete, setProfileIncomplete] = useState(false)
   const [closedDays, setClosedDays] = useState<number[]>([])
+  const [bizHoursStart, setBizHoursStart] = useState('09:00')
+  const [bizHoursEnd, setBizHoursEnd] = useState('18:00')
   const [monthStats, setMonthStats] = useState({ confirmed: 0, completed: 0, pending: 0 })
 
   // Recurring modal state
@@ -61,14 +63,16 @@ export default function BusinessCalendar() {
     if (!user) return
     supabase
       .from('businesses')
-      .select('service_areas, cancel_phone, closed_days')
+      .select('service_areas, cancel_phone, closed_days, business_hours_start, business_hours_end')
       .eq('user_id', user.id)
       .single()
       .then(({ data }) => {
-        const biz = data as Pick<Business, 'service_areas' | 'cancel_phone' | 'closed_days'> | null
+        const biz = data as Pick<Business, 'service_areas' | 'cancel_phone' | 'closed_days' | 'business_hours_start' | 'business_hours_end'> | null
         if (biz) {
           if (biz.service_areas.length === 0 || !biz.cancel_phone) setProfileIncomplete(true)
           if (biz.closed_days?.length) setClosedDays(biz.closed_days)
+          if (biz.business_hours_start) setBizHoursStart(biz.business_hours_start.slice(0, 5))
+          if (biz.business_hours_end) setBizHoursEnd(biz.business_hours_end.slice(0, 5))
         }
       })
   }, [user])
@@ -173,8 +177,8 @@ export default function BusinessCalendar() {
 
   const openAddModal = (date: Date) => {
     setSelectedDate(date)
-    setAddStart('09:00')
-    setAddEnd('18:00')
+    setAddStart(bizHoursStart)
+    setAddEnd(bizHoursEnd)
     setAddCapacity(1)
     setAddError('')
     setShowAddModal(true)
@@ -331,6 +335,8 @@ export default function BusinessCalendar() {
               return closedDays.includes(jsDay) ? false : def
             })
             setRecurDays(presetDays)
+            setRecurStart(bizHoursStart)
+            setRecurEnd(bizHoursEnd)
             setShowRecurModal(true)
             setRecurResult(null)
             setRecurError('')
