@@ -77,12 +77,16 @@ export default function HospitalProfile() {
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-4">病院情報</h1>
 
-      {isDirty && (
+      {isDirty ? (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
           <span className="text-sm text-blue-700 font-medium">未保存の変更があります</span>
           <button onClick={handleReset} className="text-xs text-blue-500 hover:text-blue-700 underline">元に戻す</button>
         </div>
-      )}
+      ) : name && address && phone ? (
+        <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
+          ✓ 病院情報がすべて設定されています
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="card space-y-3">
@@ -102,10 +106,12 @@ export default function HospitalProfile() {
 
         <button
           type="submit"
-          className={`btn-primary w-full transition-opacity ${!isDirty ? 'opacity-40 cursor-not-allowed' : ''}`}
+          className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
+            isDirty ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}
           disabled={saving || !isDirty}
         >
-          {saving ? '保存中...' : '保存する'}
+          {saving ? '保存中...' : isDirty ? '変更を保存する' : '保存済み'}
         </button>
       </form>
     </div>
