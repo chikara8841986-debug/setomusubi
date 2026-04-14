@@ -113,9 +113,13 @@ export default function AdminApprovals() {
           {list.map(biz => {
             const isExpanded = expanded === biz.id
             const features = EQUIPMENT_MAP.filter(e => biz[e.key as keyof Business])
-            const daysSince = Math.floor(
-              (Date.now() - new Date(biz.created_at).getTime()) / (1000 * 60 * 60 * 24)
-            )
+            const hoursElapsed =
+              (Date.now() - new Date(biz.created_at).getTime()) / (1000 * 60 * 60)
+            const elapsedLabel = hoursElapsed < 1
+              ? '〜1時間以内'
+              : hoursElapsed < 24
+              ? `${Math.floor(hoursElapsed)}時間経過`
+              : `${Math.floor(hoursElapsed / 24)}日${Math.floor(hoursElapsed % 24)}時間経過`
             return (
               <div key={biz.id} className="card">
                 <div className="flex items-start gap-3">
@@ -128,13 +132,15 @@ export default function AdminApprovals() {
                       }
                       {!biz.approved && (
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                          daysSince >= 7
+                          hoursElapsed >= 12
                             ? 'bg-red-100 text-red-600'
-                            : daysSince >= 3
+                            : hoursElapsed >= 6
+                            ? 'bg-orange-100 text-orange-600'
+                            : hoursElapsed >= 3
                             ? 'bg-amber-100 text-amber-600'
                             : 'bg-gray-100 text-gray-500'
                         }`}>
-                          {daysSince === 0 ? '今日申請' : `${daysSince}日経過`}
+                          {elapsedLabel}
                         </span>
                       )}
                     </div>
