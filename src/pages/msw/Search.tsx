@@ -130,6 +130,7 @@ export default function MswSearch() {
     date: string
     startTime: string
     endTime: string
+    patientName: string
   } | null>(null)
 
   // ESCキーでプレビューモーダルを閉じる
@@ -296,6 +297,7 @@ export default function MswSearch() {
       date,
       startTime,
       endTime,
+      patientName: form.patientName.trim(),
     })
     setSubmitting(false)
   }
@@ -319,6 +321,10 @@ export default function MswSearch() {
               <span className="font-semibold text-gray-900">
                 {fmtDate(confirmed.date)} {confirmed.startTime.slice(0,5)}〜{confirmed.endTime.slice(0,5)}
               </span>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-gray-500 w-16 flex-shrink-0">患者</span>
+              <span className="font-semibold text-gray-900">{confirmed.patientName}</span>
             </div>
           </div>
 
