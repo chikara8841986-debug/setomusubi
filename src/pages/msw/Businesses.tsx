@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { jstTodayStr, jstDateOffsetStr, jstHour } from '../../lib/jst'
 import type { Business } from '../../types/database'
 
 type FavoriteEntry = { business_id: string }
@@ -31,6 +32,22 @@ export default function MswBusinesses() {
   const [equipFilter, setEquipFilter] = useState<string[]>([])
   const [favOnly, setFavOnly] = useState(false)
   const [nameSearch, setNameSearch] = useState('')
+
+  // 空き確認モード
+  const [availCheck, setAvailCheck] = useState(false)
+  const [availDate, setAvailDate] = useState(jstTodayStr)
+  const [availStart, setAvailStart] = useState(() => {
+    const h = jstHour()
+    const next = h < 9 ? 9 : h >= 17 ? 9 : h + 1
+    return `${String(next).padStart(2, '0')}:00`
+  })
+  const [availEnd, setAvailEnd] = useState(() => {
+    const h = jstHour()
+    const next = h < 9 ? 12 : h >= 17 ? 17 : Math.min(h + 3, 20)
+    return `${String(next).padStart(2, '0')}:00`
+  })
+  const [availMap, setAvailMap] = useState<Record<string, boolean>>({})
+  const [checkingAvail, setCheckingAvail] = useState(false)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null) }
@@ -70,6 +87,30 @@ export default function MswBusinesses() {
     setEquipFilter(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
   }
 
+  const checkAvailability = async () => {
+    if (!availDate || availStart >= availEnd) return
+    setCheckingAvail(true)
+    const { data } = await supabase
+      .from('availability_slots')
+      .select('business_id')
+      .eq('date', availDate)
+      .eq('is_available', true)
+      .lte('start_time', availStart)
+      .gte('end_time', availEnd)
+    const map: Record<string, boolean> = {}
+    for (const row of data ?? []) {
+      map[row.business_id] = true
+    }
+    setAvailMap(map)
+    setCheckingAvail(false)
+  }
+
+  // 空き確認モードON時・日付/時間変更時に自動チェック
+  useEffect(() => {
+    if (!availCheck) { setAvailMap({}); return }
+    checkAvailability()
+  }, [availCheck, availDate, availStart, availEnd])
+
   const EQUIP_OPTIONS = [
     { key: 'has_wheelchair', label: '車椅子' },
     { key: 'has_reclining_wheelchair', label: 'リクライニング' },
@@ -89,7 +130,15 @@ export default function MswBusinesses() {
       }
       return true
     })
-    .sort((a, b) => (favorites.has(a.id) ? 0 : 1) - (favorites.has(b.id) ? 0 : 1))
+    .sort((a, b) => {
+      // 空き確認モード中: 空きありを上位に
+      if (availCheck && Object.keys(availMap).length > 0) {
+        const aAvail = availMap[a.id] ? 0 : 1
+        const bAvail = availMap[b.id] ? 0 : 1
+        if (aAvail !== bAvail) return aAvail - bAvail
+      }
+      return (favorites.has(a.id) ? 0 : 1) - (favorites.has(b.id) ? 0 : 1)
+    })
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
@@ -101,8 +150,62 @@ export default function MswBusinesses() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">事業所一覧</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-xl font-bold text-gray-900">事業所一覧</h1>
+        <button
+          onClick={() => setAvailCheck(v => !v)}
+          className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+            availCheck
+              ? 'bg-teal-600 text-white border-teal-600'
+              : 'bg-white text-teal-600 border-teal-300 hover:bg-teal-50'
+          }`}
+        >
+          {availCheck ? '✓ 空き確認中' : '空き確認'}
+        </button>
+      </div>
       <p className="text-xs text-gray-400 mb-4">承認済みの介護タクシー事業所を検索できます。電話でのご相談にもご利用ください。</p>
+
+      {/* 空き確認パネル */}
+      {availCheck && (
+        <div className="card mb-4 border-teal-200 bg-teal-50">
+          <p className="text-xs font-semibold text-teal-700 mb-3">希望日時を入力してください（自動で空きを確認します）</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-3 sm:col-span-1">
+              <label className="label">希望日</label>
+              <div className="flex gap-1">
+                <input type="date" className="input-base flex-1 text-sm py-1.5"
+                  value={availDate}
+                  min={jstTodayStr()}
+                  onChange={e => setAvailDate(e.target.value)} />
+              </div>
+              <div className="flex gap-1 mt-1">
+                <button onClick={() => setAvailDate(jstTodayStr())}
+                  className={`flex-1 text-xs py-1 rounded-lg border transition-colors ${availDate === jstTodayStr() ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-500 border-gray-300 hover:border-teal-300'}`}>今日</button>
+                <button onClick={() => setAvailDate(jstDateOffsetStr(1))}
+                  className={`flex-1 text-xs py-1 rounded-lg border transition-colors ${availDate === jstDateOffsetStr(1) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-500 border-gray-300 hover:border-teal-300'}`}>明日</button>
+              </div>
+            </div>
+            <div>
+              <label className="label">開始時間</label>
+              <input type="time" className="input-base text-sm py-1.5"
+                value={availStart}
+                onChange={e => { setAvailStart(e.target.value); if (e.target.value >= availEnd) setAvailEnd(e.target.value.replace(/(\d+)/, h => String(Math.min(parseInt(h) + 1, 23)).padStart(2, '0'))) }} />
+            </div>
+            <div>
+              <label className="label">終了時間</label>
+              <input type="time" className="input-base text-sm py-1.5"
+                value={availEnd}
+                onChange={e => setAvailEnd(e.target.value)} />
+            </div>
+          </div>
+          {checkingAvail && <p className="text-xs text-teal-600 mt-2 text-center">確認中...</p>}
+          {!checkingAvail && Object.keys(availMap).length > 0 && (
+            <p className="text-xs text-teal-700 mt-2 text-center font-medium">
+              {Object.values(availMap).filter(Boolean).length}件の事業所に空きがあります
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card mb-4 space-y-3">
@@ -181,6 +284,11 @@ export default function MswBusinesses() {
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                        {availCheck && !checkingAvail && (
+                          availMap[biz.id]
+                            ? <span className="text-[10px] bg-teal-100 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded-full font-medium">空きあり</span>
+                            : <span className="text-[10px] bg-gray-100 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-full">空きなし</span>
+                        )}
                         {biz.closed_days?.length > 0 && (
                           <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">
                             {closedDaysText(biz.closed_days)}
