@@ -43,6 +43,7 @@ export default function MswReservations() {
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [nameSearch, setNameSearch] = useState('')
 
   const fetchReservations = useCallback(async () => {
     if (!hospitalId) return
@@ -110,13 +111,21 @@ export default function MswReservations() {
   })
 
   // 進行中は直近の予約が先頭になるよう昇順ソート
-  const list = tab === 'active'
+  const sorted = tab === 'active'
     ? [...active].sort((a, b) => {
         const da = `${a.reservation_date}T${a.start_time}`
         const db = `${b.reservation_date}T${b.start_time}`
         return da.localeCompare(db)
       })
     : past
+  const q = nameSearch.trim().toLowerCase()
+  const list = q
+    ? sorted.filter(r =>
+        r.patient_name.toLowerCase().includes(q) ||
+        (r.businesses?.name ?? '').toLowerCase().includes(q) ||
+        r.contact_name.toLowerCase().includes(q)
+      )
+    : sorted
 
   const handleCancel = async (r: ReservationWithBusiness) => {
     setShowCancelConfirm(false)
@@ -181,6 +190,19 @@ export default function MswReservations() {
         </div>
       )}
 
+      {/* Name search (past tab only) */}
+      {tab === 'past' && past.length > 0 && (
+        <div className="mb-3">
+          <input
+            type="text"
+            className="input-base"
+            placeholder="患者名・事業所名で絞り込み..."
+            value={nameSearch}
+            onChange={e => setNameSearch(e.target.value)}
+          />
+        </div>
+      )}
+
       {list.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
           {tab === 'active' ? '進行中の予約はありません' : '過去の予約はありません'}
@@ -188,12 +210,11 @@ export default function MswReservations() {
       ) : (
         <div className="space-y-2">
           {list.map(r => {
-            const daysUntil = r.status === 'confirmed'
-              ? Math.ceil(
-                  (new Date(`${r.reservation_date}T${r.start_time}`).getTime() - Date.now()) /
-                  (1000 * 60 * 60 * 24)
-                )
+            const msUntil = r.status === 'confirmed'
+              ? new Date(`${r.reservation_date}T${r.start_time}`).getTime() - Date.now()
               : null
+            const daysUntil = msUntil !== null ? Math.ceil(msUntil / (1000 * 60 * 60 * 24)) : null
+            const hoursUntil = msUntil !== null ? Math.floor(msUntil / (1000 * 60 * 60)) : null
             return (
               <button key={r.id} onClick={() => { setSelected(r); setCancelError('') }}
                 className="card w-full text-left hover:shadow-md transition-shadow">
@@ -209,11 +230,14 @@ export default function MswReservations() {
                     <span className={STATUS_MAP[r.status]?.cls ?? 'badge-gray'}>
                       {STATUS_MAP[r.status]?.label ?? r.status}
                     </span>
-                    {daysUntil !== null && daysUntil > 0 && (
+                    {daysUntil !== null && daysUntil > 1 && (
                       <span className="text-[10px] text-teal-600 font-medium">あと{daysUntil}日</span>
                     )}
-                    {daysUntil !== null && daysUntil === 0 && (
-                      <span className="text-[10px] text-amber-600 font-bold">今日</span>
+                    {daysUntil !== null && daysUntil <= 1 && hoursUntil !== null && hoursUntil > 0 && (
+                      <span className="text-[10px] text-amber-600 font-bold">あと{hoursUntil}時間</span>
+                    )}
+                    {daysUntil !== null && hoursUntil !== null && hoursUntil <= 0 && (
+                      <span className="text-[10px] text-red-600 font-bold">まもなく</span>
                     )}
                   </div>
                 </div>
@@ -243,8 +267,26 @@ export default function MswReservations() {
               </div>
             )}
             {selected.status === 'rejected' && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-4 text-xs text-gray-600">
-                この申請は事業所により却下されました。別の事業所をお探しください。
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-4 text-xs text-gray-600 space-y-2">
+                <p>この申請は事業所により却下されました。別の事業所をお探しください。</p>
+                <button
+                  onClick={() => navigate('/msw/search', {
+                    state: {
+                      prefill: {
+                        patientName: selected.patient_name,
+                        patientAddress: selected.patient_address,
+                        destination: selected.destination,
+                        equipment: selected.equipment,
+                        equipmentRental: selected.equipment_rental,
+                        notes: selected.notes ?? '',
+                        contactName: selected.contact_name,
+                      }
+                    }
+                  })}
+                  className="w-full text-center text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg py-1.5 hover:bg-teal-100 transition-colors"
+                >
+                  別の事業所を探して申請する →
+                </button>
               </div>
             )}
 

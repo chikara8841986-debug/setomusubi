@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { jstMonthRange, jstMonthLabel } from '../../lib/jst'
 
@@ -7,9 +8,11 @@ type StatBlock = {
   value: number | string
   sub?: string
   color: string
+  href?: string
 }
 
 export default function AdminStats() {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -84,15 +87,15 @@ export default function AdminStats() {
   const lastMonth = jstMonthLabel(-1)
 
   const blocks: StatBlock[] = [
-    { label: '承認済み事業所', value: stats.totalApproved, sub: '件', color: 'text-teal-600' },
-    { label: '承認待ち事業所', value: stats.totalPending, sub: '件', color: stats.totalPending > 0 ? 'text-red-500' : 'text-gray-500' },
+    { label: '承認済み事業所', value: stats.totalApproved, sub: '件', color: 'text-teal-600', href: '/admin/approvals' },
+    { label: '承認待ち事業所', value: stats.totalPending, sub: '件', color: stats.totalPending > 0 ? 'text-red-500' : 'text-gray-500', href: '/admin/approvals' },
     { label: '病院・MSW', value: stats.totalHospitals, sub: '病院', color: 'text-green-600' },
-    { label: `${thisMonth}の予約`, value: stats.totalReservationsThisMonth, sub: '件', color: 'text-teal-600' },
-    { label: `${lastMonth}の予約`, value: stats.totalReservationsLastMonth, sub: '件', color: 'text-gray-500' },
-    { label: '累計予約', value: stats.totalReservationsAllTime, sub: '件', color: 'text-indigo-600' },
-    { label: `${thisMonth}完了`, value: stats.completedThisMonth, sub: '件', color: 'text-green-600' },
-    { label: `${thisMonth}キャンセル`, value: stats.cancelledThisMonth, sub: '件', color: stats.cancelledThisMonth > 0 ? 'text-amber-600' : 'text-gray-400' },
-    { label: '仮予約申請中', value: stats.pendingRequestsNow, sub: '件', color: stats.pendingRequestsNow > 0 ? 'text-red-500' : 'text-gray-400' },
+    { label: `${thisMonth}の予約`, value: stats.totalReservationsThisMonth, sub: '件', color: 'text-teal-600', href: '/admin/reservations' },
+    { label: `${lastMonth}の予約`, value: stats.totalReservationsLastMonth, sub: '件', color: 'text-gray-500', href: '/admin/reservations' },
+    { label: '累計予約', value: stats.totalReservationsAllTime, sub: '件', color: 'text-indigo-600', href: '/admin/reservations' },
+    { label: `${thisMonth}完了`, value: stats.completedThisMonth, sub: '件', color: 'text-green-600', href: '/admin/reservations' },
+    { label: `${thisMonth}キャンセル`, value: stats.cancelledThisMonth, sub: '件', color: stats.cancelledThisMonth > 0 ? 'text-amber-600' : 'text-gray-400', href: '/admin/reservations' },
+    { label: '仮予約申請中', value: stats.pendingRequestsNow, sub: '件', color: stats.pendingRequestsNow > 0 ? 'text-red-500' : 'text-gray-400', href: '/admin/reservations' },
   ]
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
@@ -119,7 +122,14 @@ export default function AdminStats() {
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {blocks.map(b => (
+        {blocks.map(b => b.href ? (
+          <button key={b.label} onClick={() => navigate(b.href!)}
+            className="card text-center py-5 hover:shadow-md hover:border-teal-200 transition-all cursor-pointer">
+            <p className="text-xs text-gray-500 mb-1">{b.label}</p>
+            <p className={`text-3xl font-bold ${b.color}`}>{b.value}</p>
+            {b.sub && <p className="text-xs text-gray-400 mt-0.5">{b.sub}</p>}
+          </button>
+        ) : (
           <div key={b.label} className="card text-center py-5">
             <p className="text-xs text-gray-500 mb-1">{b.label}</p>
             <p className={`text-3xl font-bold ${b.color}`}>{b.value}</p>
