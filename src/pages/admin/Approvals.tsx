@@ -28,6 +28,7 @@ export default function AdminApprovals() {
   const [processing, setProcessing] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [confirmState, setConfirmState] = useState<ConfirmState>(null)
+  const [nameSearch, setNameSearch] = useState('')
 
   const fetchAll = async () => {
     setLoadError(false)
@@ -65,7 +66,15 @@ export default function AdminApprovals() {
 
   const pending = businesses.filter(b => !b.approved)
   const approved = businesses.filter(b => b.approved)
-  const list = tab === 'pending' ? pending : approved
+  const q = nameSearch.trim().toLowerCase()
+  const list = tab === 'pending'
+    ? pending
+    : q
+      ? approved.filter(b =>
+          b.name.toLowerCase().includes(q) ||
+          (b.address ?? '').toLowerCase().includes(q)
+        )
+      : approved
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
@@ -104,9 +113,21 @@ export default function AdminApprovals() {
         ))}
       </div>
 
+      {tab === 'approved' && approved.length > 0 && (
+        <div className="mb-3">
+          <input
+            type="text"
+            className="input-base"
+            placeholder="事業所名・住所で絞り込み..."
+            value={nameSearch}
+            onChange={e => setNameSearch(e.target.value)}
+          />
+        </div>
+      )}
+
       {list.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
-          {tab === 'pending' ? '承認待ちの事業所はありません' : '承認済みの事業所はありません'}
+          {tab === 'pending' ? '承認待ちの事業所はありません' : q ? '該当する事業所がありません' : '承認済みの事業所はありません'}
         </div>
       ) : (
         <div className="space-y-3">

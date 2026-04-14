@@ -266,7 +266,14 @@ export default function BusinessReservations() {
         </div>
       ) : (
         <div className="space-y-2">
-          {list.map(r => (
+          {list.map(r => {
+            const daysUntil = (tab === 'upcoming' && r.status === 'confirmed')
+              ? Math.ceil(
+                  (new Date(`${r.reservation_date}T${r.start_time}`).getTime() - Date.now()) /
+                  (1000 * 60 * 60 * 24)
+                )
+              : null
+            return (
             <button key={r.id} onClick={() => openModal(r)}
               className="card w-full text-left hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between gap-2">
@@ -277,10 +284,19 @@ export default function BusinessReservations() {
                   <p className="text-xs text-gray-500 mt-0.5">{r.hospitals?.name ?? '—'} ／ {r.contact_name}</p>
                   <p className="text-xs text-gray-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                 </div>
-                <StatusBadge status={r.status} />
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <StatusBadge status={r.status} />
+                  {daysUntil !== null && daysUntil > 0 && (
+                    <span className="text-[10px] text-teal-600 font-medium">あと{daysUntil}日</span>
+                  )}
+                  {daysUntil !== null && daysUntil <= 0 && (
+                    <span className="text-[10px] text-amber-600 font-bold">まもなく</span>
+                  )}
+                </div>
               </div>
             </button>
-          ))}
+            )
+          })}
         </div>
       )}
 

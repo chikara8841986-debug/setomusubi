@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { format, addDays, startOfWeek, isSameDay, parseISO, isToday, isBefore, startOfDay, addWeeks } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay, parseISO, isBefore, startOfDay, addWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { jstMonthRange, jstMonthLabel } from '../../lib/jst'
+import { jstMonthRange, jstMonthLabel, isTodayJST } from '../../lib/jst'
 import type { AvailabilitySlot, Reservation, Business } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -405,7 +405,7 @@ export default function BusinessCalendar() {
           {weekDays.map(date => {
             const daySlots = slotsForDay(date)
             const past = isPastDay(date)
-            const todayFlag = isToday(date)
+            const todayFlag = isTodayJST(format(date, 'yyyy-MM-dd'))
             const dayOfWeek = date.getDay()
             const isSun = dayOfWeek === 0
             const isSat = dayOfWeek === 6
