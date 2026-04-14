@@ -592,6 +592,9 @@ export default function MswSearch() {
                       <span className="font-medium">特徴: </span>{biz.qualifications}
                     </p>
                   )}
+                  {!biz.pricing && !biz.qualifications && biz.pr_text && (
+                    <p className="text-xs text-gray-500 mt-2 border-t pt-2 line-clamp-2">{biz.pr_text}</p>
+                  )}
                   <div className="flex items-center justify-between mt-2 pt-2 border-t gap-2">
                     <div className="flex items-center gap-2">
                       <button

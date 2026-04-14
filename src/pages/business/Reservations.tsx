@@ -470,10 +470,10 @@ export default function BusinessReservations() {
                 </>
               )}
 
-              {selected.status === 'confirmed' && !isPast(new Date(`${selected.reservation_date}T${selected.end_time}`)) && (
+              {selected.status === 'confirmed' && (
                 confirmAction === 'complete' ? (
                   <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
-                    <p className="text-sm text-orange-700 font-medium text-center">予約を完了にしますか？（枠が解放されます）</p>
+                    <p className="text-sm text-orange-700 font-medium text-center">予約を完了にしますか？</p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setConfirmAction(null)}
@@ -496,7 +496,7 @@ export default function BusinessReservations() {
                     disabled={processing}
                     className="w-full text-sm bg-orange-500 text-white px-4 py-2.5 rounded-xl hover:bg-orange-600 disabled:opacity-50 font-semibold transition-colors"
                   >
-                    ✓ 完了にする（枠を解放）
+                    ✓ 完了にする
                   </button>
                 )
               )}
