@@ -223,6 +223,7 @@ export default function MswSearch() {
     })
 
     setResults(matched)
+    setFavOnlyResults(false)
     setSearching(false)
     setStep(2)
   }

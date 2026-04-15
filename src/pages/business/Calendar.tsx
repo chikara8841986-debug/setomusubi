@@ -13,7 +13,7 @@ function mapsUrl(address: string) {
 }
 
 type SlotWithReservation = AvailabilitySlot & {
-  reservation?: Array<Reservation & { hospitals: { name: string } | null }>
+  reservation?: Array<Reservation & { hospitals: { name: string; phone: string | null } | null }>
 }
 
 const QUICK_TIMES = [
@@ -117,7 +117,7 @@ export default function BusinessCalendar() {
         *,
         reservation:reservations(
           *,
-          hospitals(name)
+          hospitals(name, phone)
         )
       `)
       .eq('business_id', businessId)
@@ -577,9 +577,20 @@ export default function BusinessCalendar() {
                                   {capacity > 1 && (
                                     <p className="text-[10px] text-gray-400 font-medium">── 予約{idx + 1}</p>
                                   )}
-                                  <p className="font-medium text-gray-700">
-                                    {res.hospitals?.name ?? '—'} ／ {res.contact_name}
-                                  </p>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-medium text-gray-700">
+                                      {res.hospitals?.name ?? '—'} ／ {res.contact_name}
+                                    </span>
+                                    {res.hospitals?.phone && (
+                                      <a
+                                        href={`tel:${res.hospitals.phone}`}
+                                        className="text-[10px] text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-full hover:bg-teal-100"
+                                        onClick={e => e.stopPropagation()}
+                                      >
+                                        📞 {res.hospitals.phone}
+                                      </a>
+                                    )}
+                                  </div>
                                   <p>患者：{res.patient_name}　<span className="text-gray-400">{EQUIPMENT_LABELS[res.equipment] ?? res.equipment}{res.equipment_rental ? '（貸出あり）' : ''}</span></p>
                                   <div className="flex items-center gap-1">
                                     <a href={mapsUrl(res.patient_address)} target="_blank" rel="noopener noreferrer"
