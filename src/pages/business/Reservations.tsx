@@ -295,9 +295,18 @@ export default function BusinessReservations() {
 
       {list.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
-          {tab === 'pending' ? '新しい申請はありません' :
-           tab === 'today' ? '今日の予約はありません' :
-           tab === 'upcoming' ? '確定済みの予約はありません' : '過去の予約はありません'}
+          {nq ? (
+            <>
+              <p>「{nq}」に一致する予約がありません</p>
+              <button onClick={() => setNameSearch('')} className="mt-2 text-xs text-teal-600 hover:underline">
+                検索をクリア
+              </button>
+            </>
+          ) : (
+            tab === 'pending' ? '新しい申請はありません' :
+            tab === 'today' ? '今日の予約はありません' :
+            tab === 'upcoming' ? '確定済みの予約はありません' : '過去の予約はありません'
+          )}
         </div>
       ) : (
         <div className="space-y-2">

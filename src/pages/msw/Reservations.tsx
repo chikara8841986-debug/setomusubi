@@ -226,7 +226,16 @@ export default function MswReservations() {
 
       {list.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
-          {tab === 'active' ? '進行中の予約はありません' : '過去の予約はありません'}
+          {q ? (
+            <>
+              <p>「{q}」に一致する予約がありません</p>
+              <button onClick={() => setNameSearch('')} className="mt-2 text-xs text-teal-600 hover:underline">
+                検索をクリア
+              </button>
+            </>
+          ) : (
+            tab === 'active' ? '進行中の予約はありません' : '過去の予約はありません'
+          )}
         </div>
       ) : (
         <div className="space-y-2">
