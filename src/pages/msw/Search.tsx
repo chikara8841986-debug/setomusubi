@@ -351,7 +351,8 @@ export default function MswSearch() {
                 setStep(1)
                 setConfirmed(null)
                 setSelectedBusiness(null)
-                setForm({ contactName: '', patientName: '', patientAddress: '', destination: '', equipment: 'wheelchair', equipmentRental: false, notes: '' })
+                const lastEquip = (localStorage.getItem('msw_last_equipment') as BookingForm['equipment'] | null) ?? 'wheelchair'
+                setForm(f => ({ contactName: f.contactName, patientName: '', patientAddress: '', destination: '', equipment: lastEquip, equipmentRental: false, notes: '' }))
                 setNewContactName('')
                 setIsNewContact(false)
               }}
