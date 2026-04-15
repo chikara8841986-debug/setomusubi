@@ -121,6 +121,36 @@ export default function AdminStats() {
         )}
       </p>
 
+      {/* Action alerts */}
+      {(stats.totalPending > 0 || stats.pendingRequestsNow > 0) && (
+        <div className="space-y-2 mb-5">
+          {stats.totalPending > 0 && (
+            <button
+              onClick={() => navigate('/admin/approvals')}
+              className="w-full flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors text-left"
+            >
+              <div>
+                <p className="text-sm font-semibold text-amber-800">事業所の承認申請が{stats.totalPending}件あります</p>
+                <p className="text-xs text-amber-600 mt-0.5">登録申請を審査してください</p>
+              </div>
+              <span className="text-amber-600 font-bold text-lg flex-shrink-0">›</span>
+            </button>
+          )}
+          {stats.pendingRequestsNow > 0 && (
+            <button
+              onClick={() => navigate('/admin/reservations')}
+              className="w-full flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3 hover:bg-red-100 transition-colors text-left"
+            >
+              <div>
+                <p className="text-sm font-semibold text-red-800">未対応の仮予約申請が{stats.pendingRequestsNow}件あります</p>
+                <p className="text-xs text-red-600 mt-0.5">事業所に確認を促してください</p>
+              </div>
+              <span className="text-red-600 font-bold text-lg flex-shrink-0">›</span>
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {blocks.map(b => b.href ? (
           <button key={b.label} onClick={() => navigate(b.href!)}
