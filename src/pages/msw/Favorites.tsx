@@ -151,6 +151,11 @@ export default function MswFavorites() {
             <span className="text-sm text-gray-500">〜</span>
             <input type="time" className="input-base w-auto text-sm" value={availEnd} onChange={e => setAvailEnd(e.target.value)} />
           </div>
+          {Object.keys(availMap).length > 0 && (
+            <p className="text-xs text-teal-700 font-medium text-center">
+              {Object.values(availMap).filter(Boolean).length}件 / {favorites.length}件に空きがあります
+            </p>
+          )}
         </div>
       )}
 
