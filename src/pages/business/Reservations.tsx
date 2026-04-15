@@ -210,7 +210,7 @@ export default function BusinessReservations() {
     : tab === 'upcoming' ? upcoming
     : [...past].reverse()
   const nq = nameSearch.trim().toLowerCase()
-  const list = tab === 'past' && nq
+  const list = nq
     ? rawList.filter(r =>
         r.patient_name.toLowerCase().includes(nq) ||
         (r.hospitals?.name ?? '').toLowerCase().includes(nq) ||
@@ -240,7 +240,7 @@ export default function BusinessReservations() {
         ] as const).map(({ key, label, count, alert }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => { setTab(key); setNameSearch('') }}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               tab === key ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300'
             }`}
@@ -259,8 +259,8 @@ export default function BusinessReservations() {
         ))}
       </div>
 
-      {/* Past tab name search */}
-      {tab === 'past' && past.length > 0 && (
+      {/* Name search (all tabs with > 2 items) */}
+      {rawList.length > 2 && (
         <div className="mb-3">
           <div className="relative">
             <input
@@ -279,7 +279,7 @@ export default function BusinessReservations() {
           </div>
           {nq && (
             <p className="text-xs text-gray-400 mt-1">
-              {list.length}件 / 全{past.length}件
+              {list.length}件 / 全{rawList.length}件
             </p>
           )}
         </div>
