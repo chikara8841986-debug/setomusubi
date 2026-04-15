@@ -301,7 +301,12 @@ export default function MswReservations() {
                         equipmentRental: selected.equipment_rental,
                         notes: selected.notes ?? '',
                         contactName: selected.contact_name,
-                      }
+                      },
+                      searchPrefill: {
+                        date: selected.reservation_date,
+                        startTime: selected.start_time.slice(0, 5),
+                        endTime: selected.end_time.slice(0, 5),
+                      },
                     }
                   })}
                   className="w-full text-center text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg py-1.5 hover:bg-teal-100 transition-colors"
@@ -373,7 +378,12 @@ export default function MswReservations() {
                       equipmentRental: selected.equipment_rental,
                       notes: selected.notes ?? '',
                       contactName: selected.contact_name,
-                    }
+                    },
+                    searchPrefill: {
+                      date: selected.reservation_date,
+                      startTime: selected.start_time.slice(0, 5),
+                      endTime: selected.end_time.slice(0, 5),
+                    },
                   }
                 })
               }}
