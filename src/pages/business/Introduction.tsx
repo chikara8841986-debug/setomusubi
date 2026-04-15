@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -351,7 +352,9 @@ export default function BusinessIntroduction() {
         </button>
 
         <p className="text-xs text-gray-400 text-center">
-          ※ 料金・資格情報は「プロフィール」ページで編集できます
+          ※ 料金・資格情報は{' '}
+          <Link to="/business/profile" className="text-teal-600 hover:underline">プロフィール</Link>
+          {' '}ページで編集できます
         </p>
       </div>
     </div>
