@@ -75,7 +75,8 @@ export default function HospitalProfile() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-4">病院情報</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-1">病院情報</h1>
+      <p className="text-xs text-gray-400 mb-4">仮予約の申請時に事業所へ通知されます。正確な情報を設定してください。</p>
 
       {isDirty ? (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">

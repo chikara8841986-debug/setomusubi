@@ -197,12 +197,12 @@ export default function AdminReservations() {
             ↓ CSV{q ? ` (${filtered.length})` : ''}
           </button>
         )}
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {STATUS_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setStatusFilter(opt.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex-shrink-0 ${
                 statusFilter === opt.value
                   ? 'bg-teal-600 text-white border-teal-600'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
