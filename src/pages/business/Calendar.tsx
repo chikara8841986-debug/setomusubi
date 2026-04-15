@@ -378,12 +378,12 @@ export default function BusinessCalendar() {
       {/* Monthly stats mini-cards */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600', href: monthStats.confirmed > 0 ? '/business/reservations' : null },
-          { label: `${jstMonthLabel()}完了`, value: monthStats.completed, color: 'text-green-600', href: null },
-          { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400', href: monthStats.pending > 0 ? '/business/reservations' : null },
+          { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600', href: monthStats.confirmed > 0 ? '/business/reservations' : null, activeClass: 'border-teal-200 hover:bg-teal-50' },
+          { label: `${jstMonthLabel()}完了`, value: monthStats.completed, color: 'text-green-600', href: null, activeClass: '' },
+          { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400', href: monthStats.pending > 0 ? '/business/reservations' : null, activeClass: 'border-amber-200 hover:bg-amber-50' },
         ].map(s => s.href ? (
           <button key={s.label} onClick={() => navigate(s.href!)}
-            className="bg-white rounded-xl border border-amber-200 py-2 px-3 text-center shadow-sm hover:bg-amber-50 transition-colors">
+            className={`bg-white rounded-xl border py-2 px-3 text-center shadow-sm transition-colors ${s.activeClass}`}>
             <p className="text-xs text-gray-400">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           </button>
@@ -418,6 +418,29 @@ export default function BusinessCalendar() {
         <div className="card text-center py-8">
           <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
           <button onClick={fetchSlots} className="btn-secondary text-sm">再試行</button>
+        </div>
+      ) : slots.length === 0 ? (
+        <div className="card text-center py-8 space-y-3">
+          <p className="text-gray-400 text-sm">この週の稼働枠がありません</p>
+          <p className="text-xs text-gray-400">「週次設定」で平日の枠をまとめて追加できます</p>
+          <button
+            onClick={() => {
+              const defaults = [true, true, true, true, true, false, false]
+              const presetDays = defaults.map((def, i) => {
+                const jsDay = i < 6 ? i + 1 : 0
+                return closedDays.includes(jsDay) ? false : def
+              })
+              setRecurDays(presetDays)
+              setRecurStart(bizHoursStart)
+              setRecurEnd(bizHoursEnd)
+              setShowRecurModal(true)
+              setRecurResult(null)
+              setRecurError('')
+            }}
+            className="btn-primary text-sm px-6"
+          >
+            週次設定で枠を追加する
+          </button>
         </div>
       ) : (
         <div className="space-y-2">
