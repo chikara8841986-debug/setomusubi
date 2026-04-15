@@ -262,13 +262,21 @@ export default function BusinessReservations() {
       {/* Past tab name search */}
       {tab === 'past' && past.length > 0 && (
         <div className="mb-3">
-          <input
-            type="text"
-            className="input-base"
-            placeholder="患者名・病院名で絞り込み..."
-            value={nameSearch}
-            onChange={e => setNameSearch(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              className="input-base pr-8"
+              placeholder="患者名・病院名で絞り込み..."
+              value={nameSearch}
+              onChange={e => setNameSearch(e.target.value)}
+            />
+            {nameSearch && (
+              <button
+                onClick={() => setNameSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-5 h-5 flex items-center justify-center"
+              >×</button>
+            )}
+          </div>
           {nq && (
             <p className="text-xs text-gray-400 mt-1">
               {list.length}件 / 全{past.length}件

@@ -299,6 +299,9 @@ export default function BusinessProfile() {
               onChange={e => setForm(f => ({ ...f, qualifications: e.target.value }))}
               placeholder="介護士資格保有・酸素吸入対応可 など"
             />
+            {(form.qualifications?.length ?? 0) > 0 && (
+              <p className="text-xs text-gray-400 mt-0.5 text-right">{form.qualifications?.length ?? 0}文字</p>
+            )}
           </div>
           <div>
             <label className="label">料金体系</label>
@@ -309,6 +312,9 @@ export default function BusinessProfile() {
               onChange={e => setForm(f => ({ ...f, pricing: e.target.value }))}
               placeholder="基本料金〇〇円＋距離料金〇〇円/km など"
             />
+            {(form.pricing?.length ?? 0) > 0 && (
+              <p className="text-xs text-gray-400 mt-0.5 text-right">{form.pricing?.length ?? 0}文字</p>
+            )}
           </div>
         </div>
 
