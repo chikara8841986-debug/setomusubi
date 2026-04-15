@@ -105,6 +105,34 @@ function OfflineBanner() {
   )
 }
 
+function AdminReservationsBadge() {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      const { count: c } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      if (mounted) setCount(c ?? 0)
+    }
+    load()
+    const channel = supabase
+      .channel('admin-reservations-badge')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, load)
+      .subscribe()
+    return () => { mounted = false; supabase.removeChannel(channel) }
+  }, [])
+
+  if (count === 0) return null
+  return (
+    <span className="ml-1 text-[10px] bg-red-500 text-white rounded-full w-4 h-4 inline-flex items-center justify-center font-bold">
+      {count > 9 ? '9+' : count}
+    </span>
+  )
+}
+
 function MswPendingBadge({ hospitalId }: { hospitalId: string }) {
   const [count, setCount] = useState(0)
 
@@ -201,6 +229,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   )}
                   {to === '/admin/approvals' && role === 'admin' && (
                     <AdminPendingBadge />
+                  )}
+                  {to === '/admin/reservations' && role === 'admin' && (
+                    <AdminReservationsBadge />
                   )}
                 </Link>
               )
