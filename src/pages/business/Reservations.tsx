@@ -306,8 +306,14 @@ export default function BusinessReservations() {
                   (1000 * 60 * 60)
                 )
               : null
+            const hoursElapsed = r.status === 'pending'
+              ? Math.floor((Date.now() - new Date(r.created_at).getTime()) / (1000 * 60 * 60))
+              : null
             return (
-            <div key={r.id} className="card hover:shadow-md transition-shadow">
+            <div key={r.id} className={`card hover:shadow-md transition-shadow ${
+              hoursElapsed !== null && hoursElapsed >= 12 ? 'border-red-200' :
+              hoursElapsed !== null && hoursElapsed >= 6 ? 'border-orange-200' : ''
+            }`}>
               <div className="flex items-start justify-between gap-2">
                 <button className="flex-1 text-left min-w-0" onClick={() => openModal(r)}>
                   <p className="text-sm font-semibold text-gray-900">
@@ -318,6 +324,13 @@ export default function BusinessReservations() {
                 </button>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   <StatusBadge status={r.status} />
+                  {hoursElapsed !== null && hoursElapsed >= 6 && (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                      hoursElapsed >= 12 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
+                    }`}>
+                      {hoursElapsed >= 24 ? `${Math.floor(hoursElapsed / 24)}日経過` : `${hoursElapsed}時間経過`}
+                    </span>
+                  )}
                   {daysUntil !== null && daysUntil > 0 && (
                     <span className="text-[10px] text-teal-600 font-medium">あと{daysUntil}日</span>
                   )}
