@@ -79,9 +79,19 @@ export default function HospitalProfile() {
       <p className="text-xs text-gray-400 mb-4">仮予約の申請時に事業所へ通知されます。正確な情報を設定してください。</p>
 
       {isDirty ? (
-        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
           <span className="text-sm text-blue-700 font-medium">未保存の変更があります</span>
-          <button onClick={handleReset} className="text-xs text-blue-500 hover:text-blue-700 underline">元に戻す</button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="submit"
+              form="hospital-profile-form"
+              disabled={saving}
+              className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? '保存中...' : '保存する'}
+            </button>
+            <button onClick={handleReset} className="text-xs text-blue-500 hover:text-blue-700 underline">元に戻す</button>
+          </div>
         </div>
       ) : name && address && phone ? (
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
@@ -89,7 +99,7 @@ export default function HospitalProfile() {
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="hospital-profile-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="card space-y-3">
           <div>
             <label className="label">病院名 <span className="text-red-500">*</span></label>
