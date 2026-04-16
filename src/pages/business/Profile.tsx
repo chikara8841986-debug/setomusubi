@@ -156,16 +156,26 @@ export default function BusinessProfile() {
       <h1 className="text-xl font-bold text-gray-900 mb-4">プロフィール設定</h1>
 
       {isDirty && (
-        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
           <p className="text-xs font-medium text-blue-700">未保存の変更があります</p>
-          <button
-            type="button"
-            onClick={() => {
-              const snap = JSON.parse(savedSnapshot || '{}')
-              setForm(snap)
-            }}
-            className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
-          >元に戻す</button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="submit"
+              form="profile-form"
+              disabled={saving}
+              className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? '保存中...' : '保存する'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const snap = JSON.parse(savedSnapshot || '{}')
+                setForm(snap)
+              }}
+              className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+            >元に戻す</button>
+          </div>
         </div>
       )}
 
@@ -184,7 +194,7 @@ export default function BusinessProfile() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="profile-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Basic info */}
         <div className="card space-y-3">
           <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">基本情報</h2>
