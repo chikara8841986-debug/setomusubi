@@ -236,10 +236,23 @@ export default function MswBusinesses() {
         </div>
         <div>
           <label className="label">エリア</label>
-          <select className="input-base" value={areaFilter} onChange={e => setAreaFilter(e.target.value)}>
-            <option value="">すべてのエリア</option>
-            {SERVICE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+            <button
+              onClick={() => setAreaFilter('')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors flex-shrink-0 ${
+                areaFilter === '' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+              }`}
+            >すべて</button>
+            {SERVICE_AREAS.map(a => (
+              <button
+                key={a}
+                onClick={() => setAreaFilter(a === areaFilter ? '' : a)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors flex-shrink-0 ${
+                  areaFilter === a ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                }`}
+              >{a}</button>
+            ))}
+          </div>
         </div>
         <div>
           <label className="label">条件（複数選択可）</label>
