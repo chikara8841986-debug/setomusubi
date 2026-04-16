@@ -102,6 +102,7 @@ export default function HospitalProfile() {
           <div>
             <label className="label">代表電話番号</label>
             <input type="tel" className="input-base" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0877-00-0000" />
+            <p className="text-xs text-gray-400 mt-0.5">事業所の予約管理画面に表示されます</p>
           </div>
         </div>
 
