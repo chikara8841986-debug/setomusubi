@@ -286,12 +286,22 @@ export default function BusinessReservations() {
       )}
 
       {/* Pending notice */}
-      {tab === 'pending' && pending.length > 0 && (
-        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-          <p className="font-medium">新しい仮予約申請が{pending.length}件届いています</p>
-          <p className="text-xs text-amber-700 mt-0.5">内容を確認して承認または却下してください</p>
-        </div>
-      )}
+      {tab === 'pending' && pending.length > 0 && (() => {
+        const oldest = pending.reduce((a, b) =>
+          new Date(a.created_at) < new Date(b.created_at) ? a : b
+        )
+        const hoursOldest = Math.floor((Date.now() - new Date(oldest.created_at).getTime()) / (1000 * 60 * 60))
+        const isUrgent = hoursOldest >= 6
+        return (
+          <div className={`mb-3 rounded-xl px-4 py-3 text-sm border ${isUrgent ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+            <p className="font-medium">仮予約申請が{pending.length}件届いています</p>
+            <p className={`text-xs mt-0.5 ${isUrgent ? 'text-red-700' : 'text-amber-700'}`}>
+              最も古い申請: {hoursOldest < 1 ? '1時間以内' : hoursOldest < 24 ? `${hoursOldest}時間経過` : `${Math.floor(hoursOldest / 24)}日経過`}
+              {isUrgent && ' — お早めにご対応ください'}
+            </p>
+          </div>
+        )
+      })()}
 
       {list.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
