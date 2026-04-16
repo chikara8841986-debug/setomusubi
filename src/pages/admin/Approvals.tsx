@@ -43,6 +43,14 @@ export default function AdminApprovals() {
 
   useEffect(() => { fetchAll() }, [])
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setConfirmState(null)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
   const handleApprove = async (id: string) => {
     setProcessing(id)
     setConfirmState(null)
