@@ -721,12 +721,24 @@ export default function MswSearch() {
               <input type="text" className="input-base" value={form.patientAddress}
                 onChange={e => setForm(f => ({ ...f, patientAddress: e.target.value }))}
                 placeholder="香川県丸亀市〇〇町1-2-3" />
+              {form.patientAddress.trim() && (
+                <a href={mapsUrl(form.patientAddress)} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-teal-600 hover:underline mt-0.5 inline-block">
+                  📍 地図で確認する
+                </a>
+              )}
             </div>
             <div>
               <label className="label">目的地 <span className="text-red-500">*</span></label>
               <input type="text" className="input-base" value={form.destination}
                 onChange={e => setForm(f => ({ ...f, destination: e.target.value }))}
                 placeholder="〇〇病院・〇〇クリニック など" />
+              {form.destination.trim() && (
+                <a href={mapsUrl(form.destination)} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-teal-600 hover:underline mt-0.5 inline-block">
+                  📍 地図で確認する
+                </a>
+              )}
             </div>
             <div>
               <label className="label">使用機材 <span className="text-red-500">*</span></label>
