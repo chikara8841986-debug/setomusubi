@@ -202,8 +202,9 @@ export default function BusinessProfile() {
               <input className="input-base" value={form.phone ?? ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="0877-00-0000" />
             </div>
             <div>
-              <label className="label">キャンセル連絡先</label>
+              <label className="label">キャンセル連絡先 <span className="text-red-500">*</span></label>
               <input className="input-base" value={form.cancel_phone ?? ''} onChange={e => setForm(f => ({ ...f, cancel_phone: e.target.value }))} placeholder="0877-00-0000" />
+              <p className="text-xs text-gray-400 mt-0.5">MSWの申請画面に表示される直通番号です</p>
             </div>
           </div>
         </div>
@@ -245,7 +246,10 @@ export default function BusinessProfile() {
         {/* Service areas */}
         <div className="card space-y-3">
           <div className="flex items-center justify-between border-b pb-2">
-            <h2 className="text-sm font-semibold text-gray-700">対応エリア</h2>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700">対応エリア <span className="text-red-500">*</span></h2>
+              <p className="text-xs text-gray-400 mt-0.5">MSWが乗車地エリアで絞り込む際に使用されます</p>
+            </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setForm(f => ({ ...f, service_areas: [...SERVICE_AREAS] }))}
                 className="text-xs text-teal-600 hover:underline">全選択</button>
