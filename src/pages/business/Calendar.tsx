@@ -647,12 +647,22 @@ export default function BusinessCalendar() {
                           {hasPending && (
                             <div className="mt-2 text-xs text-amber-700 border-t border-amber-200 pt-2">
                               <p className="font-medium">申請中: {pendingList.length}件</p>
-                              {pendingList.slice(0, 2).map(r => (
-                                <p key={r.id} className="text-amber-600 mt-0.5">
-                                  {r.hospitals?.name ?? '—'} ／ {r.patient_name}
-                                  <span className="ml-1 text-amber-500">({EQUIPMENT_LABELS[r.equipment] ?? r.equipment})</span>
-                                </p>
-                              ))}
+                              {pendingList.slice(0, 2).map(r => {
+                                const hrs = (Date.now() - new Date(r.created_at).getTime()) / (1000 * 60 * 60)
+                                const elapsed = hrs < 1 ? '〜1時間以内' : hrs < 24 ? `${Math.floor(hrs)}時間経過` : `${Math.floor(hrs / 24)}日経過`
+                                const isOld = hrs >= 6
+                                return (
+                                  <div key={r.id} className="mt-0.5 flex items-start gap-1 justify-between">
+                                    <span className="text-amber-600">
+                                      {r.hospitals?.name ?? '—'} ／ {r.patient_name}
+                                      <span className="ml-1 text-amber-500">({EQUIPMENT_LABELS[r.equipment] ?? r.equipment})</span>
+                                    </span>
+                                    <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isOld ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                                      {elapsed}
+                                    </span>
+                                  </div>
+                                )
+                              })}
                               {pendingList.length > 2 && (
                                 <p className="text-amber-500 mt-0.5">他{pendingList.length - 2}件…</p>
                               )}
