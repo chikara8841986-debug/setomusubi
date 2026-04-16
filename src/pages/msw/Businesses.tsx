@@ -16,6 +16,11 @@ function mapsUrl(address: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
 }
 
+function formatHours(start: string | null, end: string | null): string | null {
+  if (!start || !end) return null
+  return `${start.slice(0, 5)}〜${end.slice(0, 5)}`
+}
+
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
 function closedDaysText(days: number[]): string {
   if (!days?.length) return ''
@@ -325,6 +330,11 @@ export default function MswBusinesses() {
                           className="text-xs text-teal-700 hover:underline block mt-0.5">
                           📍 {biz.address}
                         </a>
+                      )}
+                      {formatHours(biz.business_hours_start, biz.business_hours_end) && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
+                        </p>
                       )}
                     </div>
                     <button
