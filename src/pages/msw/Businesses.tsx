@@ -262,7 +262,12 @@ export default function MswBusinesses() {
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm text-gray-500">{filtered.length}件</p>
+        <p className="text-sm text-gray-500">
+          {areaFilter ? `${areaFilter}: ` : ''}{filtered.length}件
+          {businesses.length !== filtered.length && !areaFilter && !equipFilter.length && !nameSearch && !favOnly && (
+            <span className="text-xs text-gray-400 ml-1">/ 全{businesses.length}件</span>
+          )}
+        </p>
         {favorites.size > 0 && (
           <button
             onClick={() => setFavOnly(v => !v)}
