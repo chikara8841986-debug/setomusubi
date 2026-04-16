@@ -132,6 +132,8 @@ export default function MswSearch() {
     startTime: string
     endTime: string
     patientName: string
+    equipment: string
+    contactName: string
   } | null>(null)
 
   // ESCキーでプレビューモーダルを閉じる
@@ -300,6 +302,8 @@ export default function MswSearch() {
       startTime,
       endTime,
       patientName: form.patientName.trim(),
+      equipment: form.equipment,
+      contactName: contactName,
     })
     setSubmitting(false)
   }
@@ -327,6 +331,16 @@ export default function MswSearch() {
             <div className="flex gap-3">
               <span className="text-gray-500 w-16 flex-shrink-0">患者</span>
               <span className="font-semibold text-gray-900">{confirmed.patientName}</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-gray-500 w-16 flex-shrink-0">機材</span>
+              <span className="font-semibold text-gray-900">
+                {EQUIPMENT_OPTIONS.find(o => o.value === confirmed.equipment)?.label ?? confirmed.equipment}
+              </span>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-gray-500 w-16 flex-shrink-0">担当者</span>
+              <span className="font-semibold text-gray-900">{confirmed.contactName}</span>
             </div>
           </div>
 
