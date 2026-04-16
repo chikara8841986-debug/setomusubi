@@ -367,20 +367,24 @@ export default function MswFavorites() {
             )}
 
             <div className="mt-4 space-y-2">
-              {availCheck && availMap[preview.id] && (
+              {availCheck && availMap[preview.id] ? (
+                <>
+                  <button
+                    onClick={() => { setPreview(null); navigate('/msw/search', { state: { searchPrefill: { date: availDate, startTime: availStart, endTime: availEnd, area: preview.service_areas?.[0] } } }) }}
+                    className="btn-primary w-full"
+                  >
+                    この枠で申請する →
+                  </button>
+                  <p className="text-[10px] text-gray-400 text-center">{availDate} {availStart}〜{availEnd} の空きあり</p>
+                </>
+              ) : (
                 <button
-                  onClick={() => { setPreview(null); navigate('/msw/search', { state: { searchPrefill: { date: availDate, startTime: availStart, endTime: availEnd } } }) }}
-                  className="btn-primary w-full"
+                  onClick={() => { setPreview(null); navigate('/msw/search', { state: { searchPrefill: { area: preview.service_areas?.[0] } } }) }}
+                  className="w-full text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
                 >
-                  この枠で申請する →
+                  申請ページで検索する
                 </button>
               )}
-              <button
-                onClick={() => { setPreview(null); navigate('/msw/search', { state: { searchPrefill: { area: preview.service_areas?.[0] } } }) }}
-                className="w-full text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                申請ページで検索する
-              </button>
               <button onClick={() => setPreview(null)} className="btn-secondary w-full">閉じる</button>
             </div>
           </div>
