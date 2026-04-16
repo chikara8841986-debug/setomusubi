@@ -154,19 +154,29 @@ export default function BusinessIntroduction() {
       <p className="text-xs text-gray-400 mb-3">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
 
       {isDirty && (
-        <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+        <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
           <span className="text-sm text-blue-700 font-medium">未保存の変更があります</span>
-          <button
-            type="button"
-            onClick={() => {
-              const snap = JSON.parse(savedSnapshot)
-              setWebsiteUrl(snap.website_url ?? '')
-              setPrText(snap.pr_text ?? '')
-              setProfileImageUrl(snap.profile_image_url ?? '')
-              setVehicleImageUrls(snap.vehicle_image_urls ?? [])
-            }}
-            className="text-xs text-blue-500 hover:text-blue-700 hover:underline ml-2 flex-shrink-0"
-          >元に戻す</button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || uploading}
+              className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? '保存中...' : '保存する'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const snap = JSON.parse(savedSnapshot)
+                setWebsiteUrl(snap.website_url ?? '')
+                setPrText(snap.pr_text ?? '')
+                setProfileImageUrl(snap.profile_image_url ?? '')
+                setVehicleImageUrls(snap.vehicle_image_urls ?? [])
+              }}
+              className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+            >元に戻す</button>
+          </div>
         </div>
       )}
 
