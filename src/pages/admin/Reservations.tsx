@@ -307,12 +307,17 @@ export default function AdminReservations() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">予約詳細</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900">予約詳細</h3>
+                <span className={STATUS_BADGE[selected.status] ?? 'badge-gray'}>
+                  {STATUS_LABELS[selected.status] ?? selected.status}
+                </span>
+              </div>
               <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
             <dl className="space-y-3 text-sm">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
-              <Row label="ステータス" value={STATUS_LABELS[selected.status] ?? selected.status} />
+              <Row label="申請日時" value={format(parseISO(selected.created_at), 'yyyy/M/d HH:mm', { locale: ja })} />
               <Row label="事業所" value={selected.businesses?.name ?? '—'} />
               <Row label="病院" value={selected.hospitals?.name ?? '—'} />
               <Row label="担当者" value={selected.contact_name} />
@@ -346,7 +351,6 @@ export default function AdminReservations() {
               <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment] ?? selected.equipment} />
               <Row label="機材貸出" value={selected.equipment_rental ? 'あり' : 'なし'} />
               {selected.notes && <Row label="備考" value={selected.notes} />}
-              <Row label="作成日時" value={format(parseISO(selected.created_at), 'yyyy/M/d HH:mm', { locale: ja })} />
             </dl>
             <div className="mt-5 border-t pt-4">
               <p className="text-xs text-gray-500 font-medium mb-2">ステータスを変更</p>
