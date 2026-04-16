@@ -260,8 +260,11 @@ export default function MswReservations() {
                     <span className={STATUS_MAP[r.status]?.cls ?? 'badge-gray'}>
                       {STATUS_MAP[r.status]?.label ?? r.status}
                     </span>
-                    {daysUntil !== null && daysUntil > 1 && (
+                    {daysUntil !== null && daysUntil > 3 && (
                       <span className="text-[10px] text-teal-600 font-medium">あと{daysUntil}日</span>
+                    )}
+                    {daysUntil !== null && daysUntil > 1 && daysUntil <= 3 && (
+                      <span className="text-[10px] text-amber-600 font-bold">あと{daysUntil}日</span>
                     )}
                     {daysUntil !== null && daysUntil <= 1 && hoursUntil !== null && hoursUntil > 0 && (
                       <span className="text-[10px] text-amber-600 font-bold">あと{hoursUntil}時間</span>

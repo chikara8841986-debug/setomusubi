@@ -358,8 +358,11 @@ export default function BusinessReservations() {
                       {hoursElapsed >= 24 ? `${Math.floor(hoursElapsed / 24)}日経過` : `${hoursElapsed}時間経過`}
                     </span>
                   )}
-                  {daysUntil !== null && daysUntil > 0 && (
+                  {daysUntil !== null && daysUntil > 3 && (
                     <span className="text-[10px] text-teal-600 font-medium">あと{daysUntil}日</span>
+                  )}
+                  {daysUntil !== null && daysUntil > 0 && daysUntil <= 3 && (
+                    <span className="text-[10px] text-amber-600 font-bold">あと{daysUntil}日</span>
                   )}
                   {daysUntil !== null && daysUntil <= 0 && (
                     <span className="text-[10px] text-amber-600 font-bold">まもなく</span>
