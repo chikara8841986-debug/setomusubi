@@ -67,14 +67,13 @@ export default function AdminApprovals() {
   const pending = businesses.filter(b => !b.approved)
   const approved = businesses.filter(b => b.approved)
   const q = nameSearch.trim().toLowerCase()
-  const list = tab === 'pending'
-    ? pending
-    : q
-      ? approved.filter(b =>
-          b.name.toLowerCase().includes(q) ||
-          (b.address ?? '').toLowerCase().includes(q)
-        )
-      : approved
+  const baseList = tab === 'pending' ? pending : approved
+  const list = q
+    ? baseList.filter(b =>
+        b.name.toLowerCase().includes(q) ||
+        (b.address ?? '').toLowerCase().includes(q)
+      )
+    : baseList
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
@@ -93,7 +92,7 @@ export default function AdminApprovals() {
         {(['pending', 'approved'] as const).map(t => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => { setTab(t); setNameSearch('') }}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
               tab === t ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
             }`}
@@ -113,7 +112,7 @@ export default function AdminApprovals() {
         ))}
       </div>
 
-      {tab === 'approved' && approved.length > 0 && (
+      {baseList.length > 2 && (
         <div className="mb-3 relative">
           <input
             type="text"
@@ -133,7 +132,14 @@ export default function AdminApprovals() {
 
       {list.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
-          {tab === 'pending' ? '承認待ちの事業所はありません' : q ? '該当する事業所がありません' : '承認済みの事業所はありません'}
+          {q ? (
+            <>
+              <p>「{q}」に一致する事業所がありません</p>
+              <button onClick={() => setNameSearch('')} className="mt-2 text-xs text-teal-600 hover:underline">
+                検索をクリア
+              </button>
+            </>
+          ) : tab === 'pending' ? '承認待ちの事業所はありません' : '承認済みの事業所はありません'}
         </div>
       ) : (
         <div className="space-y-3">
