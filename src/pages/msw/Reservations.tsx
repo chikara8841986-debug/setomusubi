@@ -192,11 +192,15 @@ export default function MswReservations() {
       </div>
 
       {/* Pending notice */}
-      {tab === 'active' && active.some(r => r.status === 'pending') && (
-        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
-          申請中の仮予約があります。事業所からの確定連絡をお待ちください。
-        </div>
-      )}
+      {tab === 'active' && active.some(r => r.status === 'pending') && (() => {
+        const pendingCount = active.filter(r => r.status === 'pending').length
+        return (
+          <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+            <p className="font-medium">申請中の仮予約が{pendingCount}件あります</p>
+            <p className="mt-0.5">事業所が確認次第、承認・却下の通知が来ます</p>
+          </div>
+        )
+      })()}
 
       {/* Name search */}
       {((tab === 'past' && past.length > 0) || (tab === 'active' && active.length > 2)) && (
