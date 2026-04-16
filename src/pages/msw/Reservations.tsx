@@ -374,32 +374,34 @@ export default function MswReservations() {
 
             {cancelError && <p className="text-xs text-red-600 mt-2">{cancelError}</p>}
 
-            {/* Re-apply with same content */}
-            <button
-              onClick={() => {
-                navigate('/msw/search', {
-                  state: {
-                    prefill: {
-                      patientName: selected.patient_name,
-                      patientAddress: selected.patient_address,
-                      destination: selected.destination,
-                      equipment: selected.equipment,
-                      equipmentRental: selected.equipment_rental,
-                      notes: selected.notes ?? '',
-                      contactName: selected.contact_name,
-                    },
-                    searchPrefill: {
-                      date: selected.reservation_date,
-                      startTime: selected.start_time.slice(0, 5),
-                      endTime: selected.end_time.slice(0, 5),
-                    },
-                  }
-                })
-              }}
-              className="w-full mt-4 text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              同じ内容で再申請する
-            </button>
+            {/* Re-apply with same content (only for completed/cancelled) */}
+            {(selected.status === 'completed' || selected.status === 'cancelled') && (
+              <button
+                onClick={() => {
+                  navigate('/msw/search', {
+                    state: {
+                      prefill: {
+                        patientName: selected.patient_name,
+                        patientAddress: selected.patient_address,
+                        destination: selected.destination,
+                        equipment: selected.equipment,
+                        equipmentRental: selected.equipment_rental,
+                        notes: selected.notes ?? '',
+                        contactName: selected.contact_name,
+                      },
+                      searchPrefill: {
+                        date: selected.reservation_date,
+                        startTime: selected.start_time.slice(0, 5),
+                        endTime: selected.end_time.slice(0, 5),
+                      },
+                    }
+                  })
+                }}
+                className="w-full mt-4 text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                同じ内容で再申請する
+              </button>
+            )}
 
             <div className="flex gap-2 mt-2">
               <button onClick={() => { setSelected(null); setCancelError('') }} className="btn-secondary flex-1">閉じる</button>
