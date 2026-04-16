@@ -61,6 +61,7 @@ type SearchPrefillState = {
   date?: string
   startTime?: string
   endTime?: string
+  area?: string
 }
 
 export default function MswSearch() {
@@ -88,7 +89,7 @@ export default function MswSearch() {
   const [date, setDate] = useState(searchPrefill?.date ?? today)
   const [startTime, setStartTime] = useState(searchPrefill?.startTime ?? defaultStartTime())
   const [endTime, setEndTime] = useState(searchPrefill?.endTime ?? addHour(defaultStartTime()))
-  const [area, setArea] = useState(() => localStorage.getItem('msw_last_area') ?? '')
+  const [area, setArea] = useState(() => searchPrefill?.area ?? localStorage.getItem('msw_last_area') ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
   const [needStretcher, setNeedStretcher] = useState(false)
@@ -650,6 +651,12 @@ export default function MswSearch() {
               </div>
             )}
           </div>
+
+          {prefill && (
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs text-blue-700 font-medium">
+              📋 前回の申請内容を引き継ぎました。内容を確認のうえ申請してください。
+            </div>
+          )}
 
           <div className="card space-y-4">
             <div>

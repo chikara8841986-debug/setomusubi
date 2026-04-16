@@ -495,7 +495,7 @@ export default function MswBusinesses() {
                 </button>
               )}
               <button
-                onClick={() => { setPreview(null); navigate('/msw/search') }}
+                onClick={() => { setPreview(null); navigate('/msw/search', { state: { searchPrefill: { area: preview.service_areas?.[0] } } }) }}
                 className="w-full text-sm border border-teal-300 text-teal-600 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 申請ページで検索する
