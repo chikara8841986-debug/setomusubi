@@ -174,7 +174,7 @@ export default function MswFavorites() {
               if (!availCheck) return 0
               const aAvail = availMap[a.business_id] ?? false
               const bAvail = availMap[b.business_id] ?? false
-              return bAvail === aAvail ? 0 : bAvail ? 1 : -1
+              return aAvail === bAvail ? 0 : aAvail ? -1 : 1
             })
             .map(({ id, business_id, businesses: biz }) => (
             <div key={id} className="card">
