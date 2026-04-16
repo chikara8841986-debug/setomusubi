@@ -251,13 +251,29 @@ export default function AdminReservations() {
           <button onClick={loadReservations} className="btn-secondary text-sm">再試行</button>
         </div>
       ) : reservations.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">予約が見つかりません</div>
+        <div className="card text-center py-8 text-gray-400 text-sm">
+          {monthFilter ? `${jstMonthLabel(0) === monthFilter.replace('-', '年') + '月' ? '' : ''}この期間に予約が見つかりません` : '予約がまだありません'}
+        </div>
       ) : filtered.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">該当する予約がありません</div>
+        <div className="card text-center py-8 text-gray-400 text-sm space-y-2">
+          <p>該当する予約がありません</p>
+          <div className="flex justify-center gap-2 flex-wrap">
+            {q && (
+              <button onClick={() => setNameSearch('')} className="text-xs text-teal-600 hover:underline border border-teal-200 px-3 py-1 rounded-lg bg-teal-50">
+                検索「{q}」をクリア
+              </button>
+            )}
+            {statusFilter && (
+              <button onClick={() => setStatusFilter('')} className="text-xs text-teal-600 hover:underline border border-teal-200 px-3 py-1 rounded-lg bg-teal-50">
+                ステータスフィルターをクリア
+              </button>
+            )}
+          </div>
+        </div>
       ) : (
         <>
           <p className="text-xs text-gray-400 mb-2">
-            {filtered.length}件{q && reservations.length !== filtered.length ? ` / 全${reservations.length}件` : ''}
+            {monthFilter === '' ? '全期間: ' : ''}{filtered.length}件{q && reservations.length !== filtered.length ? ` / 全${reservations.length}件` : ''}
           </p>
           <div className="space-y-2">
             {filtered.map(r => (
