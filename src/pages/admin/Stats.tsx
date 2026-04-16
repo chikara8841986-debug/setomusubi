@@ -197,6 +197,35 @@ export default function AdminStats() {
           </p>
         </div>
       )}
+
+      {(stats.completedThisMonth > 0 || stats.cancelledThisMonth > 0) && (
+        <div className="card">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">{thisMonth} 完了・キャンセル率</h2>
+          {(() => {
+            const total = stats.completedThisMonth + stats.cancelledThisMonth
+            const completedPct = total > 0 ? Math.round((stats.completedThisMonth / total) * 100) : 0
+            const cancelledPct = total > 0 ? Math.round((stats.cancelledThisMonth / total) * 100) : 0
+            return (
+              <>
+                <div className="flex h-3 rounded-full overflow-hidden bg-gray-100 mb-2">
+                  <div className="bg-green-500 h-3 transition-all" style={{ width: `${completedPct}%` }} />
+                  <div className="bg-amber-400 h-3 transition-all" style={{ width: `${cancelledPct}%` }} />
+                </div>
+                <div className="flex gap-4 text-xs text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                    完了 {stats.completedThisMonth}件 ({completedPct}%)
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                    キャンセル {stats.cancelledThisMonth}件 ({cancelledPct}%)
+                  </span>
+                </div>
+              </>
+            )
+          })()}
+        </div>
+      )}
     </div>
   )
 }
