@@ -54,6 +54,17 @@ export default function MswContacts() {
 
   useEffect(() => { fetchContacts() }, [hospitalId])
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setEditingId(null)
+        setDeleteConfirmId(null)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
   const handleAdd = async () => {
     const name = newName.trim()
     if (!name) { setAddError('名前を入力してください'); return }
