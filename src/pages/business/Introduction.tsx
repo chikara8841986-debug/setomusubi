@@ -330,17 +330,23 @@ export default function BusinessIntroduction() {
                 >×</button>
               </div>
             ))}
-            <button
-              onClick={() => vehicleInputRef.current?.click()}
-              disabled={uploading || vehicleImageUrls.length >= 6}
-              className={`aspect-video rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors ${
-                uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-gray-300 text-gray-400 hover:border-teal-300 disabled:opacity-40'
-              }`}
-            >
-              {uploading ? '送信中…' : '＋ 追加'}
-            </button>
+            {vehicleImageUrls.length < 6 && (
+              <button
+                onClick={() => vehicleInputRef.current?.click()}
+                disabled={uploading}
+                className={`aspect-video rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors ${
+                  uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-gray-300 text-gray-400 hover:border-teal-300'
+                }`}
+              >
+                {uploading ? '送信中…' : '＋ 追加'}
+              </button>
+            )}
           </div>
-          <p className="text-xs text-gray-400">最大6枚</p>
+          <p className="text-xs text-gray-400">
+            {vehicleImageUrls.length > 0
+              ? `${vehicleImageUrls.length}/6枚${vehicleImageUrls.length >= 6 ? '（上限）' : ''}`
+              : '最大6枚'}
+          </p>
           <input ref={vehicleInputRef} type="file" accept="image/*" multiple className="hidden"
             onChange={handleVehicleImageChange} />
         </div>
