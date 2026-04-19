@@ -14,6 +14,7 @@ type StatBlock = {
 export default function AdminStats() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [stats, setStats] = useState({
@@ -74,6 +75,7 @@ export default function AdminStats() {
     })
     setLastUpdated(new Date())
     setLoading(false)
+    setRefreshing(false)
   }
 
   useEffect(() => {
@@ -110,7 +112,13 @@ export default function AdminStats() {
     <div>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold text-gray-900">統計ダッシュボード</h1>
-        <button onClick={load} className="text-xs text-teal-600 hover:text-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">↻ 更新</button>
+        <button
+          onClick={() => { setRefreshing(true); load() }}
+          disabled={refreshing}
+          className="text-xs text-teal-600 hover:text-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors disabled:opacity-60"
+        >
+          {refreshing ? '更新中...' : '↻ 更新'}
+        </button>
       </div>
       <p className="text-xs text-gray-400 mb-6">
         プラットフォーム全体の利用状況

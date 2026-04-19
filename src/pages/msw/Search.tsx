@@ -87,8 +87,12 @@ export default function MswSearch() {
 
   // Step 1
   const [date, setDate] = useState(searchPrefill?.date ?? today)
-  const [startTime, setStartTime] = useState(searchPrefill?.startTime ?? defaultStartTime())
-  const [endTime, setEndTime] = useState(searchPrefill?.endTime ?? addHour(defaultStartTime()))
+  const [startTime, setStartTime] = useState(
+    searchPrefill?.startTime ?? localStorage.getItem('msw_last_start_time') ?? defaultStartTime()
+  )
+  const [endTime, setEndTime] = useState(
+    searchPrefill?.endTime ?? localStorage.getItem('msw_last_end_time') ?? addHour(defaultStartTime())
+  )
   const [area, setArea] = useState(() => searchPrefill?.area ?? localStorage.getItem('msw_last_area') ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
@@ -185,6 +189,8 @@ export default function MswSearch() {
     setSearchError('')
     setSearching(true)
     localStorage.setItem('msw_last_area', area)
+    localStorage.setItem('msw_last_start_time', startTime)
+    localStorage.setItem('msw_last_end_time', endTime)
 
     type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
     const { data: rawSlots } = await supabase
