@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -96,6 +97,9 @@ export default function HospitalProfile() {
       ) : name && address && phone ? (
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
           ✓ 病院情報がすべて設定されています
+          <span className="block font-normal text-teal-600 mt-0.5">
+            <Link to="/msw/search" className="underline hover:text-teal-800">空き事業所を検索</Link>して仮予約を申請できます
+          </span>
         </div>
       ) : null}
 

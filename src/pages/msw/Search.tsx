@@ -679,7 +679,7 @@ export default function MswSearch() {
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-teal-200">
                 <p className="text-xs text-teal-700">急ぎの場合は直接電話でご確認ください</p>
                 <a href={`tel:${selectedBusiness.cancel_phone}`} className="text-xs font-bold text-teal-800 bg-white border border-teal-300 px-3 py-1 rounded-lg flex-shrink-0">
-                  📞 電話する
+                  📞 {selectedBusiness.cancel_phone}
                 </a>
               </div>
             )}
