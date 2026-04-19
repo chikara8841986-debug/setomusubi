@@ -119,11 +119,23 @@ export default function BusinessRegister() {
                   </div>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={password}
                     onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+                  {password.length > 0 && password.length < 8 && (
+                    <p className="text-xs text-amber-500 mt-0.5">あと{8 - password.length}文字必要です</p>
+                  )}
+                  {password.length >= 8 && (
+                    <p className="text-xs text-teal-600 mt-0.5">✓ 8文字以上</p>
+                  )}
                 </div>
                 <div>
                   <label className="label">パスワード（確認）</label>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={passwordConfirm}
                     onChange={e => setPasswordConfirm(e.target.value)} required placeholder="••••••••" />
+                  {passwordConfirm.length > 0 && password !== passwordConfirm && (
+                    <p className="text-xs text-red-500 mt-0.5">パスワードが一致していません</p>
+                  )}
+                  {passwordConfirm.length > 0 && password === passwordConfirm && password.length >= 8 && (
+                    <p className="text-xs text-teal-600 mt-0.5">✓ 一致しています</p>
+                  )}
                 </div>
                 {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
                 <button type="submit" className="btn-primary w-full">次へ →</button>
