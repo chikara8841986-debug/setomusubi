@@ -193,11 +193,20 @@ export default function MswReservations() {
 
       {/* Pending notice */}
       {tab === 'active' && active.some(r => r.status === 'pending') && (() => {
-        const pendingCount = active.filter(r => r.status === 'pending').length
+        const pendingList = active.filter(r => r.status === 'pending')
+        const oldest = pendingList.reduce((a, b) =>
+          new Date(a.created_at) < new Date(b.created_at) ? a : b
+        )
+        const hrs = (Date.now() - new Date(oldest.created_at).getTime()) / (1000 * 60 * 60)
+        const elapsed = hrs < 1 ? '〜1時間以内' : hrs < 24 ? `${Math.floor(hrs)}時間前` : `${Math.floor(hrs / 24)}日前`
+        const isLong = hrs >= 12
         return (
-          <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
-            <p className="font-medium">申請中の仮予約が{pendingCount}件あります</p>
-            <p className="mt-0.5">事業所が確認次第、承認・却下の通知が来ます</p>
+          <div className={`mb-3 rounded-xl px-4 py-3 text-xs border ${isLong ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+            <p className="font-medium">申請中の仮予約が{pendingList.length}件あります</p>
+            <p className="mt-0.5">
+              最も古い申請: {elapsed}
+              {isLong ? ' — 事業所に直接確認することをお勧めします' : ' — 事業所が確認次第、承認・却下の通知が来ます'}
+            </p>
           </div>
         )
       })()}
@@ -298,11 +307,17 @@ export default function MswReservations() {
               <button onClick={() => { setSelected(null); setShowCancelConfirm(false) }} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
 
-            {selected.status === 'pending' && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-amber-800">
-                事業所が確認後に承認・却下を行います。急ぎの場合は直接お電話ください。
-              </div>
-            )}
+            {selected.status === 'pending' && (() => {
+              const hrs = (Date.now() - new Date(selected.created_at).getTime()) / (1000 * 60 * 60)
+              const elapsed = hrs < 1 ? '〜1時間以内' : hrs < 24 ? `${Math.floor(hrs)}時間前` : `${Math.floor(hrs / 24)}日前`
+              const isLong = hrs >= 12
+              return (
+                <div className={`rounded-lg px-3 py-2 mb-4 text-xs border ${isLong ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+                  <p className="font-medium">申請から {elapsed}</p>
+                  <p className="mt-0.5">{isLong ? '事業所への直接連絡をお勧めします。' : '事業所が確認後に承認・却下を行います。'}</p>
+                </div>
+              )
+            })()}
             {selected.status === 'rejected' && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-4 text-xs text-gray-600 space-y-2">
                 <p>この申請は事業所により却下されました。別の事業所をお探しください。</p>
