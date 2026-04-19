@@ -571,7 +571,7 @@ export default function BusinessCalendar() {
 
                           {/* Confirmed reservations list */}
                           {confirmedResList.length > 0 && (
-                            <div className="mt-2 space-y-2 border-t border-orange-200 pt-2">
+                            <div className="mt-2 space-y-2 border-t border-gray-200 pt-2">
                               {confirmedResList.map((res, idx) => (
                                 <div key={res.id} className="text-xs text-gray-600 space-y-0.5">
                                   {capacity > 1 && (
@@ -654,7 +654,7 @@ export default function BusinessCalendar() {
                                 return (
                                   <div key={r.id} className="mt-0.5 flex items-start gap-1 justify-between">
                                     <span className="text-amber-600">
-                                      {r.hospitals?.name ?? '—'} ／ {r.patient_name}
+                                      {r.hospitals?.name ?? '—'} ／ {r.contact_name} ／ {r.patient_name}
                                       <span className="ml-1 text-amber-500">({EQUIPMENT_LABELS[r.equipment] ?? r.equipment})</span>
                                     </span>
                                     <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isOld ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
