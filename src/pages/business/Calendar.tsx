@@ -85,10 +85,10 @@ export default function BusinessCalendar() {
   }, [user])
 
   // Fetch this month's reservation stats（JST基準）
-  useEffect(() => {
+  const fetchMonthStats = useCallback(async () => {
     if (!businessId) return
     const { start: from, end: to } = jstMonthRange(0)
-    Promise.all([
+    const [{ count: confirmed }, { count: completed }, { count: pending }] = await Promise.all([
       supabase.from('reservations').select('*', { count: 'exact', head: true })
         .eq('business_id', businessId).eq('status', 'confirmed')
         .gte('reservation_date', from).lte('reservation_date', to),
@@ -97,10 +97,11 @@ export default function BusinessCalendar() {
         .gte('reservation_date', from).lte('reservation_date', to),
       supabase.from('reservations').select('*', { count: 'exact', head: true })
         .eq('business_id', businessId).eq('status', 'pending'),
-    ]).then(([{ count: confirmed }, { count: completed }, { count: pending }]) => {
-      setMonthStats({ confirmed: confirmed ?? 0, completed: completed ?? 0, pending: pending ?? 0 })
-    })
+    ])
+    setMonthStats({ confirmed: confirmed ?? 0, completed: completed ?? 0, pending: pending ?? 0 })
   }, [businessId])
+
+  useEffect(() => { fetchMonthStats() }, [fetchMonthStats])
 
   const [fetchError, setFetchError] = useState(false)
 
@@ -171,16 +172,20 @@ export default function BusinessCalendar() {
           showToast('新しい仮予約申請が届きました', 'info')
         }
         fetchSlots()
+        fetchMonthStats()
       })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'reservations',
         filter: `business_id=eq.${businessId}`,
-      }, fetchSlots)
+      }, () => {
+        fetchSlots()
+        fetchMonthStats()
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [fetchSlots, businessId])
+  }, [fetchSlots, fetchMonthStats, businessId])
 
   const openAddModal = (date: Date) => {
     setSelectedDate(date)
@@ -251,6 +256,7 @@ export default function BusinessCalendar() {
       .eq('id', slotId)
     setCompletingId(null)
     fetchSlots()
+    fetchMonthStats()
   }
 
   // Recurring slot bulk-add
