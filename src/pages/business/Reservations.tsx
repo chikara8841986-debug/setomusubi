@@ -144,6 +144,8 @@ export default function BusinessReservations() {
     setProcessing(true)
     setActionError('')
 
+    let autoRejectedCount = 0
+
     if (r.slot_id) {
       const { data: slot } = await supabase
         .from('availability_slots')
@@ -162,6 +164,15 @@ export default function BusinessReservations() {
         .eq('id', r.slot_id)
 
       if (nowFull) {
+        // Count other pending requests for this slot before rejecting
+        const { count: otherPending } = await supabase
+          .from('reservations')
+          .select('*', { count: 'exact', head: true })
+          .eq('slot_id', r.slot_id)
+          .eq('status', 'pending')
+          .neq('id', r.id)
+        autoRejectedCount = otherPending ?? 0
+
         await supabase
           .from('reservations')
           .update({ status: 'rejected' })
@@ -176,7 +187,11 @@ export default function BusinessReservations() {
 
     closeModal()
     setProcessing(false)
-    showToast('予約を承認しました')
+    if (autoRejectedCount > 0) {
+      showToast(`予約を承認しました。満車のため他${autoRejectedCount}件の申請を自動却下しました`, 'info')
+    } else {
+      showToast('予約を承認しました')
+    }
     fetchReservations()
   }
 
