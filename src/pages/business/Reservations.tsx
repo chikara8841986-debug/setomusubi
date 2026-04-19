@@ -348,7 +348,15 @@ export default function BusinessReservations() {
           ) : (
             tab === 'pending' ? '新しい申請はありません' :
             tab === 'today' ? '今日の予約はありません' :
-            tab === 'upcoming' ? '確定済みの予約はありません' : '過去の予約はありません'
+            tab === 'upcoming' ? '確定済みの予約はありません' :
+            pastStatusFilter ? (
+              <span>
+                該当する過去の予約がありません
+                <button onClick={() => setPastStatusFilter('')} className="block mx-auto mt-2 text-xs text-teal-600 hover:underline">
+                  絞り込みをクリア
+                </button>
+              </span>
+            ) : '過去の予約はありません'
           )}
         </div>
       ) : (
