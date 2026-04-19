@@ -89,7 +89,7 @@ export default function BusinessReservations() {
     return () => document.removeEventListener('keydown', handler)
   }, [])
 
-  // 初回ロード後: 申請中がなく今日の予約があれば「今日」タブに自動切替
+  // 初回ロード後: 最も有用なタブに自動切替
   useEffect(() => {
     if (loading || initialTabSet) return
     setInitialTabSet(true)
@@ -97,9 +97,15 @@ export default function BusinessReservations() {
     const todayCount = reservations.filter(r =>
       r.status === 'confirmed' && isTodayJST(r.reservation_date)
     ).length
-    if (pendingCount === 0 && todayCount > 0) {
-      setTab('today')
-    }
+    const upcomingCount = reservations.filter(r => {
+      if (r.status !== 'confirmed') return false
+      if (isTodayJST(r.reservation_date)) return false
+      const dt = new Date(`${r.reservation_date}T${r.end_time}`)
+      return !isPast(dt)
+    }).length
+    if (pendingCount > 0) return // 申請中優先（デフォルトタブ）
+    if (todayCount > 0) { setTab('today'); return }
+    if (upcomingCount > 0) setTab('upcoming')
   }, [loading, reservations])
 
   const openModal = (r: ReservationWithHospital) => {
