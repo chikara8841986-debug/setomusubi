@@ -159,7 +159,6 @@ export default function BusinessProfile() {
   const missingFields = [
     !form.cancel_phone && 'キャンセル連絡先',
     (!form.service_areas || form.service_areas.length === 0) && '対応エリア',
-    !form.phone && '電話番号',
   ].filter(Boolean) as string[]
 
   return (
