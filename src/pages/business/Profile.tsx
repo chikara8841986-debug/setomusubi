@@ -76,7 +76,17 @@ export default function BusinessProfile() {
   }
 
   const toggleBool = (key: keyof Business) => {
-    setForm(f => ({ ...f, [key]: !f[key] }))
+    setForm(f => {
+      const next = !f[key]
+      const updates: Partial<Business> = { [key]: next }
+      // 基本機材をOFFにしたら対応する貸出もOFFにする
+      if (!next) {
+        if (key === 'has_wheelchair') updates.rental_wheelchair = false
+        if (key === 'has_reclining_wheelchair') updates.rental_reclining_wheelchair = false
+        if (key === 'has_stretcher') updates.rental_stretcher = false
+      }
+      return { ...f, ...updates }
+    })
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -128,12 +138,13 @@ export default function BusinessProfile() {
     </div>
   )
 
-  const BoolRow = ({ label, field }: { label: string; field: keyof Business }) => (
-    <label className="flex items-center justify-between py-2.5 border-b border-gray-100 cursor-pointer">
-      <span className="text-sm text-gray-700">{label}</span>
+  const BoolRow = ({ label, field, disabled }: { label: string; field: keyof Business; disabled?: boolean }) => (
+    <label className={`flex items-center justify-between py-2.5 border-b border-gray-100 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+      <span className="text-sm text-gray-700">{label}{disabled && <span className="ml-1 text-[10px] text-gray-400">（基本機材が必要）</span>}</span>
       <button
         type="button"
-        onClick={() => toggleBool(field)}
+        onClick={() => !disabled && toggleBool(field)}
+        disabled={disabled}
         className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
           form[field] ? 'bg-teal-500' : 'bg-gray-200'
         }`}
@@ -288,9 +299,9 @@ export default function BusinessProfile() {
           <BoolRow label="車椅子対応" field="has_wheelchair" />
           <BoolRow label="リクライニング車椅子対応" field="has_reclining_wheelchair" />
           <BoolRow label="ストレッチャー対応" field="has_stretcher" />
-          <BoolRow label="車椅子貸出" field="rental_wheelchair" />
-          <BoolRow label="リクライニング車椅子貸出" field="rental_reclining_wheelchair" />
-          <BoolRow label="ストレッチャー貸出" field="rental_stretcher" />
+          <BoolRow label="車椅子貸出" field="rental_wheelchair" disabled={!form.has_wheelchair} />
+          <BoolRow label="リクライニング車椅子貸出" field="rental_reclining_wheelchair" disabled={!form.has_reclining_wheelchair} />
+          <BoolRow label="ストレッチャー貸出" field="rental_stretcher" disabled={!form.has_stretcher} />
         </div>
 
         {/* Options */}
