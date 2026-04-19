@@ -339,7 +339,9 @@ export default function BusinessIntroduction() {
             onChange={e => setPrText(e.target.value)}
             placeholder={`例）\n当社は創業15年の地域密着型の介護タクシーです。\nスタッフ全員が介護福祉士の資格を持ち、安心してご利用いただけます。\n車椅子・ストレッチャー・リクライニング対応の車両を完備しています。`}
           />
-          <p className="text-xs text-gray-400 mt-1">{prText.length} 文字</p>
+          <p className={`text-xs mt-1 ${prText.length === 0 ? 'text-gray-400' : prText.length < 20 ? 'text-amber-500 font-medium' : 'text-teal-600'}`}>
+            {prText.length} 文字{prText.length > 0 && prText.length < 20 ? `（あと${20 - prText.length}文字で充実度アップ）` : prText.length >= 20 ? ' ✓' : ''}
+          </p>
         </div>
 
         {/* Website URL */}

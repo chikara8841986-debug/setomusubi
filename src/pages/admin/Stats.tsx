@@ -169,7 +169,7 @@ export default function AdminStats() {
       </div>
 
       {stats.totalReservationsThisMonth > 0 && stats.totalReservationsLastMonth > 0 && (
-        <div className="card">
+        <div className="card mt-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">前月比</h2>
           <div className="flex items-center gap-3">
             <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
@@ -199,7 +199,7 @@ export default function AdminStats() {
       )}
 
       {(stats.completedThisMonth > 0 || stats.cancelledThisMonth > 0) && (
-        <div className="card">
+        <div className="card mt-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">{thisMonth} 完了・キャンセル率</h2>
           {(() => {
             const total = stats.completedThisMonth + stats.cancelledThisMonth
