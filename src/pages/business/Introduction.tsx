@@ -200,6 +200,9 @@ export default function BusinessIntroduction() {
       {completedCount === checks.length && (
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
           ✓ 紹介ページが充実しています！
+          <span className="block font-normal text-teal-600 mt-0.5">
+            <Link to="/business/calendar" className="underline hover:text-teal-800">カレンダー</Link>に空き枠を追加するとMSWの検索に表示されます
+          </span>
         </div>
       )}
 

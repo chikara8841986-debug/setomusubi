@@ -37,6 +37,7 @@ export default function BusinessReservations() {
   const [actionError, setActionError] = useState('')
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
   const [nameSearch, setNameSearch] = useState('')
+  const [pastStatusFilter, setPastStatusFilter] = useState<'' | 'completed' | 'cancelled' | 'rejected'>('')
 
   const fetchReservations = useCallback(async () => {
     if (!businessId) return
@@ -211,10 +212,11 @@ export default function BusinessReservations() {
   }
 
   // 過去タブは直近が先頭（降順）
+  const pastFiltered = pastStatusFilter ? past.filter(r => r.status === pastStatusFilter) : past
   const rawList = tab === 'pending' ? pending
     : tab === 'today' ? today
     : tab === 'upcoming' ? upcoming
-    : [...past].reverse()
+    : [...pastFiltered].reverse()
   const nq = nameSearch.trim().toLowerCase()
   const list = nq
     ? rawList.filter(r =>
@@ -246,7 +248,7 @@ export default function BusinessReservations() {
         ] as const).map(({ key, label, count, alert }) => (
           <button
             key={key}
-            onClick={() => { setTab(key); setNameSearch('') }}
+            onClick={() => { setTab(key); setNameSearch(''); if (key !== 'past') setPastStatusFilter('') }}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               tab === key ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300'
             }`}
@@ -264,6 +266,31 @@ export default function BusinessReservations() {
           </button>
         ))}
       </div>
+
+      {/* Past tab status filter */}
+      {tab === 'past' && past.length > 0 && (
+        <div className="flex gap-1.5 mb-3 overflow-x-auto">
+          {([
+            { value: '' as const, label: 'すべて', count: past.length },
+            { value: 'completed' as const, label: '完了', count: past.filter(r => r.status === 'completed').length },
+            { value: 'cancelled' as const, label: 'キャンセル', count: past.filter(r => r.status === 'cancelled').length },
+            { value: 'rejected' as const, label: '却下', count: past.filter(r => r.status === 'rejected').length },
+          ].filter(o => o.value === '' || o.count > 0)).map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { setPastStatusFilter(opt.value); setNameSearch('') }}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap flex-shrink-0 ${
+                pastStatusFilter === opt.value
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-teal-300'
+              }`}
+            >
+              {opt.label}
+              {opt.count > 0 && <span className={`text-[10px] ${pastStatusFilter === opt.value ? 'opacity-80' : 'text-gray-400'}`}>({opt.count})</span>}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Name search (all tabs with > 2 items) */}
       {rawList.length > 2 && (
