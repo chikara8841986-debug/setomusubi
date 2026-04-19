@@ -272,7 +272,7 @@ export default function BusinessReservations() {
             <input
               type="text"
               className="input-base pr-8"
-              placeholder="患者名・病院名で絞り込み..."
+              placeholder="患者名・病院名・担当者名で絞り込み..."
               value={nameSearch}
               onChange={e => setNameSearch(e.target.value)}
             />

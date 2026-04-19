@@ -218,7 +218,7 @@ export default function MswReservations() {
             <input
               type="text"
               className="input-base pr-8"
-              placeholder="患者名・事業所名で絞り込み..."
+              placeholder="患者名・事業所名・担当者名で絞り込み..."
               value={nameSearch}
               onChange={e => setNameSearch(e.target.value)}
             />
