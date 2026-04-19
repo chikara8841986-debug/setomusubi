@@ -395,6 +395,7 @@ export default function MswBusinesses() {
                               date: availDate,
                               startTime: availStart,
                               endTime: availEnd,
+                              area: biz.service_areas?.[0],
                             }
                           }
                         })}

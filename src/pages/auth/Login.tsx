@@ -61,7 +61,7 @@ export default function Login() {
         </div>
 
         {notice && (
-          <div className="mb-4 bg-emerald-500/20 border border-emerald-400/40 rounded-xl px-4 py-3 text-sm text-emerald-100 backdrop-blur-sm">
+          <div className="mb-4 bg-emerald-600/30 border border-emerald-400/50 rounded-xl px-4 py-3 text-sm text-white font-medium backdrop-blur-sm">
             {notice}
           </div>
         )}

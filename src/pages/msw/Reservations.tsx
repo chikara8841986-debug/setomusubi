@@ -266,7 +266,7 @@ export default function MswReservations() {
                     <p className="text-sm font-semibold text-gray-900">
                       {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">{r.businesses?.name ?? '—'}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{r.businesses?.name ?? '—'} ／ 担当: {r.contact_name}</p>
                     <p className="text-xs text-gray-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">

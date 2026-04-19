@@ -255,7 +255,7 @@ export default function MswFavorites() {
                         href={`tel:${biz.cancel_phone}`}
                         className="btn-secondary text-xs px-3 py-1.5"
                       >
-                        📞 電話する
+                        📞 {biz.cancel_phone}
                       </a>
                     )}
                     <button
