@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../contexts/ToastContext'
 import { jstTodayStr, jstMonthStr, jstMonthLabel } from '../../lib/jst'
 import type { Reservation, ReservationStatus } from '../../types/database'
 
@@ -77,6 +78,7 @@ const STATUS_OPTIONS = [
 ]
 
 export default function AdminReservations() {
+  const { showToast } = useToast()
   const [reservations, setReservations] = useState<ReservationFull[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -137,6 +139,7 @@ export default function AdminReservations() {
     setSelected(prev => prev ? { ...prev, status: newStatus } : null)
     setReservations(prev => prev.map(r => r.id === selected.id ? { ...r, status: newStatus } : r))
     setUpdatingStatus(false)
+    showToast(`ステータスを「${STATUS_LABELS[newStatus]}」に変更しました`)
   }
 
   const q = nameSearch.trim().toLowerCase()
@@ -165,6 +168,12 @@ export default function AdminReservations() {
                 : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
             }`}
           >全期間</button>
+          {monthFilter === '' && (
+            <button
+              onClick={() => setMonthFilter(jstMonthStr(0))}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-gray-200 bg-white text-gray-600 hover:border-teal-300 transition-colors"
+            >今月</button>
+          )}
           {monthFilter !== '' && (<>
             <button
               onClick={() => {
@@ -290,7 +299,7 @@ export default function AdminReservations() {
                       {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     </p>
                     <p className="text-xs text-gray-600 mt-0.5 truncate">
-                      {r.businesses?.name ?? '—'} ← {r.hospitals?.name ?? '—'}
+                      {r.businesses?.name ?? '—'} ← {r.hospitals?.name ?? '—'} ／ {r.contact_name}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment] ?? r.equipment}</p>
                   </div>
