@@ -94,6 +94,12 @@ export default function ResetPassword() {
                     placeholder="新しいパスワード"
                     autoComplete="new-password"
                   />
+                  {password.length > 0 && password.length < 8 && (
+                    <p className="text-xs text-amber-500 mt-0.5">あと{8 - password.length}文字必要です</p>
+                  )}
+                  {password.length >= 8 && (
+                    <p className="text-xs text-teal-600 mt-0.5">✓ 8文字以上</p>
+                  )}
                 </div>
                 <div>
                   <label className="label">パスワード（確認）</label>
@@ -106,6 +112,12 @@ export default function ResetPassword() {
                     placeholder="もう一度入力"
                     autoComplete="new-password"
                   />
+                  {confirm.length > 0 && password !== confirm && (
+                    <p className="text-xs text-red-500 mt-0.5">パスワードが一致していません</p>
+                  )}
+                  {confirm.length > 0 && password === confirm && password.length >= 8 && (
+                    <p className="text-xs text-teal-600 mt-0.5">✓ 一致しています</p>
+                  )}
                 </div>
                 {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
                 <button type="submit" className="btn-primary w-full" disabled={loading}>
