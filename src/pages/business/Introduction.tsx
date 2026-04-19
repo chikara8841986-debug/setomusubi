@@ -286,9 +286,11 @@ export default function BusinessIntroduction() {
                 >×</button>
               </div>
             ) : (
-              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs text-center cursor-pointer hover:border-teal-300 transition-colors"
-                onClick={() => profileInputRef.current?.click()}>
-                写真を<br />追加
+              <div className={`w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center text-xs text-center transition-colors ${
+                uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-gray-300 text-gray-400 cursor-pointer hover:border-teal-300'
+              }`}
+                onClick={() => !uploading && profileInputRef.current?.click()}>
+                {uploading ? '送信中…' : <span>写真を<br />追加</span>}
               </div>
             )}
             <div>
@@ -319,9 +321,11 @@ export default function BusinessIntroduction() {
             <button
               onClick={() => vehicleInputRef.current?.click()}
               disabled={uploading || vehicleImageUrls.length >= 6}
-              className="aspect-video rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs hover:border-teal-300 transition-colors disabled:opacity-40"
+              className={`aspect-video rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors ${
+                uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-gray-300 text-gray-400 hover:border-teal-300 disabled:opacity-40'
+              }`}
             >
-              ＋ 追加
+              {uploading ? '送信中…' : '＋ 追加'}
             </button>
           </div>
           <p className="text-xs text-gray-400">最大6枚</p>

@@ -201,6 +201,9 @@ export default function BusinessProfile() {
       ) : !isDirty && (
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
           ✓ 必須項目はすべて設定されています
+          <span className="block font-normal text-teal-600 mt-0.5">
+            <a href="/business/calendar" className="underline hover:text-teal-800">カレンダー</a>に空き枠を追加するとMSWの検索に表示されます
+          </span>
         </div>
       )}
 
