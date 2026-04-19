@@ -55,6 +55,7 @@ export default function MswBusinesses() {
   })
   const [availMap, setAvailMap] = useState<Record<string, boolean>>({})
   const [checkingAvail, setCheckingAvail] = useState(false)
+  const [availTimeError, setAvailTimeError] = useState('')
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null) }
@@ -95,7 +96,13 @@ export default function MswBusinesses() {
   }
 
   const checkAvailability = async () => {
-    if (!availDate || availStart >= availEnd) return
+    if (!availDate) return
+    if (availStart >= availEnd) {
+      setAvailTimeError('終了時間は開始時間より後にしてください')
+      setAvailMap({})
+      return
+    }
+    setAvailTimeError('')
     setCheckingAvail(true)
     const { data } = await supabase
       .from('availability_slots')
@@ -114,7 +121,7 @@ export default function MswBusinesses() {
 
   // 空き確認モードON時・日付/時間変更時に自動チェック
   useEffect(() => {
-    if (!availCheck) { setAvailMap({}); return }
+    if (!availCheck) { setAvailMap({}); setAvailTimeError(''); return }
     checkAvailability()
   }, [availCheck, availDate, availStart, availEnd])
 
@@ -207,8 +214,9 @@ export default function MswBusinesses() {
                 onChange={e => setAvailEnd(e.target.value)} />
             </div>
           </div>
+          {availTimeError && <p className="text-xs text-red-500 mt-2 text-center">{availTimeError}</p>}
           {checkingAvail && <p className="text-xs text-teal-600 mt-2 text-center">確認中...</p>}
-          {!checkingAvail && Object.keys(availMap).length > 0 && (
+          {!checkingAvail && !availTimeError && Object.keys(availMap).length > 0 && (
             <p className="text-xs text-teal-700 mt-2 text-center font-medium">
               {filtered.filter(biz => availMap[biz.id]).length}件の事業所に空きがあります
               {filtered.length < businesses.length && <span className="text-teal-600">（絞り込み中）</span>}

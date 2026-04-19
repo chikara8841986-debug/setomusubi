@@ -52,6 +52,7 @@ export default function MswFavorites() {
     return `${String(next).padStart(2, '0')}:00`
   })
   const [availMap, setAvailMap] = useState<Record<string, boolean>>({})
+  const [availTimeError, setAvailTimeError] = useState('')
 
   const fetchFavorites = async () => {
     if (!hospitalId) return
@@ -77,6 +78,12 @@ export default function MswFavorites() {
   const checkAvailability = async () => {
     const ids = favorites.map(f => f.business_id)
     if (!ids.length) return
+    if (availStart >= availEnd) {
+      setAvailTimeError('終了時間は開始時間より後にしてください')
+      setAvailMap({})
+      return
+    }
+    setAvailTimeError('')
     const { data } = await supabase
       .from('availability_slots')
       .select('business_id')
@@ -91,7 +98,7 @@ export default function MswFavorites() {
   }
 
   useEffect(() => {
-    if (!availCheck) { setAvailMap({}); return }
+    if (!availCheck) { setAvailMap({}); setAvailTimeError(''); return }
     checkAvailability()
   }, [availCheck, availDate, availStart, availEnd, favorites.length])
 
@@ -153,7 +160,8 @@ export default function MswFavorites() {
             <span className="text-sm text-gray-500">〜</span>
             <input type="time" className="input-base w-auto text-sm" value={availEnd} onChange={e => setAvailEnd(e.target.value)} />
           </div>
-          {Object.keys(availMap).length > 0 && (
+          {availTimeError && <p className="text-xs text-red-500 font-medium text-center">{availTimeError}</p>}
+          {!availTimeError && Object.keys(availMap).length > 0 && (
             <p className="text-xs text-teal-700 font-medium text-center">
               {Object.values(availMap).filter(Boolean).length}件 / {favorites.length}件に空きがあります
             </p>
