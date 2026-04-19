@@ -143,8 +143,8 @@ export default function MswFavorites() {
               min={jstTodayStr()}
               onChange={e => setAvailDate(e.target.value)}
             />
-            <button onClick={() => setAvailDate(jstTodayStr())} className="text-xs px-2 py-1 rounded-lg bg-white border border-teal-300 text-teal-600 hover:bg-teal-50">今日</button>
-            <button onClick={() => setAvailDate(jstDateOffsetStr(1))} className="text-xs px-2 py-1 rounded-lg bg-white border border-teal-300 text-teal-600 hover:bg-teal-50">明日</button>
+            <button onClick={() => setAvailDate(jstTodayStr())} className={`text-xs px-2 py-1 rounded-lg border transition-colors ${availDate === jstTodayStr() ? 'bg-teal-600 text-white border-teal-600' : 'bg-white border-teal-300 text-teal-600 hover:bg-teal-50'}`}>今日</button>
+            <button onClick={() => setAvailDate(jstDateOffsetStr(1))} className={`text-xs px-2 py-1 rounded-lg border transition-colors ${availDate === jstDateOffsetStr(1) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white border-teal-300 text-teal-600 hover:bg-teal-50'}`}>明日</button>
           </div>
           <div className="flex items-center gap-2">
             <input type="time" className="input-base w-auto text-sm" value={availStart} onChange={e => setAvailStart(e.target.value)} />
@@ -267,7 +267,7 @@ export default function MswFavorites() {
                     {availCheck && availMap[business_id] && (
                       <button
                         onClick={() => navigate('/msw/search', {
-                          state: { searchPrefill: { date: availDate, startTime: availStart, endTime: availEnd } }
+                          state: { searchPrefill: { date: availDate, startTime: availStart, endTime: availEnd, area: biz.service_areas?.[0] } }
                         })}
                         className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 transition-colors"
                       >
