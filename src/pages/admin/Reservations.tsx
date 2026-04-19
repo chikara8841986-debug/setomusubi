@@ -326,6 +326,17 @@ export default function AdminReservations() {
               </div>
               <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
+            {selected.status === 'pending' && (() => {
+              const h = Math.floor((Date.now() - new Date(selected.created_at).getTime()) / (1000 * 60 * 60))
+              const label = h < 1 ? '〜1時間以内' : h < 24 ? `${h}時間経過` : `${Math.floor(h / 24)}日${h % 24}時間経過`
+              const cls = h >= 24 ? 'bg-red-50 border-red-200 text-red-700' : h >= 6 ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+              return (
+                <div className={`mb-4 rounded-lg px-3 py-2 border text-xs font-medium ${cls}`}>
+                  ⏱ 申請から {label} — 事業所に対応を促してください
+                </div>
+              )
+            })()}
+
             <dl className="space-y-3 text-sm">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
               <Row label="申請日時" value={format(parseISO(selected.created_at), 'yyyy/M/d HH:mm', { locale: ja })} />

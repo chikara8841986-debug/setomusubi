@@ -44,6 +44,7 @@ export default function MswReservations() {
   const [cancelError, setCancelError] = useState('')
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [nameSearch, setNameSearch] = useState('')
+  const [pastStatusFilter, setPastStatusFilter] = useState<'' | 'completed' | 'cancelled' | 'rejected'>('')
 
   const fetchReservations = useCallback(async () => {
     if (!hospitalId) return
@@ -104,6 +105,7 @@ export default function MswReservations() {
   const switchTab = (t: Tab) => {
     setTab(t)
     setNameSearch('')
+    if (t !== 'past') setPastStatusFilter('')
   }
 
   // Past: confirmed past + completed + cancelled + rejected
@@ -116,13 +118,14 @@ export default function MswReservations() {
   })
 
   // 進行中は直近の予約が先頭になるよう昇順ソート
+  const pastFiltered = pastStatusFilter ? past.filter(r => r.status === pastStatusFilter) : past
   const sorted = tab === 'active'
     ? [...active].sort((a, b) => {
         const da = `${a.reservation_date}T${a.start_time}`
         const db = `${b.reservation_date}T${b.start_time}`
         return da.localeCompare(db)
       })
-    : past
+    : pastFiltered
   const q = nameSearch.trim().toLowerCase()
   const list = q
     ? sorted.filter(r =>
@@ -191,6 +194,31 @@ export default function MswReservations() {
         </button>
       </div>
 
+      {/* Past tab status filter chips */}
+      {tab === 'past' && past.length > 0 && (
+        <div className="flex gap-1.5 mb-3 overflow-x-auto">
+          {([
+            { value: '' as const, label: 'すべて', count: past.length },
+            { value: 'completed' as const, label: '完了', count: past.filter(r => r.status === 'completed').length },
+            { value: 'cancelled' as const, label: 'キャンセル', count: past.filter(r => r.status === 'cancelled').length },
+            { value: 'rejected' as const, label: '却下', count: past.filter(r => r.status === 'rejected').length },
+          ].filter(o => o.value === '' || o.count > 0)).map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { setPastStatusFilter(opt.value); setNameSearch('') }}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap flex-shrink-0 ${
+                pastStatusFilter === opt.value
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-teal-300'
+              }`}
+            >
+              {opt.label}
+              {opt.count > 0 && <span className={`text-[10px] ${pastStatusFilter === opt.value ? 'opacity-80' : 'text-gray-400'}`}>({opt.count})</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Pending notice */}
       {tab === 'active' && active.some(r => r.status === 'pending') && (() => {
         const pendingList = active.filter(r => r.status === 'pending')
@@ -231,7 +259,7 @@ export default function MswReservations() {
           </div>
           {q && (
             <p className="text-xs text-gray-400 mt-1">
-              {list.length}件 / 全{tab === 'active' ? active.length : past.length}件
+              {list.length}件 / 全{tab === 'active' ? active.length : pastFiltered.length}件
             </p>
           )}
         </div>
@@ -255,6 +283,13 @@ export default function MswReservations() {
                   className="mt-3 text-xs text-white bg-teal-600 hover:bg-teal-700 px-4 py-1.5 rounded-lg font-medium transition-colors"
                 >
                   空き事業所を検索する →
+                </button>
+              </>
+            ) : pastStatusFilter ? (
+              <>
+                <p>該当する過去の予約がありません</p>
+                <button onClick={() => setPastStatusFilter('')} className="mt-2 text-xs text-teal-600 hover:underline">
+                  絞り込みをクリア
                 </button>
               </>
             ) : '過去の予約はありません'
