@@ -210,7 +210,8 @@ export default function MswBusinesses() {
           {checkingAvail && <p className="text-xs text-teal-600 mt-2 text-center">確認中...</p>}
           {!checkingAvail && Object.keys(availMap).length > 0 && (
             <p className="text-xs text-teal-700 mt-2 text-center font-medium">
-              {Object.values(availMap).filter(Boolean).length}件の事業所に空きがあります
+              {filtered.filter(biz => availMap[biz.id]).length}件の事業所に空きがあります
+              {filtered.length < businesses.length && <span className="text-teal-600">（絞り込み中）</span>}
             </p>
           )}
         </div>

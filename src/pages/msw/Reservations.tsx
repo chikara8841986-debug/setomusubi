@@ -247,7 +247,17 @@ export default function MswReservations() {
               </button>
             </>
           ) : (
-            tab === 'active' ? '進行中の予約はありません' : '過去の予約はありません'
+            tab === 'active' ? (
+              <>
+                <p>進行中の予約はありません</p>
+                <button
+                  onClick={() => navigate('/msw/search')}
+                  className="mt-3 text-xs text-white bg-teal-600 hover:bg-teal-700 px-4 py-1.5 rounded-lg font-medium transition-colors"
+                >
+                  空き事業所を検索する →
+                </button>
+              </>
+            ) : '過去の予約はありません'
           )}
         </div>
       ) : (
