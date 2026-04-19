@@ -96,10 +96,19 @@ export default function BusinessIntroduction() {
   }
 
   const removeVehicleImage = async (url: string) => {
-    // Extract path from URL for deletion
+    if (!businessId) return
+    // Remove from storage
     const path = url.split('/business-images/')[1]
     if (path) await supabase.storage.from('business-images').remove([path])
-    setVehicleImageUrls(prev => prev.filter(u => u !== url))
+    // Update state and immediately save to DB (prevents broken URL in DB after storage deletion)
+    const newUrls = vehicleImageUrls.filter(u => u !== url)
+    setVehicleImageUrls(newUrls)
+    await supabase.from('businesses').update({ vehicle_image_urls: newUrls }).eq('id', businessId)
+    setSavedSnapshot(prev => {
+      const snap = JSON.parse(prev || '{}')
+      return JSON.stringify({ ...snap, vehicle_image_urls: newUrls })
+    })
+    showToast('車両写真を削除しました', 'error')
   }
 
   const handleSave = async () => {
