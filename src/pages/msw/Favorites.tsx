@@ -106,6 +106,8 @@ export default function MswFavorites() {
     setRemovingId(null)
   }
 
+  const todayDow = new Date().getDay()
+
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
     <div className="card text-center py-10">
@@ -204,7 +206,10 @@ export default function MswFavorites() {
                             ? <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-300 px-1.5 py-0.5 rounded-full">空きあり</span>
                             : <span className="text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">空きなし</span>
                         )}
-                        {biz.closed_days?.length > 0 && (
+                        {biz.closed_days?.includes(todayDow) && (
+                          <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">本日定休</span>
+                        )}
+                        {biz.closed_days?.length > 0 && !biz.closed_days.includes(todayDow) && (
                           <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">
                             {closedDaysText(biz.closed_days)}
                           </span>

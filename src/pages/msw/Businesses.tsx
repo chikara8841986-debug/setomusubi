@@ -147,6 +147,8 @@ export default function MswBusinesses() {
       return (favorites.has(a.id) ? 0 : 1) - (favorites.has(b.id) ? 0 : 1)
     })
 
+  const todayDow = new Date().getDay() // 0=日, 1=月, ..., 6=土
+
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
   if (loadError) return (
     <div className="card text-center py-10">
@@ -337,7 +339,10 @@ export default function MswBusinesses() {
                             ? <span className="text-[10px] bg-teal-100 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded-full font-medium">空きあり</span>
                             : <span className="text-[10px] bg-gray-100 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-full">空きなし</span>
                         )}
-                        {biz.closed_days?.length > 0 && (
+                        {biz.closed_days?.includes(todayDow) && (
+                          <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">本日定休</span>
+                        )}
+                        {biz.closed_days?.length > 0 && !biz.closed_days.includes(todayDow) && (
                           <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">
                             {closedDaysText(biz.closed_days)}
                           </span>
