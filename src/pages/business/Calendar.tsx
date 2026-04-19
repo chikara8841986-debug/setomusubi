@@ -359,12 +359,22 @@ export default function BusinessCalendar() {
           >
             ◀
           </button>
-          <button
-            onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-            className="px-3 h-8 rounded-lg border border-gray-200 bg-white text-xs text-gray-600 hover:bg-gray-50 font-medium"
-          >
-            今週
-          </button>
+          {(() => {
+            const isCurrentWeek = weekStart.getTime() === startOfWeek(new Date(), { weekStartsOn: 1 }).getTime()
+            return (
+              <button
+                onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+                disabled={isCurrentWeek}
+                className={`px-3 h-8 rounded-lg border text-xs font-medium transition-colors ${
+                  isCurrentWeek
+                    ? 'border-teal-300 bg-teal-50 text-teal-600 cursor-default'
+                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                今週
+              </button>
+            )
+          })()}
           <button
             onClick={() => setWeekStart(d => addDays(d, 7))}
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-sm"

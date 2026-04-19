@@ -647,7 +647,7 @@ export default function MswSearch() {
                     </div>
                     {biz.cancel_phone && (
                       <a href={`tel:${biz.cancel_phone}`} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">
-                        📞 電話する
+                        📞 {biz.cancel_phone}
                       </a>
                     )}
                   </div>
