@@ -352,6 +352,21 @@ export default function MswSearch() {
 
           <p className="text-xs text-gray-400 mb-4 text-center">予約の確定・却下は「予約履歴」で確認できます</p>
 
+          {/* Favorite toggle for confirmed business */}
+          {selectedBusiness && hospitalId && (
+            <button
+              onClick={() => toggleFavorite(selectedBusiness.id)}
+              className={`w-full mb-4 flex items-center justify-center gap-2 py-2 px-4 rounded-xl border text-sm font-medium transition-colors ${
+                favorites.has(selectedBusiness.id)
+                  ? 'bg-amber-50 border-amber-200 text-amber-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
+              }`}
+            >
+              <span>{favorites.has(selectedBusiness.id) ? '⭐' : '☆'}</span>
+              {favorites.has(selectedBusiness.id) ? 'お気に入りに登録済み' : 'お気に入りに追加する'}
+            </button>
+          )}
+
           {confirmed.cancelPhone && (
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-left text-sm mb-5">
               <p className="font-medium text-teal-800 mb-1">急ぎの場合は直接お電話ください</p>
