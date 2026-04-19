@@ -252,7 +252,9 @@ export default function AdminReservations() {
         </div>
       ) : reservations.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm">
-          {monthFilter ? `${jstMonthLabel(0) === monthFilter.replace('-', '年') + '月' ? '' : ''}この期間に予約が見つかりません` : '予約がまだありません'}
+          {monthFilter
+            ? `${Number(monthFilter.split('-')[0])}年${Number(monthFilter.split('-')[1])}月に予約はありません`
+            : '予約がまだありません'}
         </div>
       ) : filtered.length === 0 ? (
         <div className="card text-center py-8 text-gray-400 text-sm space-y-2">
