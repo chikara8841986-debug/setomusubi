@@ -93,6 +93,14 @@ export default function BusinessProfile() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!user) return
+    if (
+      form.business_hours_start &&
+      form.business_hours_end &&
+      form.business_hours_start >= form.business_hours_end
+    ) {
+      showToast('終了時間は開始時間より後にしてください', 'error')
+      return
+    }
     setSaving(true)
 
     const { error: err } = await supabase

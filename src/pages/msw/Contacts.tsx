@@ -69,6 +69,10 @@ export default function MswContacts() {
     const name = newName.trim()
     if (!name) { setAddError('名前を入力してください'); return }
     if (!hospitalId) return
+    if (contacts.some(c => c.name === name)) {
+      setAddError('同じ名前の担当者がすでに登録されています')
+      return
+    }
     setAdding(true)
     setAddError('')
     const { error } = await supabase

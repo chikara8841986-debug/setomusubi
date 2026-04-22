@@ -100,7 +100,7 @@ export default function AdminApprovals() {
         {(['pending', 'approved'] as const).map(t => (
           <button
             key={t}
-            onClick={() => { setTab(t); setNameSearch('') }}
+            onClick={() => { setTab(t); setNameSearch(''); setExpanded(null) }}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
               tab === t ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
             }`}

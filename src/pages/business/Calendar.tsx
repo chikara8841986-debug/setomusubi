@@ -438,25 +438,29 @@ export default function BusinessCalendar() {
       ) : slots.length === 0 ? (
         <div className="card text-center py-8 space-y-3">
           <p className="text-gray-400 text-sm">この週の稼働枠がありません</p>
-          <p className="text-xs text-gray-400">「週次設定」で平日の枠をまとめて追加できます</p>
-          <button
-            onClick={() => {
-              const defaults = [true, true, true, true, true, false, false]
-              const presetDays = defaults.map((def, i) => {
-                const jsDay = i < 6 ? i + 1 : 0
-                return closedDays.includes(jsDay) ? false : def
-              })
-              setRecurDays(presetDays)
-              setRecurStart(bizHoursStart)
-              setRecurEnd(bizHoursEnd)
-              setShowRecurModal(true)
-              setRecurResult(null)
-              setRecurError('')
-            }}
-            className="btn-primary text-sm px-6"
-          >
-            週次設定で枠を追加する
-          </button>
+          {!isBefore(addDays(weekStart, 6), startOfDay(today)) && (
+            <>
+              <p className="text-xs text-gray-400">「週次設定」で平日の枠をまとめて追加できます</p>
+              <button
+                onClick={() => {
+                  const defaults = [true, true, true, true, true, false, false]
+                  const presetDays = defaults.map((def, i) => {
+                    const jsDay = i < 6 ? i + 1 : 0
+                    return closedDays.includes(jsDay) ? false : def
+                  })
+                  setRecurDays(presetDays)
+                  setRecurStart(bizHoursStart)
+                  setRecurEnd(bizHoursEnd)
+                  setShowRecurModal(true)
+                  setRecurResult(null)
+                  setRecurError('')
+                }}
+                className="btn-primary text-sm px-6"
+              >
+                週次設定で枠を追加する
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-2">

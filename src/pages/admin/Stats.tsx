@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { jstMonthRange, jstMonthLabel } from '../../lib/jst'
+import { jstMonthRange, jstMonthLabel, jstTodayStr } from '../../lib/jst'
 
 type StatBlock = {
   label: string
@@ -27,6 +27,7 @@ export default function AdminStats() {
     completedThisMonth: 0,
     cancelledThisMonth: 0,
     pendingRequestsNow: 0,
+    confirmedToday: 0,
   })
 
   const load = async () => {
@@ -52,6 +53,9 @@ export default function AdminStats() {
         .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
       supabase.from('reservations').select('*', { count: 'exact', head: true })
         .eq('status', 'pending'),
+      supabase.from('reservations').select('*', { count: 'exact', head: true })
+        .eq('status', 'confirmed')
+        .eq('reservation_date', jstTodayStr()),
     ])
 
     if (results.some(r => r.error)) { setLoadError(true); setLoading(false); return }
@@ -60,6 +64,7 @@ export default function AdminStats() {
       { count: approved }, { count: pending }, { count: hospitals },
       { count: resThisMonth }, { count: resLastMonth }, { count: resAll },
       { count: completed }, { count: cancelled }, { count: pendingRequests },
+      { count: confirmedTodayCount },
     ] = results
 
     setStats({
@@ -72,6 +77,7 @@ export default function AdminStats() {
       completedThisMonth: completed ?? 0,
       cancelledThisMonth: cancelled ?? 0,
       pendingRequestsNow: pendingRequests ?? 0,
+      confirmedToday: confirmedTodayCount ?? 0,
     })
     setLastUpdated(new Date())
     setLoading(false)
@@ -98,6 +104,7 @@ export default function AdminStats() {
     { label: `${thisMonth}完了`, value: stats.completedThisMonth, sub: '件', color: 'text-green-600', href: '/admin/reservations' },
     { label: `${thisMonth}キャンセル`, value: stats.cancelledThisMonth, sub: '件', color: stats.cancelledThisMonth > 0 ? 'text-amber-600' : 'text-gray-400', href: '/admin/reservations' },
     { label: '仮予約申請中', value: stats.pendingRequestsNow, sub: '件', color: stats.pendingRequestsNow > 0 ? 'text-red-500' : 'text-gray-400', href: '/admin/reservations' },
+    { label: '今日の確定予約', value: stats.confirmedToday, sub: '件', color: stats.confirmedToday > 0 ? 'text-teal-600' : 'text-gray-400', href: '/admin/reservations' },
   ]
 
   if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
