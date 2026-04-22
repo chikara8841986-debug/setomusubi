@@ -60,6 +60,7 @@ export default function HospitalProfile() {
   }
 
   const handleReset = () => {
+    if (!savedSnapshot) return
     const s = JSON.parse(savedSnapshot)
     setName(s.name)
     setAddress(s.address)
@@ -91,7 +92,9 @@ export default function HospitalProfile() {
             >
               {saving ? '保存中...' : '保存する'}
             </button>
-            <button onClick={handleReset} className="text-xs text-blue-500 hover:text-blue-700 underline">元に戻す</button>
+            {savedSnapshot && (
+              <button onClick={handleReset} className="text-xs text-blue-500 hover:text-blue-700 underline">元に戻す</button>
+            )}
           </div>
         </div>
       ) : name && address && phone ? (

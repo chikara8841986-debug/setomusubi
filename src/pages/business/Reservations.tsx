@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -361,9 +362,23 @@ export default function BusinessReservations() {
               </button>
             </>
           ) : (
-            tab === 'pending' ? '新しい申請はありません' :
+            tab === 'pending' ? (
+              <>
+                <p>新しい申請はありません</p>
+                <Link to="/business/calendar" className="mt-2 inline-block text-xs text-teal-600 hover:underline">
+                  カレンダーで空き枠を追加する →
+                </Link>
+              </>
+            ) :
             tab === 'today' ? '今日の予約はありません' :
-            tab === 'upcoming' ? '確定済みの予約はありません' :
+            tab === 'upcoming' ? (
+              <>
+                <p>確定済みの予約はありません</p>
+                <Link to="/business/calendar" className="mt-2 inline-block text-xs text-teal-600 hover:underline">
+                  カレンダーで空き枠を確認する →
+                </Link>
+              </>
+            ) :
             pastStatusFilter ? (
               <span>
                 該当する過去の予約がありません
