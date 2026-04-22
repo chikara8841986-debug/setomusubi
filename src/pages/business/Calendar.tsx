@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek, isSameDay, parseISO, isBefore, startOfDay, addWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -432,7 +432,7 @@ export default function BusinessCalendar() {
         <div className="text-center py-12 text-gray-400 text-sm">読み込み中...</div>
       ) : fetchError ? (
         <div className="card text-center py-8">
-          <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+          <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
           <button onClick={fetchSlots} className="btn-secondary text-sm">再試行</button>
         </div>
       ) : slots.length === 0 ? (
@@ -929,3 +929,4 @@ export default function BusinessCalendar() {
     </div>
   )
 }
+

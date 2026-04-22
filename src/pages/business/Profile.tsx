@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -139,10 +139,10 @@ export default function BusinessProfile() {
 
   const isDirty = JSON.stringify(form) !== savedSnapshot
 
-  if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loading) return <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
   if (loadError) return (
     <div className="card text-center py-10">
-      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
       <button onClick={fetchProfile} className="btn-secondary text-sm">再試行</button>
     </div>
   )
@@ -365,3 +365,5 @@ export default function BusinessProfile() {
     </div>
   )
 }
+
+

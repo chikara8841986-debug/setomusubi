@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
@@ -253,10 +253,10 @@ export default function AdminReservations() {
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">読み込み中...</div>
+        <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
       ) : loadError ? (
         <div className="card text-center py-10">
-          <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+          <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
           <button onClick={loadReservations} className="btn-secondary text-sm">再試行</button>
         </div>
       ) : reservations.length === 0 ? (
@@ -410,3 +410,5 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+

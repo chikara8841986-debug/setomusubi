@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -156,10 +156,10 @@ export default function MswBusinesses() {
 
   const todayDow = new Date().getDay() // 0=日, 1=月, ..., 6=土
 
-  if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loading) return <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
   if (loadError) return (
     <div className="card text-center py-10">
-      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
       <button onClick={loadAll} className="btn-secondary text-sm">再試行</button>
     </div>
   )
@@ -307,8 +307,10 @@ export default function MswBusinesses() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card text-center py-8 space-y-3">
-          <p className="text-gray-400 text-sm">条件に合う事業所が見つかりませんでした</p>
+        <div className="card text-center py-10 space-y-3">
+          <div className="text-4xl mb-1">🔍</div>
+          <p className="text-slate-500 text-sm font-medium">条件に合う事業所が見つかりませんでした</p>
+          <p className="text-xs text-slate-400">フィルターを変えて再検索してみてください</p>
           <div className="flex justify-center gap-2 flex-wrap">
             {(areaFilter || equipFilter.length > 0 || nameSearch || favOnly) && (
               <button
@@ -545,3 +547,5 @@ export default function MswBusinesses() {
     </div>
   )
 }
+
+

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
@@ -242,10 +242,10 @@ export default function BusinessReservations() {
       )
     : rawList
 
-  if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loading) return <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
   if (loadError) return (
     <div className="card text-center py-10">
-      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
       <button onClick={fetchReservations} className="btn-secondary text-sm">再試行</button>
     </div>
   )
@@ -353,40 +353,50 @@ export default function BusinessReservations() {
       })()}
 
       {list.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">
+        <div className="card text-center py-12">
           {nq ? (
             <>
-              <p>「{nq}」に一致する予約がありません</p>
-              <button onClick={() => setNameSearch('')} className="mt-2 text-xs text-teal-600 hover:underline">
+              <div className="text-4xl mb-2">🔍</div>
+              <p className="text-slate-500 text-sm font-medium mb-2">「{nq}」に一致する予約がありません</p>
+              <button onClick={() => setNameSearch('')} className="text-xs text-teal-600 hover:underline">
                 検索をクリア
               </button>
             </>
+          ) : tab === 'pending' ? (
+            <>
+              <div className="text-4xl mb-3">📭</div>
+              <p className="text-slate-500 text-sm font-medium mb-1">新しい申請はありません</p>
+              <p className="text-xs text-slate-400 mb-4">カレンダーに空き枠を追加するとMSWから申請が届きます</p>
+              <Link to="/business/calendar" className="btn-primary text-sm inline-flex items-center gap-1">
+                📅 カレンダーで空き枠を追加
+              </Link>
+            </>
+          ) : tab === 'today' ? (
+            <>
+              <div className="text-4xl mb-2">☀️</div>
+              <p className="text-slate-500 text-sm font-medium">今日の予約はありません</p>
+            </>
+          ) : tab === 'upcoming' ? (
+            <>
+              <div className="text-4xl mb-3">📆</div>
+              <p className="text-slate-500 text-sm font-medium mb-1">確定済みの予約はありません</p>
+              <Link to="/business/calendar" className="mt-2 inline-block text-xs text-teal-600 hover:underline">
+                カレンダーで空き枠を確認する →
+              </Link>
+            </>
+          ) : pastStatusFilter ? (
+            <>
+              <div className="text-4xl mb-2">🗂️</div>
+              <p className="text-slate-500 text-sm font-medium mb-2">該当する過去の予約がありません</p>
+              <button onClick={() => setPastStatusFilter('')} className="text-xs text-teal-600 hover:underline">
+                絞り込みをクリア
+              </button>
+            </>
           ) : (
-            tab === 'pending' ? (
-              <>
-                <p>新しい申請はありません</p>
-                <Link to="/business/calendar" className="mt-2 inline-block text-xs text-teal-600 hover:underline">
-                  カレンダーで空き枠を追加する →
-                </Link>
-              </>
-            ) :
-            tab === 'today' ? '今日の予約はありません' :
-            tab === 'upcoming' ? (
-              <>
-                <p>確定済みの予約はありません</p>
-                <Link to="/business/calendar" className="mt-2 inline-block text-xs text-teal-600 hover:underline">
-                  カレンダーで空き枠を確認する →
-                </Link>
-              </>
-            ) :
-            pastStatusFilter ? (
-              <span>
-                該当する過去の予約がありません
-                <button onClick={() => setPastStatusFilter('')} className="block mx-auto mt-2 text-xs text-teal-600 hover:underline">
-                  絞り込みをクリア
-                </button>
-              </span>
-            ) : '過去の予約はありません'
+            <>
+              <div className="text-4xl mb-2">🗂️</div>
+              <p className="text-slate-500 text-sm font-medium">過去の予約はありません</p>
+            </>
           )}
         </div>
       ) : (
@@ -643,3 +653,5 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+

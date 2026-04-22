@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { useNavigate } from 'react-router-dom'
@@ -163,10 +163,10 @@ export default function MswReservations() {
     showToast('予約をキャンセルしました', 'error')
   }
 
-  if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loading) return <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
   if (loadError) return (
     <div className="card text-center py-10">
-      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
       <button onClick={fetchReservations} className="btn-secondary text-sm">再試行</button>
     </div>
   )
@@ -270,10 +270,11 @@ export default function MswReservations() {
       )}
 
       {list.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">
+        <div className="card text-center py-12">
           {q ? (
             <>
-              <p>「{q}」に一致する予約がありません</p>
+              <div className="text-4xl mb-2">🔍</div>
+              <p className="text-slate-500 text-sm font-medium mb-1">「{q}」に一致する予約がありません</p>
               <button onClick={() => setNameSearch('')} className="mt-2 text-xs text-teal-600 hover:underline">
                 検索をクリア
               </button>
@@ -281,22 +282,30 @@ export default function MswReservations() {
           ) : (
             tab === 'active' ? (
               <>
-                <p>進行中の予約はありません</p>
+                <div className="text-4xl mb-3">📋</div>
+                <p className="text-slate-500 text-sm font-medium mb-1">進行中の予約はありません</p>
+                <p className="text-xs text-slate-400 mb-4">空き枠のある事業所を検索して予約申請しましょう</p>
                 <button
                   onClick={() => navigate('/msw/search')}
-                  className="mt-3 text-xs text-white bg-teal-600 hover:bg-teal-700 px-4 py-1.5 rounded-lg font-medium transition-colors"
+                  className="btn-primary text-sm"
                 >
                   空き事業所を検索する →
                 </button>
               </>
             ) : pastStatusFilter ? (
               <>
-                <p>該当する過去の予約がありません</p>
-                <button onClick={() => setPastStatusFilter('')} className="mt-2 text-xs text-teal-600 hover:underline">
+                <div className="text-4xl mb-2">🗂️</div>
+                <p className="text-slate-500 text-sm font-medium mb-2">該当する過去の予約がありません</p>
+                <button onClick={() => setPastStatusFilter('')} className="text-xs text-teal-600 hover:underline">
                   絞り込みをクリア
                 </button>
               </>
-            ) : '過去の予約はありません'
+            ) : (
+              <>
+                <div className="text-4xl mb-2">🗂️</div>
+                <p className="text-slate-500 text-sm font-medium">過去の予約はありません</p>
+              </>
+            )
           )}
         </div>
       ) : (
@@ -515,3 +524,5 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+

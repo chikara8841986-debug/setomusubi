@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -113,10 +113,10 @@ export default function MswContacts() {
     showToast('担当者名を更新しました')
   }
 
-  if (loading) return <div className="text-center py-12 text-gray-400">読み込み中...</div>
+  if (loading) return <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
   if (loadError) return (
     <div className="card text-center py-10">
-      <p className="text-gray-500 text-sm mb-3">データの取得に失敗しました</p>
+      <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
       <button onClick={fetchContacts} className="btn-secondary text-sm">再試行</button>
     </div>
   )
@@ -151,8 +151,10 @@ export default function MswContacts() {
 
       {/* List */}
       {contacts.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">
-          担当者が登録されていません
+        <div className="card text-center py-10">
+          <div className="text-4xl mb-2">👤</div>
+          <p className="text-slate-500 text-sm font-medium mb-1">担当者が登録されていません</p>
+          <p className="text-xs text-slate-400">上のフォームから追加してください</p>
         </div>
       ) : (
         <div className="card">
@@ -237,3 +239,5 @@ export default function MswContacts() {
     </div>
   )
 }
+
+
