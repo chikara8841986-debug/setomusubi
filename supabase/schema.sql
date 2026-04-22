@@ -256,6 +256,12 @@ create policy "reservations: admin read all" on reservations
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
 
+-- Admin: update any reservation status
+create policy "reservations: admin update all" on reservations
+  for update using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
 -- =====================================================
 -- Enable realtime for availability_slots and reservations
 -- =====================================================
@@ -314,6 +320,23 @@ create index if not exists idx_reservations_reminder
 --   for update using (
 --     exists (select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid())
 --   );
+
+-- =====================================================
+-- pg_net + pg_cron: send-reminder を毎時0分に実行
+-- =====================================================
+-- CREATE EXTENSION IF NOT EXISTS pg_net SCHEMA extensions;
+--
+-- SELECT cron.schedule(
+--   'send-reminder-hourly',
+--   '0 * * * *',
+--   $$
+--   SELECT extensions.http_post(
+--     'https://lcuoeekhnmbhomcdbedi.supabase.co/functions/v1/send-reminder',
+--     '{}',
+--     'application/json'
+--   );
+--   $$
+-- );
 
 -- =====================================================
 -- Admin user setup

@@ -153,6 +153,10 @@ export default function MswReservations() {
         .update({ confirmed_count: newCount, is_available: true })
         .eq('id', r.slot_id)
     }
+    // 確定済みキャンセルは事業所へメール通知
+    if (r.status === 'confirmed') {
+      supabase.functions.invoke('send-cancellation', { body: { reservation_id: r.id } }).catch(() => {})
+    }
     setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: 'cancelled' as const } : x))
     setCancelling(false)
     setSelected(null)
