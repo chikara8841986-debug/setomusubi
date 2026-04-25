@@ -159,10 +159,16 @@ export default function BusinessReservations() {
       const newCount = confirmedCount + 1
       const nowFull = newCount >= capacity
 
-      await supabase
+      const { error: slotErr } = await supabase
         .from('availability_slots')
         .update({ confirmed_count: newCount, is_available: !nowFull })
         .eq('id', r.slot_id)
+
+      if (slotErr) {
+        setActionError('スロット情報の更新に失敗しました。再試行してください。')
+        setProcessing(false)
+        return
+      }
 
       if (nowFull) {
         // Count other pending requests for this slot before rejecting
@@ -183,7 +189,12 @@ export default function BusinessReservations() {
       }
     }
 
-    await supabase.from('reservations').update({ status: 'confirmed' }).eq('id', r.id)
+    const { error: confirmErr } = await supabase.from('reservations').update({ status: 'confirmed' }).eq('id', r.id)
+    if (confirmErr) {
+      setActionError('承認に失敗しました。再試行してください。')
+      setProcessing(false)
+      return
+    }
     supabase.functions.invoke('send-confirmation', { body: { reservation_id: r.id } }).catch(() => {})
 
     closeModal()
@@ -198,7 +209,13 @@ export default function BusinessReservations() {
 
   const handleReject = async (r: ReservationWithHospital) => {
     setProcessing(true)
-    await supabase.from('reservations').update({ status: 'rejected' }).eq('id', r.id)
+    setActionError('')
+    const { error } = await supabase.from('reservations').update({ status: 'rejected' }).eq('id', r.id)
+    if (error) {
+      setActionError('却下に失敗しました。再試行してください。')
+      setProcessing(false)
+      return
+    }
     supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
     closeModal()
     setProcessing(false)
@@ -208,7 +225,13 @@ export default function BusinessReservations() {
 
   const handleComplete = async (r: ReservationWithHospital) => {
     setProcessing(true)
-    await supabase.from('reservations').update({ status: 'completed' }).eq('id', r.id)
+    setActionError('')
+    const { error } = await supabase.from('reservations').update({ status: 'completed' }).eq('id', r.id)
+    if (error) {
+      setActionError('完了処理に失敗しました。再試行してください。')
+      setProcessing(false)
+      return
+    }
     if (r.slot_id) {
       const { data: slot } = await supabase
         .from('availability_slots')
@@ -524,7 +547,7 @@ export default function BusinessReservations() {
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
                   </a>
-                  <button onClick={() => navigator.clipboard.writeText(selected.patient_address).catch(() => {})}
+                  <button onClick={() => navigator.clipboard.writeText(selected.patient_address).then(() => showToast('コピーしました')).catch(() => {})}
                     className="ml-2 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>
@@ -537,7 +560,7 @@ export default function BusinessReservations() {
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
                   </a>
-                  <button onClick={() => navigator.clipboard.writeText(selected.destination).catch(() => {})}
+                  <button onClick={() => navigator.clipboard.writeText(selected.destination).then(() => showToast('コピーしました')).catch(() => {})}
                     className="ml-2 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>

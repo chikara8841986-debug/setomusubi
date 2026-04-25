@@ -14,8 +14,9 @@ export default function ProtectedRoute({ children, allowedRoles }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-400 text-sm">読み込み中...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <span className="spinner" />
+        <p className="text-sm text-slate-400">読み込み中...</p>
       </div>
     )
   }

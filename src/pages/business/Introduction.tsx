@@ -26,6 +26,19 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   same_day: '当日対応',
 }
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
+
+function validateImageFile(file: File): string | null {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return 'JPG・PNG・WebP・GIF形式の画像を選択してください'
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    return 'ファイルサイズが大きすぎます（10MB以下の画像を選択してください）'
+  }
+  return null
+}
+
 export default function BusinessIntroduction() {
   const { businessId, user } = useAuth()
   const { showToast } = useToast()
@@ -64,19 +77,6 @@ export default function BusinessIntroduction() {
   }
 
   useEffect(() => { fetchData() }, [businessId])
-
-  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-  const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
-
-  const validateImageFile = (file: File): string | null => {
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      return 'JPG・PNG・WebP・GIF形式の画像を選択してください'
-    }
-    if (file.size > MAX_IMAGE_SIZE) {
-      return 'ファイルサイズが大きすぎます（10MB以下の画像を選択してください）'
-    }
-    return null
-  }
 
   const uploadImage = async (file: File, path: string): Promise<string | null> => {
     const { error } = await supabase.storage

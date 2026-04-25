@@ -78,7 +78,9 @@ export default function Login() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
+                maxLength={255}
                 autoComplete="email"
+                autoFocus
                 placeholder="example@hospital.jp"
               />
             </div>
@@ -91,6 +93,7 @@ export default function Login() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
+                  maxLength={128}
                   autoComplete="current-password"
                   placeholder="••••••••"
                 />

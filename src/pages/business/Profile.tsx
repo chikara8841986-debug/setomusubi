@@ -265,7 +265,7 @@ export default function BusinessProfile() {
                   className={`w-9 h-9 rounded-full text-sm font-medium border transition-colors ${
                     form.closed_days?.includes(i)
                       ? 'bg-red-500 text-white border-red-500'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-gray-400'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                   }`}
                 >
                   {d}

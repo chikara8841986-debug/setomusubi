@@ -363,7 +363,7 @@ export default function MswReservations() {
                   {STATUS_MAP[selected.status]?.label ?? selected.status}
                 </span>
               </div>
-              <button onClick={() => { setSelected(null); setShowCancelConfirm(false) }} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+              <button onClick={() => { setSelected(null); setShowCancelConfirm(false) }} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center" aria-label="閉じる">×</button>
             </div>
 
             {selected.status === 'pending' && (() => {
@@ -418,7 +418,7 @@ export default function MswReservations() {
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
                   </a>
-                  <button onClick={() => navigator.clipboard.writeText(selected.patient_address).catch(() => {})}
+                  <button onClick={() => navigator.clipboard.writeText(selected.patient_address).then(() => showToast('コピーしました')).catch(() => {})}
                     className="ml-2 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>
@@ -431,7 +431,7 @@ export default function MswReservations() {
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
                   </a>
-                  <button onClick={() => navigator.clipboard.writeText(selected.destination).catch(() => {})}
+                  <button onClick={() => navigator.clipboard.writeText(selected.destination).then(() => showToast('コピーしました')).catch(() => {})}
                     className="ml-2 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>

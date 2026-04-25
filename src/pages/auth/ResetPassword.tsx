@@ -91,6 +91,7 @@ export default function ResetPassword() {
                     onChange={e => setPassword(e.target.value)}
                     required
                     minLength={8}
+                    maxLength={128}
                     placeholder="新しいパスワード"
                     autoComplete="new-password"
                   />
@@ -109,6 +110,7 @@ export default function ResetPassword() {
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
                     required
+                    maxLength={128}
                     placeholder="もう一度入力"
                     autoComplete="new-password"
                   />
