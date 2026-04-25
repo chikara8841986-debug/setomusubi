@@ -235,15 +235,24 @@ export default function BusinessCalendar() {
 
   const handleDeleteSlot = async (slotId: string) => {
     setDeleteConfirmId(null)
-    await supabase.from('availability_slots').delete().eq('id', slotId)
+    const { error } = await supabase.from('availability_slots').delete().eq('id', slotId)
+    if (error) {
+      showToast('削除に失敗しました。再試行してください。', 'error')
+      return
+    }
+    showToast('空き枠を削除しました', 'error')
     fetchSlots()
   }
 
   const handleComplete = async (reservation: Reservation, slotId: string) => {
     setCompleteConfirm(null)
     setCompletingId(reservation.id)
-    showToast('完了にしました')
-    await supabase.from('reservations').update({ status: 'completed' }).eq('id', reservation.id)
+    const { error } = await supabase.from('reservations').update({ status: 'completed' }).eq('id', reservation.id)
+    if (error) {
+      showToast('完了処理に失敗しました。再試行してください。', 'error')
+      setCompletingId(null)
+      return
+    }
     // confirmed_count を1減らし、is_available を true に戻す
     const { data: slot } = await supabase
       .from('availability_slots')
@@ -256,6 +265,7 @@ export default function BusinessCalendar() {
       .update({ confirmed_count: newCount, is_available: true })
       .eq('id', slotId)
     setCompletingId(null)
+    showToast('完了にしました')
     fetchSlots()
     fetchMonthStats()
   }
@@ -431,7 +441,7 @@ export default function BusinessCalendar() {
       </p>
 
       {loading ? (
-        <div className="text-center py-12 text-slate-400 text-sm">読み込み中...</div>
+        <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
       ) : fetchError ? (
         <div className="card text-center py-8">
           <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
@@ -621,7 +631,7 @@ export default function BusinessCalendar() {
                                       📍 乗車地：{res.patient_address}
                                     </a>
                                     <button
-                                      onClick={() => navigator.clipboard.writeText(res.patient_address).catch(() => {})}
+                                      onClick={() => navigator.clipboard.writeText(res.patient_address).then(() => showToast('コピーしました')).catch(() => {})}
                                       className="text-slate-300 hover:text-slate-600 flex-shrink-0 text-[11px] px-1"
                                       title="コピー"
                                     >コピー</button>
@@ -632,7 +642,7 @@ export default function BusinessCalendar() {
                                       📍 目的地：{res.destination}
                                     </a>
                                     <button
-                                      onClick={() => navigator.clipboard.writeText(res.destination).catch(() => {})}
+                                      onClick={() => navigator.clipboard.writeText(res.destination).then(() => showToast('コピーしました')).catch(() => {})}
                                       className="text-slate-300 hover:text-slate-600 flex-shrink-0 text-[11px] px-1"
                                       title="コピー"
                                     >コピー</button>
