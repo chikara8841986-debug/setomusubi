@@ -215,7 +215,7 @@ export default function BusinessReservations() {
         .select('confirmed_count')
         .eq('id', r.slot_id)
         .single()
-      const newCount = Math.max(0, (slot?.confirmed_count ?? 1) - 1)
+      const newCount = Math.max(0, (slot?.confirmed_count ?? 0) - 1)
       await supabase
         .from('availability_slots')
         .update({ confirmed_count: newCount, is_available: true })
@@ -653,5 +653,6 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
 
 

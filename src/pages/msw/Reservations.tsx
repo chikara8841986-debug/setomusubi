@@ -147,7 +147,7 @@ export default function MswReservations() {
         .select('confirmed_count')
         .eq('id', r.slot_id)
         .single()
-      const newCount = Math.max(0, (slot?.confirmed_count ?? 1) - 1)
+      const newCount = Math.max(0, (slot?.confirmed_count ?? 0) - 1)
       await supabase
         .from('availability_slots')
         .update({ confirmed_count: newCount, is_available: true })
@@ -157,10 +157,11 @@ export default function MswReservations() {
     if (r.status === 'confirmed') {
       supabase.functions.invoke('send-cancellation', { body: { reservation_id: r.id } }).catch(() => {})
     }
-    setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: 'cancelled' as const } : x))
     setCancelling(false)
     setSelected(null)
     showToast('予約をキャンセルしました', 'error')
+    // 楽観更新ではなく完全再取得でスロット情報も同期
+    fetchReservations()
   }
 
   if (loading) return <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
@@ -524,5 +525,6 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
 
 

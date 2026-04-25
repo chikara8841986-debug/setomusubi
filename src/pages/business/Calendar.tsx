@@ -1,11 +1,11 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek, isSameDay, parseISO, isBefore, startOfDay, addWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { jstMonthRange, jstMonthLabel, isTodayJST } from '../../lib/jst'
+import { jstMonthRange, jstMonthLabel, isTodayJST, jstTodayStr } from '../../lib/jst'
 import type { AvailabilitySlot, Reservation, Business } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -188,6 +188,7 @@ export default function BusinessCalendar() {
   }, [fetchSlots, fetchMonthStats, businessId])
 
   const openAddModal = (date: Date) => {
+    setShowRecurModal(false) // 週次モーダルと排他
     setSelectedDate(date)
     setAddStart(bizHoursStart)
     setAddEnd(bizHoursEnd)
@@ -249,7 +250,7 @@ export default function BusinessCalendar() {
       .select('confirmed_count')
       .eq('id', slotId)
       .single()
-    const newCount = Math.max(0, (slot?.confirmed_count ?? 1) - 1)
+    const newCount = Math.max(0, (slot?.confirmed_count ?? 0) - 1)
     await supabase
       .from('availability_slots')
       .update({ confirmed_count: newCount, is_available: true })
@@ -269,7 +270,7 @@ export default function BusinessCalendar() {
     setRecurError('')
     setRecurResult(null)
 
-    const today = startOfDay(new Date())
+    const today = parseISO(jstTodayStr()) // JST基準の今日（日付のみ比較）
     // Build list of dates to add (from today for recurWeeks weeks)
     const datesToAdd: string[] = []
     for (let w = 0; w < recurWeeks; w++) {
@@ -331,8 +332,8 @@ export default function BusinessCalendar() {
   const slotsForDay = (date: Date) =>
     slots.filter(s => isSameDay(parseISO(s.date), date))
 
-  const today = new Date()
-  const isPastDay = (date: Date) => isBefore(startOfDay(date), startOfDay(today))
+  const todayJST = parseISO(jstTodayStr()) // JST基準の今日
+  const isPastDay = (date: Date) => isBefore(startOfDay(date), todayJST)
 
   return (
     <div>
@@ -350,6 +351,7 @@ export default function BusinessCalendar() {
             setRecurDays(presetDays)
             setRecurStart(bizHoursStart)
             setRecurEnd(bizHoursEnd)
+            setShowAddModal(false) // 単発モーダルと排他
             setShowRecurModal(true)
             setRecurResult(null)
             setRecurError('')
@@ -438,7 +440,7 @@ export default function BusinessCalendar() {
       ) : slots.length === 0 ? (
         <div className="card text-center py-8 space-y-3">
           <p className="text-gray-400 text-sm">この週の稼働枠がありません</p>
-          {!isBefore(addDays(weekStart, 6), startOfDay(today)) && (
+          {!isBefore(addDays(weekStart, 6), todayJST) && (
             <>
               <p className="text-xs text-gray-400">「週次設定」で平日の枠をまとめて追加できます</p>
               <button
@@ -451,6 +453,7 @@ export default function BusinessCalendar() {
                   setRecurDays(presetDays)
                   setRecurStart(bizHoursStart)
                   setRecurEnd(bizHoursEnd)
+                  setShowAddModal(false) // 単発モーダルと排他
                   setShowRecurModal(true)
                   setRecurResult(null)
                   setRecurError('')
