@@ -443,7 +443,7 @@ export default function MswBusinesses() {
                   {favorites.has(preview.id) ? '⭐' : '☆'}
                 </button>
               </div>
-              <button onClick={() => setPreview(null)} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+              <button onClick={() => setPreview(null)} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center" aria-label="閉じる">×</button>
             </div>
 
             <div className="flex items-start gap-3 mb-3">

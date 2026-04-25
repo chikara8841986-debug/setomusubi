@@ -54,7 +54,12 @@ export default function AdminApprovals() {
   const handleApprove = async (id: string) => {
     setProcessing(id)
     setConfirmState(null)
-    await supabase.from('businesses').update({ approved: true }).eq('id', id)
+    const { error } = await supabase.from('businesses').update({ approved: true }).eq('id', id)
+    if (error) {
+      setProcessing(null)
+      showToast('承認に失敗しました。再試行してください。', 'error')
+      return
+    }
     supabase.functions.invoke('send-business-approved', { body: { business_id: id } }).catch(() => {})
     await fetchAll()
     setProcessing(null)
@@ -65,7 +70,12 @@ export default function AdminApprovals() {
     setProcessing(id)
     setConfirmState(null)
     const { data: biz } = await supabase.from('businesses').select('user_id').eq('id', id).single()
-    await supabase.from('businesses').delete().eq('id', id)
+    const { error } = await supabase.from('businesses').delete().eq('id', id)
+    if (error) {
+      setProcessing(null)
+      showToast('却下処理に失敗しました。再試行してください。', 'error')
+      return
+    }
     if (biz) await supabase.from('profiles').delete().eq('id', biz.user_id)
     await fetchAll()
     setProcessing(null)

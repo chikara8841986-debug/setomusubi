@@ -70,7 +70,7 @@ export default function AdminStats() {
         .eq('reservation_date', jstTodayStr()),
     ])
 
-    if (results.some(r => r.error)) { setLoadError(true); setLoading(false); return }
+    if (results.some(r => r.error)) { setLoadError(true); setLoading(false); setRefreshing(false); return }
 
     const [
       { count: approved }, { count: pending }, { count: hospitals },

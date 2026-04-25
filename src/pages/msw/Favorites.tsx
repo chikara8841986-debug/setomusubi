@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import { jstTodayStr, jstHour, jstDateOffsetStr } from '../../lib/jst'
 import type { Business } from '../../types/database'
 
@@ -32,6 +33,7 @@ function mapsUrl(address: string) {
 
 export default function MswFavorites() {
   const { hospitalId } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [favorites, setFavorites] = useState<FavoriteWithBusiness[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,7 +107,12 @@ export default function MswFavorites() {
   const handleRemove = async (favoriteId: string) => {
     setRemoveConfirmId(null)
     setRemovingId(favoriteId)
-    await supabase.from('favorites').delete().eq('id', favoriteId)
+    const { error } = await supabase.from('favorites').delete().eq('id', favoriteId)
+    if (error) {
+      showToast('削除に失敗しました。再試行してください。', 'error')
+      setRemovingId(null)
+      return
+    }
     setFavorites(prev => prev.filter(f => f.id !== favoriteId))
     if (preview && favorites.find(f => f.id === favoriteId)?.businesses.id === preview.id) {
       setPreview(null)
@@ -302,7 +309,7 @@ export default function MswFavorites() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800">事業所詳細</h3>
-              <button onClick={() => setPreview(null)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+              <button onClick={() => setPreview(null)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
 
             <div className="flex items-start gap-3 mb-3">
