@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
@@ -93,8 +93,8 @@ export default function AdminApprovals() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">事業所承認管理</h1>
-      <p className="text-xs text-gray-400 mb-4">登録申請が届いた事業所を審査・承認します</p>
+      <h1 className="text-xl font-bold text-slate-800 mb-1">事業所承認管理</h1>
+      <p className="text-xs text-slate-400 mb-4">登録申請が届いた事業所を審査・承認します</p>
 
       <div className="flex gap-2 mb-4">
         {(['pending', 'approved'] as const).map(t => (
@@ -102,7 +102,7 @@ export default function AdminApprovals() {
             key={t}
             onClick={() => { setTab(t); setNameSearch(''); setExpanded(null) }}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              tab === t ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+              tab === t ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
             }`}
           >
             {t === 'pending' ? '承認待ち' : '承認済み'}
@@ -132,14 +132,14 @@ export default function AdminApprovals() {
           {nameSearch && (
             <button
               onClick={() => setNameSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-5 h-5 flex items-center justify-center"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center" aria-label="閉じる"
             >×</button>
           )}
         </div>
       )}
 
       {list.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">
+        <div className="card text-center py-8 text-slate-400 text-sm">
           {q ? (
             <>
               <p>「{q}」に一致する事業所がありません</p>
@@ -166,7 +166,7 @@ export default function AdminApprovals() {
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                      <h3 className="font-semibold text-slate-800">{biz.name}</h3>
                       {biz.approved
                         ? <span className="badge-green">承認済み</span>
                         : <span className="badge-red">承認待ち</span>
@@ -179,14 +179,14 @@ export default function AdminApprovals() {
                             ? 'bg-orange-100 text-orange-600'
                             : hoursElapsed >= 3
                             ? 'bg-amber-100 text-amber-600'
-                            : 'bg-gray-100 text-gray-500'
+                            : 'bg-slate-100 text-slate-500'
                         }`}>
                           {elapsedLabel}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">{biz.address ?? '住所未設定'} ／ {biz.phone ?? '電話番号未設定'}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-slate-500">{biz.address ?? '住所未設定'} ／ {biz.phone ?? '電話番号未設定'}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
                       登録: {format(parseISO(biz.created_at), 'yyyy/M/d HH:mm', { locale: ja })}
                     </p>
                   </div>
@@ -257,10 +257,10 @@ export default function AdminApprovals() {
 
                 {/* Expanded details */}
                 {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-xs text-gray-600">
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-2 text-xs text-slate-600">
                     {biz.service_areas?.length > 0 && (
                       <div>
-                        <span className="font-medium text-gray-700">対応エリア: </span>
+                        <span className="font-medium text-slate-700">対応エリア: </span>
                         <span>{biz.service_areas.join('・')}</span>
                       </div>
                     )}
@@ -273,25 +273,25 @@ export default function AdminApprovals() {
                     )}
                     {biz.business_hours_start && (
                       <div>
-                        <span className="font-medium text-gray-700">営業時間: </span>
+                        <span className="font-medium text-slate-700">営業時間: </span>
                         <span>{biz.business_hours_start.slice(0,5)}〜{biz.business_hours_end?.slice(0,5)}</span>
                       </div>
                     )}
                     {biz.cancel_phone && (
                       <div>
-                        <span className="font-medium text-gray-700">キャンセル連絡先: </span>
+                        <span className="font-medium text-slate-700">キャンセル連絡先: </span>
                         <a href={`tel:${biz.cancel_phone}`} className="text-teal-700">{biz.cancel_phone}</a>
                       </div>
                     )}
                     {biz.pricing && (
                       <div>
-                        <span className="font-medium text-gray-700">料金: </span>
+                        <span className="font-medium text-slate-700">料金: </span>
                         <span>{biz.pricing}</span>
                       </div>
                     )}
                     {biz.qualifications && (
                       <div>
-                        <span className="font-medium text-gray-700">資格・特徴: </span>
+                        <span className="font-medium text-slate-700">資格・特徴: </span>
                         <span>{biz.qualifications}</span>
                       </div>
                     )}

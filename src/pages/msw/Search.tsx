@@ -72,6 +72,9 @@ export default function MswSearch() {
   const searchPrefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.searchPrefill
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
+  // hospitalIdを含んだlocalStorageキー（複数病院で同じブラウザを共有しても混在しない）
+  const lsKey = (name: string) => `msw_${hospitalId ?? 'anon'}_last_${name}`
+
   const today = jstTodayStr()
 
   function defaultStartTime() {
@@ -88,12 +91,12 @@ export default function MswSearch() {
   // Step 1
   const [date, setDate] = useState(searchPrefill?.date ?? today)
   const [startTime, setStartTime] = useState(
-    searchPrefill?.startTime ?? localStorage.getItem('msw_last_start_time') ?? defaultStartTime()
+    searchPrefill?.startTime ?? localStorage.getItem(lsKey('start_time')) ?? defaultStartTime()
   )
   const [endTime, setEndTime] = useState(
-    searchPrefill?.endTime ?? localStorage.getItem('msw_last_end_time') ?? addHour(defaultStartTime())
+    searchPrefill?.endTime ?? localStorage.getItem(lsKey('end_time')) ?? addHour(defaultStartTime())
   )
-  const [area, setArea] = useState(() => searchPrefill?.area ?? localStorage.getItem('msw_last_area') ?? '')
+  const [area, setArea] = useState(() => searchPrefill?.area ?? localStorage.getItem(lsKey('area')) ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
   const [needStretcher, setNeedStretcher] = useState(false)
@@ -119,7 +122,7 @@ export default function MswSearch() {
     patientName: prefill?.patientName ?? '',
     patientAddress: prefill?.patientAddress ?? '',
     destination: prefill?.destination ?? '',
-    equipment: prefill?.equipment ?? (localStorage.getItem('msw_last_equipment') as BookingForm['equipment'] | null) ?? 'wheelchair',
+    equipment: prefill?.equipment ?? (localStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair',
     equipmentRental: prefill?.equipmentRental ?? false,
     notes: prefill?.notes ?? '',
   })
@@ -188,9 +191,9 @@ export default function MswSearch() {
     if (startTime >= endTime) { setSearchError('終了時間は開始時間より後にしてください'); return }
     setSearchError('')
     setSearching(true)
-    localStorage.setItem('msw_last_area', area)
-    localStorage.setItem('msw_last_start_time', startTime)
-    localStorage.setItem('msw_last_end_time', endTime)
+    localStorage.setItem(lsKey('area'), area)
+    localStorage.setItem(lsKey('start_time'), startTime)
+    localStorage.setItem(lsKey('end_time'), endTime)
 
     type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
     const { data: rawSlots } = await supabase
@@ -252,7 +255,7 @@ export default function MswSearch() {
 
     setSubmitting(true)
     setSubmitError('')
-    localStorage.setItem('msw_last_equipment', form.equipment)
+    localStorage.setItem(lsKey('equipment'), form.equipment)
 
     const slot = selectedBusiness.matchedSlot
 
@@ -319,38 +322,38 @@ export default function MswSearch() {
       <div className="max-w-md mx-auto">
         <div className="card py-8">
           <div className="text-5xl mb-4 text-center">📋</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">仮予約の申請が完了しました</h2>
-          <p className="text-sm text-gray-500 mb-4 text-center">事業所からの確定連絡をお待ちください</p>
+          <h2 className="text-xl font-bold text-slate-800 mb-2 text-center">仮予約の申請が完了しました</h2>
+          <p className="text-sm text-slate-500 mb-4 text-center">事業所からの確定連絡をお待ちください</p>
 
           {/* Booking summary */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
             <div className="flex gap-3">
-              <span className="text-gray-500 w-16 flex-shrink-0">事業所</span>
-              <span className="font-semibold text-gray-900">{confirmed.businessName}</span>
+              <span className="text-slate-500 w-16 flex-shrink-0">事業所</span>
+              <span className="font-semibold text-slate-800">{confirmed.businessName}</span>
             </div>
             <div className="flex gap-3">
-              <span className="text-gray-500 w-16 flex-shrink-0">日時</span>
-              <span className="font-semibold text-gray-900">
+              <span className="text-slate-500 w-16 flex-shrink-0">日時</span>
+              <span className="font-semibold text-slate-800">
                 {fmtDate(confirmed.date)} {confirmed.startTime.slice(0,5)}〜{confirmed.endTime.slice(0,5)}
               </span>
             </div>
             <div className="flex gap-3">
-              <span className="text-gray-500 w-16 flex-shrink-0">患者</span>
-              <span className="font-semibold text-gray-900">{confirmed.patientName}</span>
+              <span className="text-slate-500 w-16 flex-shrink-0">患者</span>
+              <span className="font-semibold text-slate-800">{confirmed.patientName}</span>
             </div>
             <div className="flex gap-3">
-              <span className="text-gray-500 w-16 flex-shrink-0">機材</span>
-              <span className="font-semibold text-gray-900">
+              <span className="text-slate-500 w-16 flex-shrink-0">機材</span>
+              <span className="font-semibold text-slate-800">
                 {EQUIPMENT_OPTIONS.find(o => o.value === confirmed.equipment)?.label ?? confirmed.equipment}
               </span>
             </div>
             <div className="flex gap-3">
-              <span className="text-gray-500 w-16 flex-shrink-0">担当者</span>
-              <span className="font-semibold text-gray-900">{confirmed.contactName}</span>
+              <span className="text-slate-500 w-16 flex-shrink-0">担当者</span>
+              <span className="font-semibold text-slate-800">{confirmed.contactName}</span>
             </div>
           </div>
 
-          <p className="text-xs text-gray-400 mb-4 text-center">予約の確定・却下は「予約履歴」で確認できます</p>
+          <p className="text-xs text-slate-400 mb-4 text-center">予約の確定・却下は「予約履歴」で確認できます</p>
 
           {/* Favorite toggle for confirmed business */}
           {selectedBusiness && hospitalId && (
@@ -359,7 +362,7 @@ export default function MswSearch() {
               className={`w-full mb-4 flex items-center justify-center gap-2 py-2 px-4 rounded-xl border text-sm font-medium transition-colors ${
                 favorites.has(selectedBusiness.id)
                   ? 'bg-amber-50 border-amber-200 text-amber-700'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
               }`}
             >
               <span>{favorites.has(selectedBusiness.id) ? '⭐' : '☆'}</span>
@@ -388,7 +391,7 @@ export default function MswSearch() {
                 setStep(1)
                 setConfirmed(null)
                 setSelectedBusiness(null)
-                const lastEquip = (localStorage.getItem('msw_last_equipment') as BookingForm['equipment'] | null) ?? 'wheelchair'
+                const lastEquip = (localStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair'
                 setForm(f => ({ contactName: f.contactName, patientName: '', patientAddress: '', destination: '', equipment: lastEquip, equipmentRental: false, notes: '' }))
                 setNewContactName('')
                 setIsNewContact(false)
@@ -414,10 +417,10 @@ export default function MswSearch() {
         ].map(({ n, label }, i) => (
           <div key={n} className="flex items-center gap-2 flex-1">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step >= n ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-500'
+              step >= n ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-500'
             }`}>{n}</div>
-            <span className={`text-xs hidden sm:block ${step === n ? 'text-teal-600 font-medium' : 'text-gray-400'}`}>{label}</span>
-            {i < 2 && <div className={`flex-1 h-0.5 ${step > n ? 'bg-teal-500' : 'bg-gray-200'}`} />}
+            <span className={`text-xs hidden sm:block ${step === n ? 'text-teal-600 font-medium' : 'text-slate-400'}`}>{label}</span>
+            {i < 2 && <div className={`flex-1 h-0.5 ${step > n ? 'bg-teal-500' : 'bg-slate-200'}`} />}
           </div>
         ))}
       </div>
@@ -425,7 +428,7 @@ export default function MswSearch() {
       {/* Step 1: Search */}
       {step === 1 && (
         <div className="card">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">空き事業所を検索</h2>
+          <h2 className="text-base font-semibold text-slate-800 mb-4">空き事業所を検索</h2>
           <div className="space-y-4">
             <div>
               <label className="label">希望日 <span className="text-red-500">*</span></label>
@@ -435,14 +438,14 @@ export default function MswSearch() {
                   type="button"
                   onClick={() => setDate(today)}
                   className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex-shrink-0 ${
-                    date === today ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                    date === today ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                   }`}
                 >今日</button>
                 <button
                   type="button"
                   onClick={() => setDate(jstDateOffsetStr(1))}
                   className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex-shrink-0 ${
-                    date === jstDateOffsetStr(1) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                    date === jstDateOffsetStr(1) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                   }`}
                 >明日</button>
               </div>
@@ -462,7 +465,7 @@ export default function MswSearch() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       startTime === start && endTime === end
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}
                   >{label}</button>
                 ))}
@@ -493,12 +496,12 @@ export default function MswSearch() {
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                       area === a
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}
                   >{a}</button>
                 ))}
               </div>
-              {!area && <p className="text-xs text-gray-400 mt-1">エリアを選択してください</p>}
+              {!area && <p className="text-xs text-slate-400 mt-1">エリアを選択してください</p>}
             </div>
             <div>
               <label className="label">必要条件（任意）</label>
@@ -513,7 +516,7 @@ export default function MswSearch() {
                 ].map(({ label, state, set }) => (
                   <label key={label} className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className="w-4 h-4 rounded" />
-                    <span className="text-sm text-gray-700">{label}</span>
+                    <span className="text-sm text-slate-700">{label}</span>
                   </label>
                 ))}
               </div>
@@ -531,7 +534,7 @@ export default function MswSearch() {
         <div>
           <div className="flex items-center gap-3 mb-4">
             <button onClick={() => setStep(1)} className="text-teal-600 text-sm hover:underline">← 検索に戻る</button>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-slate-500">
               {fmtDate(date)} {startTime}〜{endTime} / {area}
             </span>
           </div>
@@ -539,8 +542,8 @@ export default function MswSearch() {
           {results.length === 0 ? (
             <div className="card py-6 text-center space-y-3">
               <p className="text-2xl">🔍</p>
-              <p className="text-gray-700 text-sm font-medium">空き枠が見つかりませんでした</p>
-              <p className="text-gray-400 text-xs">
+              <p className="text-slate-700 text-sm font-medium">空き枠が見つかりませんでした</p>
+              <p className="text-slate-400 text-xs">
                 {fmtDate(date)} {startTime}〜{endTime} ／ {area}
               </p>
               <div className="flex flex-col gap-2 pt-2">
@@ -554,14 +557,14 @@ export default function MswSearch() {
                   事業所一覧で直接電話する
                 </button>
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-400">
                 空き枠のない事業所でも電話での相談を受け付けている場合があります
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-slate-600">
                   {favOnlyResults
                     ? `⭐ ${results.filter(r => favorites.has(r.id)).length}件（お気に入りのみ）`
                     : `${results.length}件の事業所が見つかりました`
@@ -585,7 +588,7 @@ export default function MswSearch() {
                   <div className="flex items-start gap-3 mb-2">
                     {biz.profile_image_url ? (
                       <img src={biz.profile_image_url} alt={biz.name}
-                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100 mt-0.5" />
+                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-slate-100 mt-0.5" />
                     ) : (
                       <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-lg mt-0.5">
                         🚐
@@ -594,7 +597,7 @@ export default function MswSearch() {
                   <div className="flex-1 min-w-0 flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                        <h3 className="font-semibold text-slate-800">{biz.name}</h3>
                         <button
                           onClick={() => toggleFavorite(biz.id)}
                           className="text-lg flex-shrink-0 leading-none"
@@ -615,7 +618,7 @@ export default function MswSearch() {
                         </a>
                       ) : null}
                       {formatHours(biz.business_hours_start, biz.business_hours_end) && (
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-slate-400 mt-0.5">
                           🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
                         </p>
                       )}
@@ -640,17 +643,17 @@ export default function MswSearch() {
                     {biz.same_day && <span className="badge-gray">当日対応</span>}
                   </div>
                   {biz.pricing && (
-                    <p className="text-xs text-gray-600 border-t pt-2 mt-2">
+                    <p className="text-xs text-slate-600 border-t pt-2 mt-2">
                       <span className="font-medium">料金: </span>{biz.pricing}
                     </p>
                   )}
                   {biz.qualifications && (
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-xs text-slate-600 mt-1">
                       <span className="font-medium">特徴: </span>{biz.qualifications}
                     </p>
                   )}
                   {!biz.pricing && !biz.qualifications && biz.pr_text && (
-                    <p className="text-xs text-gray-500 mt-2 border-t pt-2 line-clamp-2">{biz.pr_text}</p>
+                    <p className="text-xs text-slate-500 mt-2 border-t pt-2 line-clamp-2">{biz.pr_text}</p>
                   )}
                   <div className="flex items-center justify-between mt-2 pt-2 border-t gap-2">
                     <div className="flex items-center gap-2">
@@ -708,8 +711,8 @@ export default function MswSearch() {
 
           <div className="card space-y-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-800">仮予約の申請内容</h2>
-              <p className="text-xs text-gray-500 mt-1">事業所が確認後、承認・却下の通知が来ます</p>
+              <h2 className="text-base font-semibold text-slate-800">仮予約の申請内容</h2>
+              <p className="text-xs text-slate-500 mt-1">事業所が確認後、承認・却下の通知が来ます</p>
             </div>
 
             {/* Contact name */}
@@ -736,7 +739,7 @@ export default function MswSearch() {
                 </div>
               )}
               {contacts.length === 0 && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   <Link to="/msw/contacts" className="text-teal-600 hover:underline">担当者管理</Link>
                   でよく使う担当者を登録しておくと次回から選択できます
                 </p>
@@ -781,7 +784,7 @@ export default function MswSearch() {
                     className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
                       form.equipment === opt.value
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}>
                     {opt.label}
                   </button>
@@ -792,7 +795,7 @@ export default function MswSearch() {
               <input type="checkbox" checked={form.equipmentRental}
                 onChange={e => setForm(f => ({ ...f, equipmentRental: e.target.checked }))}
                 className="w-4 h-4 rounded" />
-              <span className="text-sm text-gray-700">機材の貸出が必要</span>
+              <span className="text-sm text-slate-700">機材の貸出が必要</span>
             </label>
             {form.equipmentRental && selectedBusiness && (() => {
               const rentalKey = form.equipment === 'wheelchair' ? 'rental_wheelchair'
@@ -813,7 +816,7 @@ export default function MswSearch() {
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 placeholder="酸素吸入が必要 / エレベーターなし など" />
               {form.notes.length > 0 && (
-                <p className="text-xs text-gray-400 mt-1 text-right">{form.notes.length} 文字</p>
+                <p className="text-xs text-slate-400 mt-1 text-right">{form.notes.length} 文字</p>
               )}
             </div>
 
@@ -822,7 +825,7 @@ export default function MswSearch() {
             <button onClick={handleSubmitRequest} className="btn-primary w-full text-base py-3" disabled={submitting}>
               {submitting ? '申請中...' : '仮予約を申請する'}
             </button>
-            <p className="text-xs text-gray-500 text-center">事業所が承認すると予約が確定されます</p>
+            <p className="text-xs text-slate-500 text-center">事業所が承認すると予約が確定されます</p>
           </div>
         </div>
       )}
@@ -832,18 +835,18 @@ export default function MswSearch() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">事業所詳細</h3>
-              <button onClick={() => setPreviewBusiness(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+              <h3 className="font-semibold text-slate-800">事業所詳細</h3>
+              <button onClick={() => setPreviewBusiness(null)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl">×</button>
             </div>
 
             <div className="flex items-start gap-3 mb-3">
               {previewBusiness.profile_image_url ? (
-                <img src={previewBusiness.profile_image_url} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
+                <img src={previewBusiness.profile_image_url} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-100" />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
               )}
               <div>
-                <p className="font-bold text-gray-900">{previewBusiness.name}</p>
+                <p className="font-bold text-slate-800">{previewBusiness.name}</p>
                 {previewBusiness.address && (
                   <a
                     href={mapsUrl(previewBusiness.address)}
@@ -879,25 +882,25 @@ export default function MswSearch() {
             </div>
 
             {previewBusiness.pr_text && (
-              <p className="text-sm text-gray-700 whitespace-pre-line mb-3 border-t pt-3">{previewBusiness.pr_text}</p>
+              <p className="text-sm text-slate-700 whitespace-pre-line mb-3 border-t pt-3">{previewBusiness.pr_text}</p>
             )}
 
             {previewBusiness.vehicle_image_urls?.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-3 border-t pt-3">
                 {previewBusiness.vehicle_image_urls.map(url => (
-                  <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-gray-100" />
+                  <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-slate-100" />
                 ))}
               </div>
             )}
 
             {previewBusiness.pricing && (
               <div className="border-t pt-3 text-sm">
-                <span className="text-gray-500 text-xs">料金: </span>{previewBusiness.pricing}
+                <span className="text-slate-500 text-xs">料金: </span>{previewBusiness.pricing}
               </div>
             )}
             {previewBusiness.qualifications && (
               <div className="border-t mt-2 pt-2 text-sm">
-                <span className="text-gray-500 text-xs">資格・特徴: </span>{previewBusiness.qualifications}
+                <span className="text-slate-500 text-xs">資格・特徴: </span>{previewBusiness.qualifications}
               </div>
             )}
 

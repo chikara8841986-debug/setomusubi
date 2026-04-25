@@ -339,7 +339,7 @@ export default function BusinessCalendar() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900">稼働カレンダー</h1>
+        <h1 className="text-xl font-bold text-slate-800">稼働カレンダー</h1>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => {
@@ -362,7 +362,7 @@ export default function BusinessCalendar() {
           </button>
           <button
             onClick={() => setWeekStart(d => addDays(d, -7))}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-sm"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm"
             title="前の週（←キー）"
           >
             ◀
@@ -376,7 +376,7 @@ export default function BusinessCalendar() {
                 className={`px-3 h-8 rounded-lg border text-xs font-medium transition-colors ${
                   isCurrentWeek
                     ? 'border-teal-300 bg-teal-50 text-teal-600 cursor-default'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 今週
@@ -385,7 +385,7 @@ export default function BusinessCalendar() {
           })()}
           <button
             onClick={() => setWeekStart(d => addDays(d, 7))}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-sm"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm"
             title="次の週（→キー）"
           >
             ▶
@@ -398,16 +398,16 @@ export default function BusinessCalendar() {
         {[
           { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600', href: monthStats.confirmed > 0 ? '/business/reservations' : null, activeClass: 'border-teal-200 hover:bg-teal-50' },
           { label: `${jstMonthLabel()}完了`, value: monthStats.completed, color: 'text-green-600', href: null, activeClass: '' },
-          { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-gray-400', href: monthStats.pending > 0 ? '/business/reservations' : null, activeClass: 'border-amber-200 hover:bg-amber-50' },
+          { label: '申請中', value: monthStats.pending, color: monthStats.pending > 0 ? 'text-amber-600' : 'text-slate-400', href: monthStats.pending > 0 ? '/business/reservations' : null, activeClass: 'border-amber-200 hover:bg-amber-50' },
         ].map(s => s.href ? (
           <button key={s.label} onClick={() => navigate(s.href!)}
             className={`bg-white rounded-xl border py-2 px-3 text-center shadow-sm transition-colors ${s.activeClass}`}>
-            <p className="text-xs text-gray-400">{s.label}</p>
+            <p className="text-xs text-slate-400">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           </button>
         ) : (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-100 py-2 px-3 text-center shadow-sm">
-            <p className="text-xs text-gray-400">{s.label}</p>
+          <div key={s.label} className="bg-white rounded-xl border border-slate-100 py-2 px-3 text-center shadow-sm">
+            <p className="text-xs text-slate-400">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           </div>
         ))}
@@ -426,12 +426,12 @@ export default function BusinessCalendar() {
         </div>
       )}
 
-      <p className="text-xs text-gray-400 mb-3 text-center">
+      <p className="text-xs text-slate-400 mb-3 text-center">
         {format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 {format(addDays(weekStart, 6), 'M月d日', { locale: ja })}
       </p>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400 text-sm">読み込み中...</div>
+        <div className="text-center py-12 text-slate-400 text-sm">読み込み中...</div>
       ) : fetchError ? (
         <div className="card text-center py-8">
           <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
@@ -439,10 +439,10 @@ export default function BusinessCalendar() {
         </div>
       ) : slots.length === 0 ? (
         <div className="card text-center py-8 space-y-3">
-          <p className="text-gray-400 text-sm">この週の稼働枠がありません</p>
+          <p className="text-slate-400 text-sm">この週の稼働枠がありません</p>
           {!isBefore(addDays(weekStart, 6), todayJST) && (
             <>
-              <p className="text-xs text-gray-400">「週次設定」で平日の枠をまとめて追加できます</p>
+              <p className="text-xs text-slate-400">「週次設定」で平日の枠をまとめて追加できます</p>
               <button
                 onClick={() => {
                   const defaults = [true, true, true, true, true, false, false]
@@ -481,8 +481,8 @@ export default function BusinessCalendar() {
                 key={date.toISOString()}
                 className={`rounded-xl border p-3 ${
                   todayFlag ? 'border-teal-300 bg-teal-50/50' :
-                  past ? 'border-gray-100 bg-gray-50/50 opacity-60' :
-                  'border-gray-100 bg-white'
+                  past ? 'border-slate-100 bg-slate-50/50 opacity-60' :
+                  'border-slate-100 bg-white'
                 }`}
               >
                 {/* Day header */}
@@ -492,15 +492,15 @@ export default function BusinessCalendar() {
                       todayFlag ? 'bg-teal-600 text-white' :
                       isSun ? 'text-red-500' :
                       isSat ? 'text-blue-500' :
-                      'text-gray-700'
+                      'text-slate-700'
                     }`}>
                       <span className="text-[10px] font-normal">{format(date, 'M/d')}</span>
                       <span>{format(date, 'E', { locale: ja })}</span>
                     </div>
                     {todayFlag && <span className="badge-blue text-[10px]">今日</span>}
-                    {isClosedDay && <span className="text-[10px] bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-medium">定休日</span>}
+                    {isClosedDay && <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full font-medium">定休日</span>}
                     {daySlots.length > 0 && (
-                      <span className="text-xs text-gray-400">{daySlots.length}枠</span>
+                      <span className="text-xs text-slate-400">{daySlots.length}枠</span>
                     )}
                   </div>
                   {!past && (
@@ -508,7 +508,7 @@ export default function BusinessCalendar() {
                       onClick={() => openAddModal(date)}
                       className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
                         isClosedDay
-                          ? 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                          ? 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                           : 'bg-teal-50 text-teal-600 hover:bg-teal-100'
                       }`}
                       title={isClosedDay ? '定休日ですが追加できます' : undefined}
@@ -520,7 +520,7 @@ export default function BusinessCalendar() {
 
                 {/* Slots */}
                 {daySlots.length === 0 ? (
-                  <p className="text-xs text-gray-300 pl-1">稼働枠なし</p>
+                  <p className="text-xs text-slate-300 pl-1">稼働枠なし</p>
                 ) : (
                   <div className="space-y-1.5 pl-1">
                     {daySlots.map(slot => {
@@ -549,7 +549,7 @@ export default function BusinessCalendar() {
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                              <span className="font-medium text-gray-800 whitespace-nowrap">
+                              <span className="font-medium text-slate-800 whitespace-nowrap">
                                 {slot.start_time.slice(0, 5)}〜{slot.end_time.slice(0, 5)}
                               </span>
                               {isFull ? (
@@ -566,7 +566,7 @@ export default function BusinessCalendar() {
                                 </span>
                               )}
                               {capacity > 1 && !isFull && !hasAnyConfirmed && (
-                                <span className="text-xs text-gray-400">{capacity}台対応</span>
+                                <span className="text-xs text-slate-400">{capacity}台対応</span>
                               )}
                             </div>
                             {confirmedCount === 0 && !hasPending && !past && (
@@ -574,7 +574,7 @@ export default function BusinessCalendar() {
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                   <button
                                     onClick={() => setDeleteConfirmId(null)}
-                                    className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded"
+                                    className="text-xs text-slate-400 hover:text-slate-600 px-1.5 py-0.5 rounded"
                                   >戻る</button>
                                   <button
                                     onClick={() => handleDeleteSlot(slot.id)}
@@ -594,14 +594,14 @@ export default function BusinessCalendar() {
 
                           {/* Confirmed reservations list */}
                           {confirmedResList.length > 0 && (
-                            <div className="mt-2 space-y-2 border-t border-gray-200 pt-2">
+                            <div className="mt-2 space-y-2 border-t border-slate-200 pt-2">
                               {confirmedResList.map((res, idx) => (
-                                <div key={res.id} className="text-xs text-gray-600 space-y-0.5">
+                                <div key={res.id} className="text-xs text-slate-600 space-y-0.5">
                                   {capacity > 1 && (
-                                    <p className="text-[10px] text-gray-400 font-medium">── 予約{idx + 1}</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">── 予約{idx + 1}</p>
                                   )}
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-medium text-gray-700">
+                                    <span className="font-medium text-slate-700">
                                       {res.hospitals?.name ?? '—'} ／ {res.contact_name}
                                     </span>
                                     {res.hospitals?.phone && (
@@ -614,7 +614,7 @@ export default function BusinessCalendar() {
                                       </a>
                                     )}
                                   </div>
-                                  <p>患者：{res.patient_name}　<span className="text-gray-400">{EQUIPMENT_LABELS[res.equipment] ?? res.equipment}{res.equipment_rental ? '（貸出あり）' : ''}</span></p>
+                                  <p>患者：{res.patient_name}　<span className="text-slate-400">{EQUIPMENT_LABELS[res.equipment] ?? res.equipment}{res.equipment_rental ? '（貸出あり）' : ''}</span></p>
                                   <div className="flex items-center gap-1">
                                     <a href={mapsUrl(res.patient_address)} target="_blank" rel="noopener noreferrer"
                                       className="flex-1 truncate text-teal-700 hover:underline">
@@ -622,7 +622,7 @@ export default function BusinessCalendar() {
                                     </a>
                                     <button
                                       onClick={() => navigator.clipboard.writeText(res.patient_address).catch(() => {})}
-                                      className="text-gray-300 hover:text-gray-600 flex-shrink-0 text-[11px] px-1"
+                                      className="text-slate-300 hover:text-slate-600 flex-shrink-0 text-[11px] px-1"
                                       title="コピー"
                                     >コピー</button>
                                   </div>
@@ -633,7 +633,7 @@ export default function BusinessCalendar() {
                                     </a>
                                     <button
                                       onClick={() => navigator.clipboard.writeText(res.destination).catch(() => {})}
-                                      className="text-gray-300 hover:text-gray-600 flex-shrink-0 text-[11px] px-1"
+                                      className="text-slate-300 hover:text-slate-600 flex-shrink-0 text-[11px] px-1"
                                       title="コピー"
                                     >コピー</button>
                                   </div>
@@ -643,7 +643,7 @@ export default function BusinessCalendar() {
                                       <div className="flex gap-1.5">
                                         <button
                                           onClick={() => setCompleteConfirm(null)}
-                                          className="flex-1 text-xs bg-white border border-gray-200 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50"
+                                          className="flex-1 text-xs bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-50"
                                         >戻る</button>
                                         <button
                                           onClick={() => handleComplete(res, slot.id)}
@@ -711,15 +711,15 @@ export default function BusinessCalendar() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-xs p-5 pb-8 sm:pb-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="font-semibold text-slate-800">
                 {format(selectedDate, 'M月d日（E）', { locale: ja })} 枠追加
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
+              <button onClick={() => setShowAddModal(false)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
 
             {/* Quick time buttons */}
             <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1.5">クイック選択</p>
+              <p className="text-xs text-slate-500 mb-1.5">クイック選択</p>
               <div className="flex gap-2 flex-wrap">
                 {[
                   { label: '営業時間', start: bizHoursStart, end: bizHoursEnd },
@@ -735,7 +735,7 @@ export default function BusinessCalendar() {
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       addStart === qt.start && addEnd === qt.end
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}
                   >
                     {qt.label}
@@ -766,7 +766,7 @@ export default function BusinessCalendar() {
                     className={`flex-1 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
                       addCapacity === n
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}
                   >
                     {n}台
@@ -792,10 +792,10 @@ export default function BusinessCalendar() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-5 pb-8 sm:pb-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">週次スケジュール設定</h3>
-              <button onClick={() => setShowRecurModal(false)} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
+              <h3 className="font-semibold text-slate-800">週次スケジュール設定</h3>
+              <button onClick={() => setShowRecurModal(false)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
-            <p className="text-xs text-gray-500 mb-4">指定した曜日・時間帯のスロットを複数週まとめて追加します。既存のスロットは重複追加されません。</p>
+            <p className="text-xs text-slate-500 mb-4">指定した曜日・時間帯のスロットを複数週まとめて追加します。既存のスロットは重複追加されません。</p>
 
             {/* Day picker */}
             <div className="mb-4">
@@ -815,7 +815,7 @@ export default function BusinessCalendar() {
                           ? 'bg-teal-600 text-white border-teal-600'
                           : isProfileClosed
                           ? 'bg-red-50 text-red-300 border-red-200 hover:border-red-300'
-                          : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'
+                          : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-200'
                       }`}
                     >
                       {label}
@@ -824,7 +824,7 @@ export default function BusinessCalendar() {
                 })}
               </div>
               {closedDays.length > 0 && (
-                <p className="text-[10px] text-gray-400 mt-1.5">
+                <p className="text-[10px] text-slate-400 mt-1.5">
                   ※ プロフィールの定休日は自動で除外されています（再チェックで追加可）
                 </p>
               )}
@@ -844,7 +844,7 @@ export default function BusinessCalendar() {
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       recurStart === qt.start && recurEnd === qt.end
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}
                   >
                     {qt.label}
@@ -875,7 +875,7 @@ export default function BusinessCalendar() {
                     className={`flex-1 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
                       recurCapacity === n
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}
                   >
                     {n}台
@@ -896,7 +896,7 @@ export default function BusinessCalendar() {
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       recurWeeks === w
                         ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-teal-300'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
                     }`}
                   >
                     {w}週

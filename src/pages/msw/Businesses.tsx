@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -167,7 +167,7 @@ export default function MswBusinesses() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold text-gray-900">事業所一覧</h1>
+        <h1 className="text-xl font-bold text-slate-800">事業所一覧</h1>
         <button
           onClick={() => setAvailCheck(v => !v)}
           className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
@@ -179,7 +179,7 @@ export default function MswBusinesses() {
           {availCheck ? '✓ 空き確認中' : '空き確認'}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mb-4">承認済みの介護タクシー事業所を検索できます。電話でのご相談にもご利用ください。</p>
+      <p className="text-xs text-slate-400 mb-4">承認済みの介護タクシー事業所を検索できます。電話でのご相談にもご利用ください。</p>
 
       {/* 空き確認パネル */}
       {availCheck && (
@@ -196,9 +196,9 @@ export default function MswBusinesses() {
               </div>
               <div className="flex gap-1 mt-1">
                 <button onClick={() => setAvailDate(jstTodayStr())}
-                  className={`flex-1 text-xs py-1 rounded-lg border transition-colors ${availDate === jstTodayStr() ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-500 border-gray-300 hover:border-teal-300'}`}>今日</button>
+                  className={`flex-1 text-xs py-1 rounded-lg border transition-colors ${availDate === jstTodayStr() ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:border-teal-300'}`}>今日</button>
                 <button onClick={() => setAvailDate(jstDateOffsetStr(1))}
-                  className={`flex-1 text-xs py-1 rounded-lg border transition-colors ${availDate === jstDateOffsetStr(1) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-500 border-gray-300 hover:border-teal-300'}`}>明日</button>
+                  className={`flex-1 text-xs py-1 rounded-lg border transition-colors ${availDate === jstDateOffsetStr(1) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:border-teal-300'}`}>明日</button>
               </div>
             </div>
             <div>
@@ -240,7 +240,7 @@ export default function MswBusinesses() {
             {nameSearch && (
               <button
                 onClick={() => setNameSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-5 h-5 flex items-center justify-center"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center" aria-label="閉じる"
               >×</button>
             )}
           </div>
@@ -251,7 +251,7 @@ export default function MswBusinesses() {
             <button
               onClick={() => setAreaFilter('')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors flex-shrink-0 ${
-                areaFilter === '' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                areaFilter === '' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
               }`}
             >すべて</button>
             {SERVICE_AREAS.map(a => (
@@ -259,7 +259,7 @@ export default function MswBusinesses() {
                 key={a}
                 onClick={() => setAreaFilter(a === areaFilter ? '' : a)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors flex-shrink-0 ${
-                  areaFilter === a ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                  areaFilter === a ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                 }`}
               >{a}</button>
             ))}
@@ -275,7 +275,7 @@ export default function MswBusinesses() {
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                   equipFilter.includes(key)
                     ? 'bg-teal-600 text-white border-teal-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                 }`}
               >
                 {label}
@@ -286,10 +286,10 @@ export default function MswBusinesses() {
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-slate-500">
           {areaFilter ? `${areaFilter}: ` : ''}{filtered.length}件
           {businesses.length !== filtered.length && !areaFilter && !equipFilter.length && !nameSearch && !favOnly && (
-            <span className="text-xs text-gray-400 ml-1">/ 全{businesses.length}件</span>
+            <span className="text-xs text-slate-400 ml-1">/ 全{businesses.length}件</span>
           )}
         </p>
         {favorites.size > 0 && (
@@ -298,7 +298,7 @@ export default function MswBusinesses() {
             className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
               favOnly
                 ? 'bg-amber-500 text-white border-amber-500'
-                : 'bg-white text-gray-500 border-gray-300 hover:border-amber-300'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-amber-300'
             }`}
           >
             ⭐ お気に入りのみ
@@ -334,7 +334,7 @@ export default function MswBusinesses() {
               <div className="flex items-start gap-3">
                 {biz.profile_image_url ? (
                   <img src={biz.profile_image_url} alt={biz.name}
-                    className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
+                    className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-slate-100" />
                 ) : (
                   <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-lg">
                     🚐
@@ -344,17 +344,17 @@ export default function MswBusinesses() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="font-semibold text-gray-900">{biz.name}</h3>
+                        <h3 className="font-semibold text-slate-800">{biz.name}</h3>
                         {availCheck && !checkingAvail && (
                           availMap[biz.id]
                             ? <span className="text-[10px] bg-teal-100 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded-full font-medium">空きあり</span>
-                            : <span className="text-[10px] bg-gray-100 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded-full">空きなし</span>
+                            : <span className="text-[10px] bg-slate-100 text-slate-400 border border-slate-200 px-1.5 py-0.5 rounded-full">空きなし</span>
                         )}
                         {biz.closed_days?.includes(todayDow) && (
                           <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">本日定休</span>
                         )}
                         {biz.closed_days?.length > 0 && !biz.closed_days.includes(todayDow) && (
-                          <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">
+                          <span className="text-[10px] text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full">
                             {closedDaysText(biz.closed_days)}
                           </span>
                         )}
@@ -366,7 +366,7 @@ export default function MswBusinesses() {
                         </a>
                       )}
                       {formatHours(biz.business_hours_start, biz.business_hours_end) && (
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-slate-400 mt-0.5">
                           🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
                         </p>
                       )}
@@ -434,7 +434,7 @@ export default function MswBusinesses() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900">事業所詳細</h3>
+                <h3 className="font-semibold text-slate-800">事業所詳細</h3>
                 <button
                   onClick={() => toggleFavorite(preview.id)}
                   className="text-lg leading-none"
@@ -443,18 +443,18 @@ export default function MswBusinesses() {
                   {favorites.has(preview.id) ? '⭐' : '☆'}
                 </button>
               </div>
-              <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+              <button onClick={() => setPreview(null)} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
             </div>
 
             <div className="flex items-start gap-3 mb-3">
               {preview.profile_image_url ? (
                 <img src={preview.profile_image_url} alt={preview.name}
-                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-100" />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
               )}
               <div className="min-w-0">
-                <p className="font-bold text-gray-900">{preview.name}</p>
+                <p className="font-bold text-slate-800">{preview.name}</p>
                 {preview.address && (
                   <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer"
                     className="text-xs text-teal-700 hover:underline block mt-0.5">
@@ -467,7 +467,7 @@ export default function MswBusinesses() {
                   </a>
                 )}
                 {preview.business_hours_start && (
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     🕐 {preview.business_hours_start.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}
                   </p>
                 )}
@@ -479,7 +479,7 @@ export default function MswBusinesses() {
             </div>
 
             {preview.service_areas?.length > 0 && (
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-slate-500 mb-3">
                 対応エリア: {preview.service_areas.join('・')}
               </p>
             )}
@@ -497,26 +497,26 @@ export default function MswBusinesses() {
             </div>
 
             {preview.pr_text && (
-              <p className="text-sm text-gray-700 whitespace-pre-line mb-3 border-t pt-3">{preview.pr_text}</p>
+              <p className="text-sm text-slate-700 whitespace-pre-line mb-3 border-t pt-3">{preview.pr_text}</p>
             )}
 
             {preview.vehicle_image_urls?.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-3 border-t pt-3">
                 {preview.vehicle_image_urls.map(url => (
                   <img key={url} src={url} alt="車両"
-                    className="w-full aspect-video object-cover rounded-lg border border-gray-100" />
+                    className="w-full aspect-video object-cover rounded-lg border border-slate-100" />
                 ))}
               </div>
             )}
 
             {preview.pricing && (
               <div className="border-t pt-3 text-sm">
-                <span className="text-xs text-gray-500">料金: </span>{preview.pricing}
+                <span className="text-xs text-slate-500">料金: </span>{preview.pricing}
               </div>
             )}
             {preview.qualifications && (
               <div className="border-t mt-2 pt-2 text-sm">
-                <span className="text-xs text-gray-500">資格・特徴: </span>{preview.qualifications}
+                <span className="text-xs text-slate-500">資格・特徴: </span>{preview.qualifications}
               </div>
             )}
 
@@ -529,7 +529,7 @@ export default function MswBusinesses() {
                   >
                     この枠で申請する →
                   </button>
-                  <p className="text-[10px] text-gray-400 text-center">{availDate} {availStart}〜{availEnd} の空きあり</p>
+                  <p className="text-[10px] text-slate-400 text-center">{availDate} {availStart}〜{availEnd} の空きあり</p>
                 </>
               ) : (
                 <button

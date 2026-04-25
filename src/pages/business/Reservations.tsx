@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { format, parseISO, isPast } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
@@ -252,7 +252,7 @@ export default function BusinessReservations() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-4">予約管理</h1>
+      <h1 className="text-xl font-bold text-slate-800 mb-4">予約管理</h1>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-4 overflow-x-auto">
@@ -266,7 +266,7 @@ export default function BusinessReservations() {
             key={key}
             onClick={() => { setTab(key); setNameSearch(''); if (key !== 'past') setPastStatusFilter('') }}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-              tab === key ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300'
+              tab === key ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-teal-300'
             }`}
           >
             {label}
@@ -274,7 +274,7 @@ export default function BusinessReservations() {
               <span className={`text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ${
                 tab === key
                   ? 'bg-white text-teal-600'
-                  : alert ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500'
+                  : alert ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500'
               }`}>
                 {count}
               </span>
@@ -298,11 +298,11 @@ export default function BusinessReservations() {
               className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap flex-shrink-0 ${
                 pastStatusFilter === opt.value
                   ? 'bg-teal-600 text-white border-teal-600'
-                  : 'bg-white text-gray-500 border-gray-200 hover:border-teal-300'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-teal-300'
               }`}
             >
               {opt.label}
-              {opt.count > 0 && <span className={`text-[10px] ${pastStatusFilter === opt.value ? 'opacity-80' : 'text-gray-400'}`}>({opt.count})</span>}
+              {opt.count > 0 && <span className={`text-[10px] ${pastStatusFilter === opt.value ? 'opacity-80' : 'text-slate-400'}`}>({opt.count})</span>}
             </button>
           ))}
         </div>
@@ -322,12 +322,12 @@ export default function BusinessReservations() {
             {nameSearch && (
               <button
                 onClick={() => setNameSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-5 h-5 flex items-center justify-center"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center" aria-label="閉じる"
               >×</button>
             )}
           </div>
           {nq && (
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               {list.length}件 / 全{rawList.length}件
             </p>
           )}
@@ -424,11 +424,11 @@ export default function BusinessReservations() {
             }`}>
               <div className="flex items-start justify-between gap-2">
                 <button className="flex-1 text-left min-w-0" onClick={() => openModal(r)}>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-slate-800">
                     {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">{r.hospitals?.name ?? '—'} ／ {r.contact_name}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{r.hospitals?.name ?? '—'} ／ {r.contact_name}</p>
+                  <p className="text-xs text-slate-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                 </button>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   <StatusBadge status={r.status} />
@@ -485,16 +485,16 @@ export default function BusinessReservations() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900">予約詳細</h3>
+                <h3 className="font-semibold text-slate-800">予約詳細</h3>
                 <StatusBadge status={selected.status} />
               </div>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center" aria-label="閉じる">×</button>
             </div>
 
             {selected.status === 'pending' && (() => {
               const h = Math.floor((Date.now() - new Date(selected.created_at).getTime()) / (1000 * 60 * 60))
               const label = h < 1 ? '〜1時間以内' : h < 24 ? `${h}時間経過` : `${Math.floor(h / 24)}日${h % 24}時間経過`
-              const cls = h >= 12 ? 'text-red-600 bg-red-50 border-red-200' : h >= 6 ? 'text-orange-600 bg-orange-50 border-orange-200' : h >= 3 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-gray-500 bg-gray-50 border-gray-200'
+              const cls = h >= 12 ? 'text-red-600 bg-red-50 border-red-200' : h >= 6 ? 'text-orange-600 bg-orange-50 border-orange-200' : h >= 3 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-slate-500 bg-slate-50 border-slate-200'
               return (
                 <div className={`mb-3 rounded-lg px-3 py-2 border text-xs font-medium ${cls}`}>
                   申請から {label} — 早めにご対応ください
@@ -507,7 +507,7 @@ export default function BusinessReservations() {
               <Row label="病院" value={selected.hospitals?.name ?? '—'} />
               {selected.hospitals?.phone && (
                 <div className="flex gap-3">
-                  <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">病院電話</dt>
+                  <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">病院電話</dt>
                   <dd className="font-medium text-sm">
                     <a href={`tel:${selected.hospitals.phone}`} className="text-teal-700 hover:underline">
                       📞 {selected.hospitals.phone}
@@ -518,27 +518,27 @@ export default function BusinessReservations() {
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
-                <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
+                <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
                 <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
                   </a>
                   <button onClick={() => navigator.clipboard.writeText(selected.patient_address).catch(() => {})}
-                    className="ml-2 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    className="ml-2 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>
                 </dd>
               </div>
               <div className="flex gap-3">
-                <dt className="text-gray-500 w-20 flex-shrink-0 text-sm">目的地</dt>
+                <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">目的地</dt>
                 <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
                   </a>
                   <button onClick={() => navigator.clipboard.writeText(selected.destination).catch(() => {})}
-                    className="ml-2 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    className="ml-2 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>
                 </dd>
@@ -648,8 +648,8 @@ function StatusBadge({ status }: { status: string }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-3">
-      <dt className="text-gray-500 w-20 flex-shrink-0">{label}</dt>
-      <dd className="text-gray-900 font-medium break-all">{value}</dd>
+      <dt className="text-slate-500 w-20 flex-shrink-0">{label}</dt>
+      <dd className="text-slate-800 font-medium break-all">{value}</dd>
     </div>
   )
 }

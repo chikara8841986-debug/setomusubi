@@ -80,7 +80,7 @@ export default function ResetPassword() {
                   <div className="flex items-center justify-between mb-1">
                     <label className="label mb-0">新しいパスワード（8文字以上）</label>
                     <button type="button" onClick={() => setShowPassword(v => !v)}
-                      className="text-xs text-gray-400 hover:text-gray-600">
+                      className="text-xs text-slate-400 hover:text-slate-600">
                       {showPassword ? '隠す' : '表示'}
                     </button>
                   </div>

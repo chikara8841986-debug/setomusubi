@@ -178,7 +178,7 @@ export default function AdminStats() {
   if (loadError) return (
     <div className="card text-center py-12">
       <div className="text-4xl mb-3">😵</div>
-      <p className="text-gray-500 text-sm mb-4">データの取得に失敗しました</p>
+      <p className="text-slate-500 text-sm mb-4">データの取得に失敗しました</p>
       <button onClick={load} className="btn-secondary text-sm">再試行する</button>
     </div>
   )

@@ -5,9 +5,34 @@ import { ToastProvider } from './contexts/ToastContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
+const PAGE_TITLES: Record<string, string> = {
+  '/business/calendar':     'カレンダー',
+  '/business/reservations': '予約管理',
+  '/business/introduction': '紹介ページ',
+  '/business/profile':      'プロフィール設定',
+  '/msw/search':            '予約する',
+  '/msw/reservations':      '予約履歴',
+  '/msw/businesses':        '事業所一覧',
+  '/msw/favorites':         'お気に入り',
+  '/msw/contacts':          '担当者管理',
+  '/msw/profile':           '病院情報',
+  '/admin/approvals':       '事業所承認',
+  '/admin/reservations':    '予約一覧',
+  '/admin/stats':           '統計ダッシュボード',
+  '/login':                 'ログイン',
+  '/register/business':     '事業所登録',
+  '/register/msw':          'MSW登録',
+  '/auth/forgot-password':  'パスワードを忘れた方',
+  '/auth/reset-password':   'パスワード再設定',
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation()
-  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    const title = Object.entries(PAGE_TITLES).find(([path]) => pathname.startsWith(path))?.[1]
+    document.title = title ? `${title} | せとむすび` : 'せとむすび'
+  }, [pathname])
   return null
 }
 
@@ -41,8 +66,9 @@ const AdminStats        = lazy(() => import('./pages/admin/Stats'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 const Loader = () => (
-  <div className="min-h-screen flex items-center justify-center text-gray-400 text-sm">
-    読み込み中...
+  <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-400">
+    <span className="spinner" />
+    <span className="text-sm">読み込み中...</span>
   </div>
 )
 

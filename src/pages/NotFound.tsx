@@ -13,7 +13,7 @@ export default function NotFound() {
       <div className="text-center">
         <div className="text-6xl mb-4">🌊</div>
         <h1 className="text-2xl font-bold text-teal-700 mb-2">せとむすび</h1>
-        <p className="text-gray-500 text-sm mb-6">ページが見つかりませんでした</p>
+        <p className="text-slate-500 text-sm mb-6">ページが見つかりませんでした</p>
         <Link to={home} className="btn-primary inline-block">
           トップへ戻る
         </Link>

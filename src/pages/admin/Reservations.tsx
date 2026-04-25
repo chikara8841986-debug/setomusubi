@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
@@ -154,8 +154,8 @@ export default function AdminReservations() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">全予約一覧</h1>
-      <p className="text-xs text-gray-400 mb-4">全事業所・全病院の予約を確認できます</p>
+      <h1 className="text-xl font-bold text-slate-800 mb-1">全予約一覧</h1>
+      <p className="text-xs text-slate-400 mb-4">全事業所・全病院の予約を確認できます</p>
 
       {/* Filters + Export */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -165,13 +165,13 @@ export default function AdminReservations() {
             className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
               monthFilter === ''
                 ? 'bg-teal-600 text-white border-teal-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
             }`}
           >全期間</button>
           {monthFilter === '' && (
             <button
               onClick={() => setMonthFilter(jstMonthStr(0))}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-gray-200 bg-white text-gray-600 hover:border-teal-300 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:border-teal-300 transition-colors"
             >今月</button>
           )}
           {monthFilter !== '' && (<>
@@ -181,7 +181,7 @@ export default function AdminReservations() {
                 const d = new Date(y, m - 2, 1)
                 setMonthFilter(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
               }}
-              className="px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-white text-gray-600 hover:border-teal-300 transition-colors"
+              className="px-2 py-1.5 rounded-lg text-sm border border-slate-200 bg-white text-slate-600 hover:border-teal-300 transition-colors"
               title="前月"
             >‹</button>
             <input
@@ -196,7 +196,7 @@ export default function AdminReservations() {
                 const d = new Date(y, m, 1)
                 setMonthFilter(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
               }}
-              className="px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-white text-gray-600 hover:border-teal-300 transition-colors"
+              className="px-2 py-1.5 rounded-lg text-sm border border-slate-200 bg-white text-slate-600 hover:border-teal-300 transition-colors"
               title="翌月"
             >›</button>
             {monthFilter !== jstMonthStr(0) && (
@@ -224,7 +224,7 @@ export default function AdminReservations() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex-shrink-0 ${
                 statusFilter === opt.value
                   ? 'bg-teal-600 text-white border-teal-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
               }`}
             >
               {opt.label}
@@ -246,7 +246,7 @@ export default function AdminReservations() {
           {nameSearch && (
             <button
               onClick={() => setNameSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-5 h-5 flex items-center justify-center"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center" aria-label="閉じる"
             >×</button>
           )}
         </div>
@@ -260,13 +260,13 @@ export default function AdminReservations() {
           <button onClick={loadReservations} className="btn-secondary text-sm">再試行</button>
         </div>
       ) : reservations.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm">
+        <div className="card text-center py-8 text-slate-400 text-sm">
           {monthFilter
             ? `${Number(monthFilter.split('-')[0])}年${Number(monthFilter.split('-')[1])}月に予約はありません`
             : '予約がまだありません'}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card text-center py-8 text-gray-400 text-sm space-y-2">
+        <div className="card text-center py-8 text-slate-400 text-sm space-y-2">
           <p>該当する予約がありません</p>
           <div className="flex justify-center gap-2 flex-wrap">
             {q && (
@@ -283,7 +283,7 @@ export default function AdminReservations() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-gray-400 mb-2">
+          <p className="text-xs text-slate-400 mb-2">
             {monthFilter === '' ? '全期間: ' : ''}{filtered.length}件{q && reservations.length !== filtered.length ? ` / 全${reservations.length}件` : ''}
           </p>
           <div className="space-y-2">
@@ -295,13 +295,13 @@ export default function AdminReservations() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-slate-800">
                       {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     </p>
-                    <p className="text-xs text-gray-600 mt-0.5 truncate">
+                    <p className="text-xs text-slate-600 mt-0.5 truncate">
                       {r.businesses?.name ?? '—'} ← {r.hospitals?.name ?? '—'} ／ {r.contact_name}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment] ?? r.equipment}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment] ?? r.equipment}</p>
                   </div>
                   <span className={`flex-shrink-0 ${STATUS_BADGE[r.status] ?? 'badge-gray'}`}>
                     {STATUS_LABELS[r.status] ?? r.status}
@@ -319,12 +319,12 @@ export default function AdminReservations() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900">予約詳細</h3>
+                <h3 className="font-semibold text-slate-800">予約詳細</h3>
                 <span className={STATUS_BADGE[selected.status] ?? 'badge-gray'}>
                   {STATUS_LABELS[selected.status] ?? selected.status}
                 </span>
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
             </div>
             {selected.status === 'pending' && (() => {
               const h = Math.floor((Date.now() - new Date(selected.created_at).getTime()) / (1000 * 60 * 60))
@@ -345,27 +345,27 @@ export default function AdminReservations() {
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
-                <dt className="text-gray-500 w-20 flex-shrink-0">乗車地</dt>
+                <dt className="text-slate-500 w-20 flex-shrink-0">乗車地</dt>
                 <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
                   </a>
                   <button onClick={() => navigator.clipboard.writeText(selected.patient_address).catch(() => {})}
-                    className="ml-1 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    className="ml-1 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>
                 </dd>
               </div>
               <div className="flex gap-3">
-                <dt className="text-gray-500 w-20 flex-shrink-0">目的地</dt>
+                <dt className="text-slate-500 w-20 flex-shrink-0">目的地</dt>
                 <dd className="font-medium text-sm flex-1 min-w-0">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
                   </a>
                   <button onClick={() => navigator.clipboard.writeText(selected.destination).catch(() => {})}
-                    className="ml-1 text-[10px] text-gray-400 hover:text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded">
+                    className="ml-1 text-[10px] text-slate-400 hover:text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">
                     コピー
                   </button>
                 </dd>
@@ -375,7 +375,7 @@ export default function AdminReservations() {
               {selected.notes && <Row label="備考" value={selected.notes} />}
             </dl>
             <div className="mt-5 border-t pt-4">
-              <p className="text-xs text-gray-500 font-medium mb-2">ステータスを変更</p>
+              <p className="text-xs text-slate-500 font-medium mb-2">ステータスを変更</p>
               <div className="flex flex-wrap gap-1.5">
                 {(['pending', 'confirmed', 'completed', 'cancelled', 'rejected'] as ReservationStatus[]).map(s => (
                   <button
@@ -384,8 +384,8 @@ export default function AdminReservations() {
                     disabled={updatingStatus || selected.status === s}
                     className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors disabled:opacity-40 ${
                       selected.status === s
-                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-default'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400 hover:text-teal-700'
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-default'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-400 hover:text-teal-700'
                     }`}
                   >
                     {updatingStatus ? '...' : STATUS_LABELS[s]}
@@ -405,8 +405,8 @@ export default function AdminReservations() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-3">
-      <dt className="text-gray-500 w-20 flex-shrink-0">{label}</dt>
-      <dd className="text-gray-900 font-medium break-all">{value}</dd>
+      <dt className="text-slate-500 w-20 flex-shrink-0">{label}</dt>
+      <dd className="text-slate-800 font-medium break-all">{value}</dd>
     </div>
   )
 }

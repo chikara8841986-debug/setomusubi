@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -77,8 +77,8 @@ export default function HospitalProfile() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">病院情報</h1>
-      <p className="text-xs text-gray-400 mb-4">仮予約の申請時に事業所へ通知されます。正確な情報を設定してください。</p>
+      <h1 className="text-xl font-bold text-slate-800 mb-1">病院情報</h1>
+      <p className="text-xs text-slate-400 mb-4">仮予約の申請時に事業所へ通知されます。正確な情報を設定してください。</p>
 
       {isDirty ? (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -119,14 +119,14 @@ export default function HospitalProfile() {
           <div>
             <label className="label">代表電話番号</label>
             <input type="tel" className="input-base" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0877-00-0000" />
-            <p className="text-xs text-gray-400 mt-0.5">事業所の予約管理画面に表示されます</p>
+            <p className="text-xs text-slate-400 mt-0.5">事業所の予約管理画面に表示されます</p>
           </div>
         </div>
 
         <button
           type="submit"
           className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
-            isDirty ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            isDirty ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
           }`}
           disabled={saving || !isDirty}
         >

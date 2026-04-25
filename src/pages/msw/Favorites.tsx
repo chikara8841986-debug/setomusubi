@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -126,21 +126,21 @@ export default function MswFavorites() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold text-gray-900">お気に入り事業所</h1>
+        <h1 className="text-xl font-bold text-slate-800">お気に入り事業所</h1>
         {favorites.length > 0 && (
           <button
             onClick={() => setAvailCheck(v => !v)}
             className={`text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors ${
               availCheck
                 ? 'bg-teal-600 text-white border-teal-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
             }`}
           >
             {availCheck ? '✓ 空き確認中' : '空き確認'}
           </button>
         )}
       </div>
-      <p className="text-xs text-gray-400 mb-3">よく使う事業所を登録しておくと検索結果で目印になります</p>
+      <p className="text-xs text-slate-400 mb-3">よく使う事業所を登録しておくと検索結果で目印になります</p>
 
       {availCheck && (
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-2">
@@ -157,7 +157,7 @@ export default function MswFavorites() {
           </div>
           <div className="flex items-center gap-2">
             <input type="time" className="input-base w-auto text-sm" value={availStart} onChange={e => setAvailStart(e.target.value)} />
-            <span className="text-sm text-gray-500">〜</span>
+            <span className="text-sm text-slate-500">〜</span>
             <input type="time" className="input-base w-auto text-sm" value={availEnd} onChange={e => setAvailEnd(e.target.value)} />
           </div>
           {availTimeError && <p className="text-xs text-red-500 font-medium text-center">{availTimeError}</p>}
@@ -195,7 +195,7 @@ export default function MswFavorites() {
                   <img
                     src={biz.profile_image_url}
                     alt={biz.name}
-                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-gray-100"
+                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-slate-100"
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-xl">
@@ -207,19 +207,19 @@ export default function MswFavorites() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-1 flex-wrap">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-1">
+                        <h3 className="font-semibold text-slate-800 flex items-center gap-1">
                           <span>⭐</span> {biz.name}
                         </h3>
                         {availCheck && (
                           availMap[business_id]
                             ? <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-300 px-1.5 py-0.5 rounded-full">空きあり</span>
-                            : <span className="text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">空きなし</span>
+                            : <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full">空きなし</span>
                         )}
                         {biz.closed_days?.includes(todayDow) && (
                           <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">本日定休</span>
                         )}
                         {biz.closed_days?.length > 0 && !biz.closed_days.includes(todayDow) && (
-                          <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded-full">
+                          <span className="text-[10px] text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full">
                             {closedDaysText(biz.closed_days)}
                           </span>
                         )}
@@ -237,7 +237,7 @@ export default function MswFavorites() {
                     </div>
                     {removeConfirmId === id ? (
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <button onClick={() => setRemoveConfirmId(null)} className="text-xs text-gray-400 hover:text-gray-600">戻る</button>
+                        <button onClick={() => setRemoveConfirmId(null)} className="text-xs text-slate-400 hover:text-slate-600">戻る</button>
                         <button
                           onClick={() => handleRemove(id)}
                           disabled={removingId === id}
@@ -248,7 +248,7 @@ export default function MswFavorites() {
                       <button
                         onClick={() => setRemoveConfirmId(id)}
                         disabled={removingId === id}
-                        className="text-xs text-gray-300 hover:text-red-400 flex-shrink-0 transition-colors pt-0.5"
+                        className="text-xs text-slate-300 hover:text-red-400 flex-shrink-0 transition-colors pt-0.5"
                       >
                         {removingId === id ? '...' : '削除'}
                       </button>
@@ -301,8 +301,8 @@ export default function MswFavorites() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">事業所詳細</h3>
-              <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+              <h3 className="font-semibold text-slate-800">事業所詳細</h3>
+              <button onClick={() => setPreview(null)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl">×</button>
             </div>
 
             <div className="flex items-start gap-3 mb-3">
@@ -310,13 +310,13 @@ export default function MswFavorites() {
                 <img
                   src={preview.profile_image_url}
                   alt={preview.name}
-                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100"
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-100"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
               )}
               <div className="min-w-0">
-                <p className="font-bold text-gray-900">{preview.name}</p>
+                <p className="font-bold text-slate-800">{preview.name}</p>
                 {preview.address && (
                   <a
                     href={mapsUrl(preview.address)}
@@ -358,25 +358,25 @@ export default function MswFavorites() {
             </div>
 
             {preview.pr_text && (
-              <p className="text-sm text-gray-700 whitespace-pre-line mb-3 border-t pt-3">{preview.pr_text}</p>
+              <p className="text-sm text-slate-700 whitespace-pre-line mb-3 border-t pt-3">{preview.pr_text}</p>
             )}
 
             {preview.vehicle_image_urls?.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-3 border-t pt-3">
                 {preview.vehicle_image_urls.map(url => (
-                  <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-gray-100" />
+                  <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-slate-100" />
                 ))}
               </div>
             )}
 
             {preview.pricing && (
               <div className="border-t pt-3 text-sm">
-                <span className="text-xs text-gray-500">料金: </span>{preview.pricing}
+                <span className="text-xs text-slate-500">料金: </span>{preview.pricing}
               </div>
             )}
             {preview.qualifications && (
               <div className="border-t mt-2 pt-2 text-sm">
-                <span className="text-xs text-gray-500">資格・特徴: </span>{preview.qualifications}
+                <span className="text-xs text-slate-500">資格・特徴: </span>{preview.qualifications}
               </div>
             )}
 
@@ -389,7 +389,7 @@ export default function MswFavorites() {
                   >
                     この枠で申請する →
                   </button>
-                  <p className="text-[10px] text-gray-400 text-center">{availDate} {availStart}〜{availEnd} の空きあり</p>
+                  <p className="text-[10px] text-slate-400 text-center">{availDate} {availStart}〜{availEnd} の空きあり</p>
                 </>
               ) : (
                 <button

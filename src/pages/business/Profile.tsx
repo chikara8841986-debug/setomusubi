@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -148,14 +148,14 @@ export default function BusinessProfile() {
   )
 
   const BoolRow = ({ label, field, disabled }: { label: string; field: keyof Business; disabled?: boolean }) => (
-    <label className={`flex items-center justify-between py-2.5 border-b border-gray-100 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-      <span className="text-sm text-gray-700">{label}{disabled && <span className="ml-1 text-[10px] text-gray-400">（基本機材が必要）</span>}</span>
+    <label className={`flex items-center justify-between py-2.5 border-b border-slate-100 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+      <span className="text-sm text-slate-700">{label}{disabled && <span className="ml-1 text-[10px] text-slate-400">（基本機材が必要）</span>}</span>
       <button
         type="button"
         onClick={() => !disabled && toggleBool(field)}
         disabled={disabled}
         className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-          form[field] ? 'bg-teal-500' : 'bg-gray-200'
+          form[field] ? 'bg-teal-500' : 'bg-slate-200'
         }`}
       >
         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${
@@ -172,7 +172,7 @@ export default function BusinessProfile() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-4">プロフィール設定</h1>
+      <h1 className="text-xl font-bold text-slate-800 mb-4">プロフィール設定</h1>
 
       {isDirty && (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -219,7 +219,7 @@ export default function BusinessProfile() {
       <form id="profile-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Basic info */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">基本情報</h2>
+          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">基本情報</h2>
           <div>
             <label className="label">事業所名 <span className="text-red-500">*</span></label>
             <input className="input-base" value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
@@ -236,14 +236,14 @@ export default function BusinessProfile() {
             <div>
               <label className="label">キャンセル連絡先 <span className="text-red-500">*</span></label>
               <input className="input-base" value={form.cancel_phone ?? ''} onChange={e => setForm(f => ({ ...f, cancel_phone: e.target.value }))} placeholder="0877-00-0000" />
-              <p className="text-xs text-gray-400 mt-0.5">MSWの申請画面に表示される直通番号です</p>
+              <p className="text-xs text-slate-400 mt-0.5">MSWの申請画面に表示される直通番号です</p>
             </div>
           </div>
         </div>
 
         {/* Service hours */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">営業時間・定休日</h2>
+          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">営業時間・定休日</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">開始時間</label>
@@ -265,7 +265,7 @@ export default function BusinessProfile() {
                   className={`w-9 h-9 rounded-full text-sm font-medium border transition-colors ${
                     form.closed_days?.includes(i)
                       ? 'bg-red-500 text-white border-red-500'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-gray-400'
                   }`}
                 >
                   {d}
@@ -279,14 +279,14 @@ export default function BusinessProfile() {
         <div className="card space-y-3">
           <div className="flex items-center justify-between border-b pb-2">
             <div>
-              <h2 className="text-sm font-semibold text-gray-700">対応エリア <span className="text-red-500">*</span></h2>
-              <p className="text-xs text-gray-400 mt-0.5">MSWが乗車地エリアで絞り込む際に使用されます</p>
+              <h2 className="text-sm font-semibold text-slate-700">対応エリア <span className="text-red-500">*</span></h2>
+              <p className="text-xs text-slate-400 mt-0.5">MSWが乗車地エリアで絞り込む際に使用されます</p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setForm(f => ({ ...f, service_areas: [...SERVICE_AREAS] }))}
                 className="text-xs text-teal-600 hover:underline">全選択</button>
               <button type="button" onClick={() => setForm(f => ({ ...f, service_areas: [] }))}
-                className="text-xs text-gray-400 hover:underline">全解除</button>
+                className="text-xs text-slate-400 hover:underline">全解除</button>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -296,9 +296,9 @@ export default function BusinessProfile() {
                   type="checkbox"
                   checked={form.service_areas?.includes(area) ?? false}
                   onChange={() => toggleArea(area)}
-                  className="w-4 h-4 rounded border-gray-300 text-teal-600"
+                  className="w-4 h-4 rounded border-slate-200 text-teal-600"
                 />
-                <span className="text-sm text-gray-700">{area}</span>
+                <span className="text-sm text-slate-700">{area}</span>
               </label>
             ))}
           </div>
@@ -306,7 +306,7 @@ export default function BusinessProfile() {
 
         {/* Equipment */}
         <div className="card">
-          <h2 className="text-sm font-semibold text-gray-700 border-b pb-2 mb-1">車両・機材</h2>
+          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2 mb-1">車両・機材</h2>
           <BoolRow label="車椅子対応" field="has_wheelchair" />
           <BoolRow label="リクライニング車椅子対応" field="has_reclining_wheelchair" />
           <BoolRow label="ストレッチャー対応" field="has_stretcher" />
@@ -317,7 +317,7 @@ export default function BusinessProfile() {
 
         {/* Options */}
         <div className="card">
-          <h2 className="text-sm font-semibold text-gray-700 border-b pb-2 mb-1">その他の対応</h2>
+          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2 mb-1">その他の対応</h2>
           <BoolRow label="女性介護者在籍" field="has_female_caregiver" />
           <BoolRow label="長距離・県外対応" field="long_distance" />
           <BoolRow label="当日対応" field="same_day" />
@@ -325,7 +325,7 @@ export default function BusinessProfile() {
 
         {/* Free text */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 border-b pb-2">資格・料金・特徴</h2>
+          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">資格・料金・特徴</h2>
           <div>
             <label className="label">資格・特徴</label>
             <textarea
@@ -336,7 +336,7 @@ export default function BusinessProfile() {
               placeholder="介護士資格保有・酸素吸入対応可 など"
             />
             {(form.qualifications?.length ?? 0) > 0 && (
-              <p className="text-xs text-gray-400 mt-0.5 text-right">{form.qualifications?.length ?? 0}文字</p>
+              <p className="text-xs text-slate-400 mt-0.5 text-right">{form.qualifications?.length ?? 0}文字</p>
             )}
           </div>
           <div>
@@ -349,7 +349,7 @@ export default function BusinessProfile() {
               placeholder="基本料金〇〇円＋距離料金〇〇円/km など"
             />
             {(form.pricing?.length ?? 0) > 0 && (
-              <p className="text-xs text-gray-400 mt-0.5 text-right">{form.pricing?.length ?? 0}文字</p>
+              <p className="text-xs text-slate-400 mt-0.5 text-right">{form.pricing?.length ?? 0}文字</p>
             )}
           </div>
         </div>
@@ -357,7 +357,7 @@ export default function BusinessProfile() {
         <button type="submit" className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
           isDirty
             ? 'bg-teal-600 text-white hover:bg-teal-700'
-            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
         }`} disabled={saving || !isDirty}>
           {saving ? '保存中...' : isDirty ? '変更を保存する' : '保存済み'}
         </button>

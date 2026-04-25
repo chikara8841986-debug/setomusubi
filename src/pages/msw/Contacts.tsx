@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -123,12 +123,12 @@ export default function MswContacts() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">担当者管理</h1>
-      <p className="text-xs text-gray-400 mb-5">予約時に選択できる担当者一覧を管理します</p>
+      <h1 className="text-xl font-bold text-slate-800 mb-1">担当者管理</h1>
+      <p className="text-xs text-slate-400 mb-5">予約時に選択できる担当者一覧を管理します</p>
 
       {/* Add new */}
       <div className="card mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">担当者を追加</h2>
+        <h2 className="text-sm font-semibold text-slate-700 mb-3">担当者を追加</h2>
         <div className="flex gap-2">
           <input
             type="text"
@@ -158,8 +158,8 @@ export default function MswContacts() {
         </div>
       ) : (
         <div className="card">
-          <p className="text-xs text-gray-400 mb-3">{contacts.length}名登録済み</p>
-          <ul className="divide-y divide-gray-100">
+          <p className="text-xs text-slate-400 mb-3">{contacts.length}名登録済み</p>
+          <ul className="divide-y divide-slate-100">
             {contacts.map(contact => (
               <li key={contact.id} className="py-3 flex items-center gap-3">
                 {editingId === contact.id ? (
@@ -192,7 +192,7 @@ export default function MswContacts() {
                       {contact.name.slice(0, 1)}
                     </div>
                     <div className="flex-1 flex items-center gap-2 min-w-0">
-                      <span className="text-sm text-gray-900 font-medium">{contact.name}</span>
+                      <span className="text-sm text-slate-800 font-medium">{contact.name}</span>
                       {(activeResCounts[contact.name] ?? 0) > 0 && (
                         <span className="text-[10px] bg-teal-50 border border-teal-200 text-teal-700 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0"
                           title="進行中の予約で使用中">
@@ -202,7 +202,7 @@ export default function MswContacts() {
                     </div>
                     <button
                       onClick={() => startEdit(contact)}
-                      className="text-xs text-gray-400 hover:text-teal-700 px-2 py-1 transition-colors"
+                      className="text-xs text-slate-400 hover:text-teal-700 px-2 py-1 transition-colors"
                     >
                       編集
                     </button>
@@ -212,7 +212,7 @@ export default function MswContacts() {
                           <p className="text-[10px] text-amber-600">進行中の予約があります</p>
                         )}
                         <div className="flex gap-1">
-                          <button onClick={() => setDeleteConfirmId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-1">戻る</button>
+                          <button onClick={() => setDeleteConfirmId(null)} className="text-xs text-slate-400 hover:text-slate-600 px-1.5 py-1">戻る</button>
                           <button
                             onClick={() => handleDelete(contact.id)}
                             disabled={deletingId === contact.id}
@@ -224,7 +224,7 @@ export default function MswContacts() {
                       <button
                         onClick={() => setDeleteConfirmId(contact.id)}
                         disabled={deletingId === contact.id}
-                        className="text-xs text-gray-400 hover:text-red-500 px-2 py-1 transition-colors"
+                        className="text-xs text-slate-400 hover:text-red-500 px-2 py-1 transition-colors"
                       >
                         {deletingId === contact.id ? '...' : '削除'}
                       </button>

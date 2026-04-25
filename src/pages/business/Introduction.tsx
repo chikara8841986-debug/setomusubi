@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -113,15 +113,31 @@ export default function BusinessIntroduction() {
 
   const handleSave = async () => {
     if (!businessId) return
+
+    // URLバリデーション
+    const trimmedUrl = websiteUrl.trim()
+    if (trimmedUrl) {
+      try { new URL(trimmedUrl) } catch {
+        showToast('ウェブサイトURLの形式が正しくありません（例: https://example.com）', 'error')
+        return
+      }
+    }
+
     setSaving(true)
-    await supabase.from('businesses').update({
-      website_url: websiteUrl.trim() || null,
+    const { error } = await supabase.from('businesses').update({
+      website_url: trimmedUrl || null,
       pr_text: prText.trim() || null,
       profile_image_url: profileImageUrl || null,
       vehicle_image_urls: vehicleImageUrls,
     }).eq('id', businessId)
+
+    if (error) {
+      showToast('保存に失敗しました', 'error')
+      setSaving(false)
+      return
+    }
     setSavedSnapshot(JSON.stringify({
-      website_url: websiteUrl.trim() || '',
+      website_url: trimmedUrl,
       pr_text: prText.trim() || '',
       profile_image_url: profileImageUrl || '',
       vehicle_image_urls: vehicleImageUrls,
@@ -159,8 +175,8 @@ export default function BusinessIntroduction() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-1">事業所紹介ページ</h1>
-      <p className="text-xs text-gray-400 mb-3">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
+      <h1 className="text-xl font-bold text-slate-800 mb-1">事業所紹介ページ</h1>
+      <p className="text-xs text-slate-400 mb-3">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
 
       {isDirty && (
         <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -221,12 +237,12 @@ export default function BusinessIntroduction() {
 
         <div className="flex items-start gap-3 mb-3">
           {profileImageUrl ? (
-            <img src={profileImageUrl} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-100" />
+            <img src={profileImageUrl} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-100" />
           ) : (
             <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
           )}
           <div>
-            <h2 className="font-bold text-gray-900 text-base">{data.name}</h2>
+            <h2 className="font-bold text-slate-800 text-base">{data.name}</h2>
             {data.address && (
               <a
                 href={`https://maps.google.com/maps?q=${encodeURIComponent(data.address)}`}
@@ -238,7 +254,7 @@ export default function BusinessIntroduction() {
               </a>
             )}
             {data.cancel_phone && (
-              <p className="text-xs text-gray-600 mt-0.5">📞 {data.cancel_phone}</p>
+              <p className="text-xs text-slate-600 mt-0.5">📞 {data.cancel_phone}</p>
             )}
             {websiteUrl && (
               <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
@@ -256,34 +272,34 @@ export default function BusinessIntroduction() {
         )}
 
         {prText && (
-          <p className="text-sm text-gray-700 whitespace-pre-line mb-3 border-t pt-3">{prText}</p>
+          <p className="text-sm text-slate-700 whitespace-pre-line mb-3 border-t pt-3">{prText}</p>
         )}
 
         {vehicleImageUrls.length > 0 && (
           <div className="grid grid-cols-3 gap-2 border-t pt-3">
             {vehicleImageUrls.map(url => (
-              <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-gray-100" />
+              <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-slate-100" />
             ))}
           </div>
         )}
 
         {data.pricing && (
           <div className="border-t mt-3 pt-3">
-            <p className="text-xs text-gray-500 font-medium">料金</p>
-            <p className="text-sm text-gray-700">{data.pricing}</p>
+            <p className="text-xs text-slate-500 font-medium">料金</p>
+            <p className="text-sm text-slate-700">{data.pricing}</p>
           </div>
         )}
         {data.qualifications && (
           <div className="border-t mt-2 pt-2">
-            <p className="text-xs text-gray-500 font-medium">資格・特徴</p>
-            <p className="text-sm text-gray-700">{data.qualifications}</p>
+            <p className="text-xs text-slate-500 font-medium">資格・特徴</p>
+            <p className="text-sm text-slate-700">{data.qualifications}</p>
           </div>
         )}
       </div>
 
       {/* Edit form */}
       <div className="card space-y-5">
-        <h2 className="text-sm font-semibold text-gray-700">紹介内容を編集</h2>
+        <h2 className="text-sm font-semibold text-slate-700">紹介内容を編集</h2>
 
         {/* Profile image */}
         <div>
@@ -291,15 +307,15 @@ export default function BusinessIntroduction() {
           <div className="flex items-center gap-3">
             {profileImageUrl ? (
               <div className="relative">
-                <img src={profileImageUrl} alt="プロフィール" className="w-20 h-20 rounded-xl object-cover border border-gray-200" />
+                <img src={profileImageUrl} alt="プロフィール" className="w-20 h-20 rounded-xl object-cover border border-slate-200" />
                 <button
                   onClick={() => setProfileImageUrl('')}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center" aria-label="閉じる"
                 >×</button>
               </div>
             ) : (
               <div className={`w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center text-xs text-center transition-colors ${
-                uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-gray-300 text-gray-400 cursor-pointer hover:border-teal-300'
+                uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-slate-200 text-slate-400 cursor-pointer hover:border-teal-300'
               }`}
                 onClick={() => !uploading && profileInputRef.current?.click()}>
                 {uploading ? '送信中…' : <span>写真を<br />追加</span>}
@@ -310,7 +326,7 @@ export default function BusinessIntroduction() {
                 className="btn-secondary text-sm" disabled={uploading}>
                 {uploading ? 'アップロード中...' : '画像を選択'}
               </button>
-              <p className="text-xs text-gray-400 mt-1">JPG / PNG / WebP</p>
+              <p className="text-xs text-slate-400 mt-1">JPG / PNG / WebP</p>
             </div>
           </div>
           <input ref={profileInputRef} type="file" accept="image/*" className="hidden"
@@ -323,10 +339,10 @@ export default function BusinessIntroduction() {
           <div className="grid grid-cols-3 gap-2 mb-2">
             {vehicleImageUrls.map(url => (
               <div key={url} className="relative">
-                <img src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-gray-200" />
+                <img src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-slate-200" />
                 <button
                   onClick={() => removeVehicleImage(url)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center" aria-label="閉じる"
                 >×</button>
               </div>
             ))}
@@ -335,14 +351,14 @@ export default function BusinessIntroduction() {
                 onClick={() => vehicleInputRef.current?.click()}
                 disabled={uploading}
                 className={`aspect-video rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors ${
-                  uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-gray-300 text-gray-400 hover:border-teal-300'
+                  uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-slate-200 text-slate-400 hover:border-teal-300'
                 }`}
               >
                 {uploading ? '送信中…' : '＋ 追加'}
               </button>
             )}
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-slate-400">
             {vehicleImageUrls.length > 0
               ? `${vehicleImageUrls.length}/6枚${vehicleImageUrls.length >= 6 ? '（上限）' : ''}`
               : '最大6枚'}
@@ -361,7 +377,7 @@ export default function BusinessIntroduction() {
             onChange={e => setPrText(e.target.value)}
             placeholder={`例）\n当社は創業15年の地域密着型の介護タクシーです。\nスタッフ全員が介護福祉士の資格を持ち、安心してご利用いただけます。\n車椅子・ストレッチャー・リクライニング対応の車両を完備しています。`}
           />
-          <p className={`text-xs mt-1 ${prText.length === 0 ? 'text-gray-400' : prText.length < 20 ? 'text-amber-500 font-medium' : 'text-teal-600'}`}>
+          <p className={`text-xs mt-1 ${prText.length === 0 ? 'text-slate-400' : prText.length < 20 ? 'text-amber-500 font-medium' : 'text-teal-600'}`}>
             {prText.length} 文字{prText.length > 0 && prText.length < 20 ? `（あと${20 - prText.length}文字で充実度アップ）` : prText.length >= 20 ? ' ✓' : ''}
           </p>
         </div>
@@ -380,12 +396,12 @@ export default function BusinessIntroduction() {
 
         <button onClick={handleSave} disabled={saving || uploading || !isDirty}
           className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
-            isDirty ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            isDirty ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
           }`}>
           {saving ? '保存中...' : isDirty ? '変更を保存する' : '保存済み'}
         </button>
 
-        <p className="text-xs text-gray-400 text-center">
+        <p className="text-xs text-slate-400 text-center">
           ※ 料金・資格情報は{' '}
           <Link to="/business/profile" className="text-teal-600 hover:underline">プロフィール</Link>
           {' '}ページで編集できます
