@@ -105,20 +105,20 @@ export default function BusinessRegister() {
               <h2 className="text-base font-bold text-slate-800 mb-5">アカウント情報</h2>
               <form onSubmit={handleStep1} className="space-y-4">
                 <div>
-                  <label className="label">メールアドレス</label>
+                  <label className="label">メールアドレス <span className="text-red-500">*</span></label>
                   <input type="email" className="input-base" value={email}
-                    onChange={e => setEmail(e.target.value)} required placeholder="info@taxi.jp" />
+                    onChange={e => setEmail(e.target.value)} required maxLength={255} placeholder="info@taxi.jp" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="label mb-0">パスワード（8文字以上）</label>
+                    <label className="label mb-0">パスワード <span className="text-red-500">*</span>（8文字以上）</label>
                     <button type="button" onClick={() => setShowPassword(v => !v)}
                       className="text-xs text-slate-400 hover:text-slate-600">
                       {showPassword ? '隠す' : '表示'}
                     </button>
                   </div>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={password}
-                    onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+                    onChange={e => setPassword(e.target.value)} required maxLength={128} placeholder="••••••••" />
                   {password.length > 0 && password.length < 8 && (
                     <p className="text-xs text-amber-500 mt-0.5">あと{8 - password.length}文字必要です</p>
                   )}
@@ -129,7 +129,7 @@ export default function BusinessRegister() {
                 <div>
                   <label className="label">パスワード（確認）</label>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={passwordConfirm}
-                    onChange={e => setPasswordConfirm(e.target.value)} required placeholder="••••••••" />
+                    onChange={e => setPasswordConfirm(e.target.value)} required maxLength={128} placeholder="••••••••" />
                   {passwordConfirm.length > 0 && password !== passwordConfirm && (
                     <p className="text-xs text-red-500 mt-0.5">パスワードが一致していません</p>
                   )}
@@ -148,12 +148,12 @@ export default function BusinessRegister() {
                 <div>
                   <label className="label">事業所名 <span className="text-red-500">*</span></label>
                   <input type="text" className="input-base" value={name}
-                    onChange={e => setName(e.target.value)} required placeholder="〇〇介護タクシー" />
+                    onChange={e => setName(e.target.value)} required maxLength={100} placeholder="〇〇介護タクシー" />
                 </div>
                 <div>
                   <label className="label">電話番号</label>
                   <input type="tel" className="input-base" value={phone}
-                    onChange={e => setPhone(e.target.value)} placeholder="0877-00-0000" />
+                    onChange={e => setPhone(e.target.value)} maxLength={20} placeholder="0877-00-0000" />
                 </div>
                 <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2.5">
                   ※ 登録後、管理者の承認が完了するまでサービスをご利用いただけません。

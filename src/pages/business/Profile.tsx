@@ -222,20 +222,20 @@ export default function BusinessProfile() {
           <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">基本情報</h2>
           <div>
             <label className="label">事業所名 <span className="text-red-500">*</span></label>
-            <input className="input-base" value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+            <input className="input-base" value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required maxLength={100} />
           </div>
           <div>
             <label className="label">所在地</label>
-            <input className="input-base" value={form.address ?? ''} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="香川県丸亀市〇〇町1-2-3" />
+            <input className="input-base" value={form.address ?? ''} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} maxLength={300} placeholder="香川県丸亀市〇〇町1-2-3" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">電話番号</label>
-              <input className="input-base" value={form.phone ?? ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="0877-00-0000" />
+              <input className="input-base" value={form.phone ?? ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} maxLength={20} placeholder="0877-00-0000" />
             </div>
             <div>
               <label className="label">キャンセル連絡先 <span className="text-red-500">*</span></label>
-              <input className="input-base" value={form.cancel_phone ?? ''} onChange={e => setForm(f => ({ ...f, cancel_phone: e.target.value }))} placeholder="0877-00-0000" />
+              <input className="input-base" value={form.cancel_phone ?? ''} onChange={e => setForm(f => ({ ...f, cancel_phone: e.target.value }))} maxLength={20} placeholder="0877-00-0000" />
               <p className="text-xs text-slate-400 mt-0.5">MSWの申請画面に表示される直通番号です</p>
             </div>
           </div>
@@ -331,6 +331,7 @@ export default function BusinessProfile() {
             <textarea
               className="input-base resize-none"
               rows={3}
+              maxLength={2000}
               value={form.qualifications ?? ''}
               onChange={e => setForm(f => ({ ...f, qualifications: e.target.value }))}
               placeholder="介護士資格保有・酸素吸入対応可 など"
@@ -344,6 +345,7 @@ export default function BusinessProfile() {
             <textarea
               className="input-base resize-none"
               rows={3}
+              maxLength={2000}
               value={form.pricing ?? ''}
               onChange={e => setForm(f => ({ ...f, pricing: e.target.value }))}
               placeholder="基本料金〇〇円＋距離料金〇〇円/km など"

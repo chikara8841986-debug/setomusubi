@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -85,6 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBusinessId(null)
         setHospitalId(null)
         setBusinessApproved(false)
+        // セッション期限切れ・強制ログアウト時にログイン画面へ
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          if (!session) {
+            window.location.href = '/login'
+          }
+        }
       }
     })
 

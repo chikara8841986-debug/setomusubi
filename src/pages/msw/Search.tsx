@@ -91,12 +91,12 @@ export default function MswSearch() {
   // Step 1
   const [date, setDate] = useState(searchPrefill?.date ?? today)
   const [startTime, setStartTime] = useState(
-    searchPrefill?.startTime ?? localStorage.getItem(lsKey('start_time')) ?? defaultStartTime()
+    searchPrefill?.startTime ?? sessionStorage.getItem(lsKey('start_time')) ?? defaultStartTime()
   )
   const [endTime, setEndTime] = useState(
-    searchPrefill?.endTime ?? localStorage.getItem(lsKey('end_time')) ?? addHour(defaultStartTime())
+    searchPrefill?.endTime ?? sessionStorage.getItem(lsKey('end_time')) ?? addHour(defaultStartTime())
   )
-  const [area, setArea] = useState(() => searchPrefill?.area ?? localStorage.getItem(lsKey('area')) ?? '')
+  const [area, setArea] = useState(() => searchPrefill?.area ?? sessionStorage.getItem(lsKey('area')) ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
   const [needStretcher, setNeedStretcher] = useState(false)
@@ -122,7 +122,7 @@ export default function MswSearch() {
     patientName: prefill?.patientName ?? '',
     patientAddress: prefill?.patientAddress ?? '',
     destination: prefill?.destination ?? '',
-    equipment: prefill?.equipment ?? (localStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair',
+    equipment: prefill?.equipment ?? (sessionStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair',
     equipmentRental: prefill?.equipmentRental ?? false,
     notes: prefill?.notes ?? '',
   })
@@ -191,9 +191,9 @@ export default function MswSearch() {
     if (startTime >= endTime) { setSearchError('終了時間は開始時間より後にしてください'); return }
     setSearchError('')
     setSearching(true)
-    localStorage.setItem(lsKey('area'), area)
-    localStorage.setItem(lsKey('start_time'), startTime)
-    localStorage.setItem(lsKey('end_time'), endTime)
+    sessionStorage.setItem(lsKey('area'), area)
+    sessionStorage.setItem(lsKey('start_time'), startTime)
+    sessionStorage.setItem(lsKey('end_time'), endTime)
 
     type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
     const { data: rawSlots } = await supabase
@@ -255,7 +255,7 @@ export default function MswSearch() {
 
     setSubmitting(true)
     setSubmitError('')
-    localStorage.setItem(lsKey('equipment'), form.equipment)
+    sessionStorage.setItem(lsKey('equipment'), form.equipment)
 
     const slot = selectedBusiness.matchedSlot
 
@@ -391,7 +391,7 @@ export default function MswSearch() {
                 setStep(1)
                 setConfirmed(null)
                 setSelectedBusiness(null)
-                const lastEquip = (localStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair'
+                const lastEquip = (sessionStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair'
                 setForm(f => ({ contactName: f.contactName, patientName: '', patientAddress: '', destination: '', equipment: lastEquip, equipmentRental: false, notes: '' }))
                 setNewContactName('')
                 setIsNewContact(false)
@@ -731,7 +731,7 @@ export default function MswSearch() {
               ) : (
                 <div className="flex gap-2">
                   <input type="text" className="input-base flex-1" value={newContactName}
-                    onChange={e => setNewContactName(e.target.value)} placeholder="担当者名を入力" />
+                    onChange={e => setNewContactName(e.target.value)} maxLength={50} placeholder="担当者名を入力" />
                   {contacts.length > 0 && (
                     <button type="button" onClick={() => setIsNewContact(false)}
                       className="btn-secondary text-sm px-3 whitespace-nowrap">一覧から選択</button>
@@ -749,13 +749,13 @@ export default function MswSearch() {
             <div>
               <label className="label">患者氏名 <span className="text-red-500">*</span></label>
               <input type="text" className="input-base" value={form.patientName}
-                onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} placeholder="山田 太郎" />
+                onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} maxLength={50} placeholder="山田 太郎" />
             </div>
             <div>
               <label className="label">乗車地（患者住所） <span className="text-red-500">*</span></label>
               <input type="text" className="input-base" value={form.patientAddress}
                 onChange={e => setForm(f => ({ ...f, patientAddress: e.target.value }))}
-                placeholder="香川県丸亀市〇〇町1-2-3" />
+                maxLength={300} placeholder="香川県丸亀市〇〇町1-2-3" />
               {form.patientAddress.trim() && (
                 <a href={mapsUrl(form.patientAddress)} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-teal-600 hover:underline mt-0.5 inline-block">
@@ -767,7 +767,7 @@ export default function MswSearch() {
               <label className="label">目的地 <span className="text-red-500">*</span></label>
               <input type="text" className="input-base" value={form.destination}
                 onChange={e => setForm(f => ({ ...f, destination: e.target.value }))}
-                placeholder="〇〇病院・〇〇クリニック など" />
+                maxLength={300} placeholder="〇〇病院・〇〇クリニック など" />
               {form.destination.trim() && (
                 <a href={mapsUrl(form.destination)} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-teal-600 hover:underline mt-0.5 inline-block">
@@ -812,7 +812,7 @@ export default function MswSearch() {
             })()}
             <div>
               <label className="label">備考（任意）</label>
-              <textarea className="input-base resize-none" rows={3} value={form.notes}
+              <textarea className="input-base resize-none" rows={3} maxLength={1000} value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 placeholder="酸素吸入が必要 / エレベーターなし など" />
               {form.notes.length > 0 && (

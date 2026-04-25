@@ -110,15 +110,15 @@ export default function HospitalProfile() {
         <div className="card space-y-3">
           <div>
             <label className="label">病院名 <span className="text-red-500">*</span></label>
-            <input className="input-base" value={name} onChange={e => setName(e.target.value)} required />
+            <input className="input-base" value={name} onChange={e => setName(e.target.value)} required maxLength={100} />
           </div>
           <div>
             <label className="label">病院住所</label>
-            <input className="input-base" value={address} onChange={e => setAddress(e.target.value)} placeholder="香川県丸亀市〇〇町..." />
+            <input className="input-base" value={address} onChange={e => setAddress(e.target.value)} maxLength={300} placeholder="香川県丸亀市〇〇町..." />
           </div>
           <div>
             <label className="label">代表電話番号</label>
-            <input type="tel" className="input-base" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0877-00-0000" />
+            <input type="tel" className="input-base" value={phone} onChange={e => setPhone(e.target.value)} maxLength={20} placeholder="0877-00-0000" />
             <p className="text-xs text-slate-400 mt-0.5">事業所の予約管理画面に表示されます</p>
           </div>
         </div>

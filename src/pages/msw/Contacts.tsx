@@ -136,6 +136,7 @@ export default function MswContacts() {
             placeholder="担当者名（例: 山田 花子）"
             value={newName}
             onChange={e => setNewName(e.target.value)}
+            maxLength={50}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
           />
           <button
@@ -169,6 +170,7 @@ export default function MswContacts() {
                       className="input-base flex-1 py-1.5 text-sm"
                       value={editName}
                       onChange={e => setEditName(e.target.value)}
+                      maxLength={50}
                       onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit() }}
                       autoFocus
                     />

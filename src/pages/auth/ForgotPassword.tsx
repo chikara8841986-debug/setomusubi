@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -8,15 +8,25 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+  const [cooldown, setCooldown] = useState(0)
+
+  // 60秒クールダウンのカウントダウン
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown(c => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (cooldown > 0) return
     setLoading(true)
     setError('')
     const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     })
     setLoading(false)
+    setCooldown(60) // 連打防止: 60秒待機
     if (err) {
       setError('送信に失敗しました: ' + err.message)
     } else {
@@ -59,21 +69,27 @@ export default function ForgotPassword() {
               </p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="label">メールアドレス</label>
+                  <label className="label">メールアドレス <span className="text-red-500">*</span></label>
                   <input
                     type="email"
                     className="input-base"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
+                    maxLength={255}
                     placeholder="example@hospital.jp"
                     autoComplete="email"
                   />
                 </div>
                 {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-                <button type="submit" className="btn-primary w-full" disabled={loading}>
-                  {loading ? '送信中...' : '再設定メールを送る'}
+                <button type="submit" className="btn-primary w-full" disabled={loading || cooldown > 0}>
+                  {loading ? '送信中...' : cooldown > 0 ? `再送信まで ${cooldown}秒` : '再設定メールを送る'}
                 </button>
+                {cooldown > 0 && !loading && (
+                  <p className="text-xs text-slate-400 text-center">
+                    連続送信を防ぐため、しばらくお待ちください
+                  </p>
+                )}
               </form>
             </>
           )}

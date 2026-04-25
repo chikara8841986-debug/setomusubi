@@ -113,20 +113,20 @@ export default function MswRegister() {
               <h2 className="text-base font-bold text-slate-800 mb-5">アカウント情報</h2>
               <form onSubmit={handleStep1} className="space-y-4">
                 <div>
-                  <label className="label">メールアドレス</label>
+                  <label className="label">メールアドレス <span className="text-red-500">*</span></label>
                   <input type="email" className="input-base" value={email}
-                    onChange={e => setEmail(e.target.value)} required placeholder="msw@hospital.jp" />
+                    onChange={e => setEmail(e.target.value)} required maxLength={255} placeholder="msw@hospital.jp" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="label mb-0">パスワード（8文字以上）</label>
+                    <label className="label mb-0">パスワード <span className="text-red-500">*</span>（8文字以上）</label>
                     <button type="button" onClick={() => setShowPassword(v => !v)}
                       className="text-xs text-slate-400 hover:text-slate-600">
                       {showPassword ? '隠す' : '表示'}
                     </button>
                   </div>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={password}
-                    onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+                    onChange={e => setPassword(e.target.value)} required maxLength={128} placeholder="••••••••" />
                   {password.length > 0 && password.length < 8 && (
                     <p className="text-xs text-amber-500 mt-0.5">あと{8 - password.length}文字必要です</p>
                   )}
@@ -137,7 +137,7 @@ export default function MswRegister() {
                 <div>
                   <label className="label">パスワード（確認）</label>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={passwordConfirm}
-                    onChange={e => setPasswordConfirm(e.target.value)} required placeholder="••••••••" />
+                    onChange={e => setPasswordConfirm(e.target.value)} required maxLength={128} placeholder="••••••••" />
                   {passwordConfirm.length > 0 && password !== passwordConfirm && (
                     <p className="text-xs text-red-500 mt-0.5">パスワードが一致していません</p>
                   )}
@@ -156,22 +156,22 @@ export default function MswRegister() {
                 <div>
                   <label className="label">病院名 <span className="text-red-500">*</span></label>
                   <input type="text" className="input-base" value={hospitalName}
-                    onChange={e => setHospitalName(e.target.value)} required placeholder="〇〇病院" />
+                    onChange={e => setHospitalName(e.target.value)} required maxLength={100} placeholder="〇〇病院" />
                 </div>
                 <div>
                   <label className="label">病院住所</label>
                   <input type="text" className="input-base" value={hospitalAddress}
-                    onChange={e => setHospitalAddress(e.target.value)} placeholder="香川県丸亀市〇〇町..." />
+                    onChange={e => setHospitalAddress(e.target.value)} maxLength={300} placeholder="香川県丸亀市〇〇町..." />
                 </div>
                 <div>
                   <label className="label">代表電話番号</label>
                   <input type="tel" className="input-base" value={hospitalPhone}
-                    onChange={e => setHospitalPhone(e.target.value)} placeholder="0877-00-0000" />
+                    onChange={e => setHospitalPhone(e.target.value)} maxLength={20} placeholder="0877-00-0000" />
                 </div>
                 <div>
                   <label className="label">担当者名（任意）</label>
                   <input type="text" className="input-base" value={contactName}
-                    onChange={e => setContactName(e.target.value)} placeholder="山田 花子" />
+                    onChange={e => setContactName(e.target.value)} maxLength={50} placeholder="山田 花子" />
                 </div>
                 {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
                 <div className="flex gap-2">

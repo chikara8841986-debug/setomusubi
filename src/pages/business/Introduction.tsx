@@ -38,6 +38,8 @@ export default function BusinessIntroduction() {
   const [profileImageUrl, setProfileImageUrl] = useState('')
   const [vehicleImageUrls, setVehicleImageUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [uploadingCount, setUploadingCount] = useState(0)
+  const [deleteConfirmUrl, setDeleteConfirmUrl] = useState<string | null>(null)
   const profileInputRef = useRef<HTMLInputElement>(null)
   const vehicleInputRef = useRef<HTMLInputElement>(null)
 
@@ -63,6 +65,19 @@ export default function BusinessIntroduction() {
 
   useEffect(() => { fetchData() }, [businessId])
 
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
+
+  const validateImageFile = (file: File): string | null => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      return 'JPG・PNG・WebP・GIF形式の画像を選択してください'
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      return 'ファイルサイズが大きすぎます（10MB以下の画像を選択してください）'
+    }
+    return null
+  }
+
   const uploadImage = async (file: File, path: string): Promise<string | null> => {
     const { error } = await supabase.storage
       .from('business-images')
@@ -75,35 +90,66 @@ export default function BusinessIntroduction() {
   const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !user) return
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      showToast(validationError, 'error')
+      e.target.value = ''
+      return
+    }
     setUploading(true)
     const url = await uploadImage(file, `${user.id}/profile_${Date.now()}`)
-    if (url) setProfileImageUrl(url)
-    setUploading(false)
-  }
-
-  const handleVehicleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    if (!files.length || !user) return
-    setUploading(true)
-    const urls: string[] = []
-    for (const file of files) {
-      const url = await uploadImage(file, `${user.id}/vehicle_${Date.now()}_${Math.random().toString(36).slice(2)}`)
-      if (url) urls.push(url)
+    if (url) {
+      setProfileImageUrl(url)
+    } else {
+      showToast('写真のアップロードに失敗しました。再度お試しください。', 'error')
     }
-    setVehicleImageUrls(prev => [...prev, ...urls])
     setUploading(false)
     e.target.value = ''
   }
 
+  const handleVehicleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFiles = Array.from(e.target.files ?? [])
+    if (!rawFiles.length || !user) return
+    // ファイル検証
+    const invalidFiles = rawFiles.filter(f => validateImageFile(f) !== null)
+    if (invalidFiles.length > 0) {
+      showToast(`${invalidFiles.length}枚のファイルが無効です（JPG/PNG/WebP/GIF、10MB以下）`, 'error')
+      e.target.value = ''
+      return
+    }
+    const files = rawFiles
+    setUploading(true)
+    setUploadingCount(files.length)
+    const urls: string[] = []
+    let failCount = 0
+    for (const file of files) {
+      const url = await uploadImage(file, `${user.id}/vehicle_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      if (url) urls.push(url)
+      else failCount++
+    }
+    setVehicleImageUrls(prev => [...prev, ...urls])
+    setUploading(false)
+    setUploadingCount(0)
+    e.target.value = ''
+    if (failCount > 0) {
+      showToast(`${failCount}枚のアップロードに失敗しました。再度お試しください。`, 'error')
+    }
+  }
+
   const removeVehicleImage = async (url: string) => {
     if (!businessId) return
+    setDeleteConfirmUrl(null)
     // Remove from storage
     const path = url.split('/business-images/')[1]
     if (path) await supabase.storage.from('business-images').remove([path])
     // Update state and immediately save to DB (prevents broken URL in DB after storage deletion)
     const newUrls = vehicleImageUrls.filter(u => u !== url)
     setVehicleImageUrls(newUrls)
-    await supabase.from('businesses').update({ vehicle_image_urls: newUrls }).eq('id', businessId)
+    const { error } = await supabase.from('businesses').update({ vehicle_image_urls: newUrls }).eq('id', businessId)
+    if (error) {
+      showToast('削除に失敗しました', 'error')
+      return
+    }
     setSavedSnapshot(prev => {
       const snap = JSON.parse(prev || '{}')
       return JSON.stringify({ ...snap, vehicle_image_urls: newUrls })
@@ -114,10 +160,16 @@ export default function BusinessIntroduction() {
   const handleSave = async () => {
     if (!businessId) return
 
-    // URLバリデーション
+    // URLバリデーション（httpsのみ許可）
     const trimmedUrl = websiteUrl.trim()
     if (trimmedUrl) {
-      try { new URL(trimmedUrl) } catch {
+      try {
+        const parsed = new URL(trimmedUrl)
+        if (parsed.protocol !== 'https:') {
+          showToast('URLはhttps://で始まるものを入力してください', 'error')
+          return
+        }
+      } catch {
         showToast('ウェブサイトURLの形式が正しくありません（例: https://example.com）', 'error')
         return
       }
@@ -340,21 +392,43 @@ export default function BusinessIntroduction() {
             {vehicleImageUrls.map(url => (
               <div key={url} className="relative">
                 <img src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-slate-200" />
-                <button
-                  onClick={() => removeVehicleImage(url)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center" aria-label="閉じる"
-                >×</button>
+                {deleteConfirmUrl === url ? (
+                  <div className="absolute inset-0 bg-black/60 rounded-lg flex flex-col items-center justify-center gap-1.5 p-1">
+                    <p className="text-white text-[10px] font-medium text-center">削除しますか？</p>
+                    <div className="flex gap-1">
+                      <button onClick={() => setDeleteConfirmUrl(null)}
+                        className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-md hover:bg-white/30">
+                        戻る
+                      </button>
+                      <button onClick={() => removeVehicleImage(url)}
+                        className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-md hover:bg-red-600 font-medium">
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setDeleteConfirmUrl(url)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                    aria-label="車両写真を削除"
+                  >×</button>
+                )}
               </div>
             ))}
             {vehicleImageUrls.length < 6 && (
               <button
                 onClick={() => vehicleInputRef.current?.click()}
                 disabled={uploading}
-                className={`aspect-video rounded-lg border-2 border-dashed flex items-center justify-center text-xs transition-colors ${
+                className={`aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 text-xs transition-colors ${
                   uploading ? 'border-teal-300 bg-teal-50 text-teal-500 cursor-wait' : 'border-slate-200 text-slate-400 hover:border-teal-300'
                 }`}
               >
-                {uploading ? '送信中…' : '＋ 追加'}
+                {uploading ? (
+                  <>
+                    <span className="spinner" style={{ width: '16px', height: '16px' }} />
+                    <span>{uploadingCount > 1 ? `${uploadingCount}枚 送信中` : '送信中…'}</span>
+                  </>
+                ) : '＋ 追加'}
               </button>
             )}
           </div>
@@ -373,6 +447,7 @@ export default function BusinessIntroduction() {
           <textarea
             className="input-base resize-none"
             rows={5}
+            maxLength={3000}
             value={prText}
             onChange={e => setPrText(e.target.value)}
             placeholder={`例）\n当社は創業15年の地域密着型の介護タクシーです。\nスタッフ全員が介護福祉士の資格を持ち、安心してご利用いただけます。\n車椅子・ストレッチャー・リクライニング対応の車両を完備しています。`}
@@ -390,6 +465,7 @@ export default function BusinessIntroduction() {
             className="input-base"
             value={websiteUrl}
             onChange={e => setWebsiteUrl(e.target.value)}
+            maxLength={500}
             placeholder="https://example.com"
           />
         </div>
