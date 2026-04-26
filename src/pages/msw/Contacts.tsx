@@ -79,7 +79,7 @@ export default function MswContacts() {
       .from('msw_contacts')
       .insert({ hospital_id: hospitalId, name })
     if (error) {
-      setAddError('追加に失敗しました: ' + error.message)
+      setAddError('追加に失敗しました。再試行してください。')
     } else {
       setNewName('')
       showToast('担当者を追加しました')

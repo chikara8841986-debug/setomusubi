@@ -200,13 +200,19 @@ export default function MswSearch() {
     sessionStorage.setItem(lsKey('end_time'), endTime)
 
     type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
-    const { data: rawSlots } = await supabase
+    const { data: rawSlots, error: queryError } = await supabase
       .from('availability_slots')
       .select('*, businesses(*)')
       .eq('date', date)
       .eq('is_available', true)
       .lte('start_time', startTime)
       .gte('end_time', endTime)
+
+    if (queryError) {
+      setSearchError('検索に失敗しました。しばらくしてから再試行してください。')
+      setSearching(false)
+      return
+    }
 
     const slots = rawSlots as unknown as SlotWithBusiness[] | null
 
@@ -286,7 +292,7 @@ export default function MswSearch() {
       .single()
 
     if (resError) {
-      setSubmitError('申請に失敗しました: ' + resError.message)
+      setSubmitError('申請に失敗しました。しばらくしてから再試行してください。')
       setSubmitting(false)
       return
     }

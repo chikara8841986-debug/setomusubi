@@ -259,7 +259,7 @@ export default function BusinessCalendar() {
 
     setAddSaving(false)
     if (error) {
-      setAddError('追加に失敗しました: ' + error.message)
+      setAddError('追加に失敗しました。再試行してください。')
     } else {
       setShowAddModal(false)
       showToast('空き枠を追加しました')
@@ -366,7 +366,7 @@ export default function BusinessCalendar() {
       }))
       const { error } = await supabase.from('availability_slots').insert(rows)
       if (error) {
-        setRecurError('追加に失敗しました: ' + error.message)
+        setRecurError('追加に失敗しました。再試行してください。')
         setRecurSaving(false)
         return
       }
