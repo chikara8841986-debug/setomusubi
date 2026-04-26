@@ -275,7 +275,8 @@ export default function BusinessReservations() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-4">予約管理</h1>
+      <h1 className="text-xl font-bold text-slate-800 mb-1">予約管理</h1>
+      <p className="text-xs text-slate-400 mb-4">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定し、MSWへ通知メールが送られます。</p>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-4 overflow-x-auto">

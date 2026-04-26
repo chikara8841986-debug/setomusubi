@@ -187,7 +187,7 @@ export default function MswBusinesses() {
           {availCheck ? '✓ 空き確認中' : '空き確認'}
         </button>
       </div>
-      <p className="text-xs text-slate-400 mb-4">承認済みの介護タクシー事業所を検索できます。電話でのご相談にもご利用ください。</p>
+      <p className="text-xs text-slate-400 mb-4">エリアや対応機材で絞り込めます。☆ でお気に入り登録、「空き確認」で希望日時に空きのある事業所をまとめて確認できます。</p>
 
       {/* 空き確認パネル */}
       {availCheck && (

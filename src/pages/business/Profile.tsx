@@ -243,7 +243,10 @@ export default function BusinessProfile() {
 
         {/* Service hours */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">営業時間・定休日</h2>
+          <div className="border-b pb-2">
+            <h2 className="text-sm font-semibold text-slate-700">営業時間・定休日</h2>
+            <p className="text-xs text-slate-400 mt-0.5">カレンダーで「＋ 追加」ボタンを押したとき、この時間帯で空き枠が自動作成されます</p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">開始時間</label>
@@ -256,6 +259,7 @@ export default function BusinessProfile() {
           </div>
           <div>
             <label className="label">定休日</label>
+            <p className="text-xs text-slate-400 mb-2">設定した曜日はカレンダー上でグレー表示になります</p>
             <div className="flex gap-2 flex-wrap">
               {DAYS.map((d, i) => (
                 <button
@@ -306,7 +310,10 @@ export default function BusinessProfile() {
 
         {/* Equipment */}
         <div className="card">
-          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2 mb-1">車両・機材</h2>
+          <div className="border-b pb-2 mb-1">
+            <h2 className="text-sm font-semibold text-slate-700">車両・機材</h2>
+            <p className="text-xs text-slate-400 mt-0.5">MSWが「車椅子対応」などの条件で絞り込む際に使われます</p>
+          </div>
           <BoolRow label="車椅子対応" field="has_wheelchair" />
           <BoolRow label="リクライニング車椅子対応" field="has_reclining_wheelchair" />
           <BoolRow label="ストレッチャー対応" field="has_stretcher" />
@@ -325,7 +332,10 @@ export default function BusinessProfile() {
 
         {/* Free text */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">資格・料金・特徴</h2>
+          <div className="border-b pb-2">
+            <h2 className="text-sm font-semibold text-slate-700">資格・料金・特徴</h2>
+            <p className="text-xs text-slate-400 mt-0.5">事業所一覧・紹介ページに表示されます。充実させると選ばれやすくなります</p>
+          </div>
           <div>
             <label className="label">資格・特徴</label>
             <textarea

@@ -388,7 +388,10 @@ export default function BusinessCalendar() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-slate-800">稼働カレンダー</h1>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">稼働カレンダー</h1>
+          <p className="text-xs text-slate-400 mt-0.5">空き枠を追加するとMSWの検索に表示されます</p>
+        </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => {

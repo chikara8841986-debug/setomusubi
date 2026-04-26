@@ -78,7 +78,7 @@ export default function HospitalProfile() {
   return (
     <div>
       <h1 className="text-xl font-bold text-slate-800 mb-1">病院情報</h1>
-      <p className="text-xs text-slate-400 mb-4">仮予約の申請時に事業所へ通知されます。正確な情報を設定してください。</p>
+      <p className="text-xs text-slate-400 mb-4">仮予約を申請すると、ここで入力した情報が事業所へ通知されます。正確に入力してください。</p>
 
       {isDirty ? (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -111,15 +111,17 @@ export default function HospitalProfile() {
           <div>
             <label className="label">病院名 <span className="text-red-500">*</span></label>
             <input className="input-base" value={name} onChange={e => setName(e.target.value)} required maxLength={100} />
+            <p className="text-xs text-slate-400 mt-0.5">事業所の予約管理画面に「〇〇病院からの申請」と表示されます</p>
           </div>
           <div>
             <label className="label">病院住所</label>
             <input className="input-base" value={address} onChange={e => setAddress(e.target.value)} maxLength={300} placeholder="香川県丸亀市〇〇町..." />
+            <p className="text-xs text-slate-400 mt-0.5">事業所がルート確認や距離計算に使用します</p>
           </div>
           <div>
             <label className="label">代表電話番号</label>
             <input type="tel" className="input-base" value={phone} onChange={e => setPhone(e.target.value)} maxLength={20} placeholder="0877-00-0000" />
-            <p className="text-xs text-slate-400 mt-0.5">事業所の予約管理画面に表示されます</p>
+            <p className="text-xs text-slate-400 mt-0.5">事業所が予約確認のご連絡に使用することがあります</p>
           </div>
         </div>
 

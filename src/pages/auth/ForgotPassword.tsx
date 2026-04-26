@@ -28,7 +28,7 @@ export default function ForgotPassword() {
     setLoading(false)
     setCooldown(60) // 連打防止: 60秒待機
     if (err) {
-      setError('送信に失敗しました: ' + err.message)
+      setError('送信に失敗しました。入力したメールアドレスをご確認のうえ、再試行してください。')
     } else {
       setSent(true)
     }

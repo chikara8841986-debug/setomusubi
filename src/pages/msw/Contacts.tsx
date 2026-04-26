@@ -134,7 +134,7 @@ export default function MswContacts() {
   return (
     <div>
       <h1 className="text-xl font-bold text-slate-800 mb-1">担当者管理</h1>
-      <p className="text-xs text-slate-400 mb-5">予約時に選択できる担当者一覧を管理します</p>
+      <p className="text-xs text-slate-400 mb-5">仮予約申請時に「担当者」として選択できる名前を登録します。申請内容に担当者名が記載され、事業所への連絡の際に使われます。</p>
 
       {/* Add new */}
       <div className="card mb-4">

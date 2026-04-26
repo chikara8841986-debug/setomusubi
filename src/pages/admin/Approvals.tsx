@@ -104,7 +104,7 @@ export default function AdminApprovals() {
   return (
     <div>
       <h1 className="text-xl font-bold text-slate-800 mb-1">事業所承認管理</h1>
-      <p className="text-xs text-slate-400 mb-4">登録申請が届いた事業所を審査・承認します</p>
+      <p className="text-xs text-slate-400 mb-4">登録申請が届いた事業所を審査・承認します。承認するとMSWの検索結果に表示されるようになります。</p>
 
       <div className="flex gap-2 mb-4">
         {(['pending', 'approved'] as const).map(t => (

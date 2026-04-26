@@ -112,7 +112,8 @@ export default function MswRegister() {
         <div className="bg-white rounded-2xl shadow-auth p-7">
           {step === 1 ? (
             <>
-              <h2 className="text-base font-bold text-slate-800 mb-5">アカウント情報</h2>
+              <h2 className="text-base font-bold text-slate-800 mb-1">アカウント情報</h2>
+              <p className="text-xs text-slate-400 mb-5">ログインに使うメールアドレスとパスワードを設定します（ステップ 1/2）</p>
               <form onSubmit={handleStep1} className="space-y-4">
                 <div>
                   <label className="label">メールアドレス <span className="text-red-500">*</span></label>
@@ -153,7 +154,8 @@ export default function MswRegister() {
             </>
           ) : (
             <>
-              <h2 className="text-base font-bold text-slate-800 mb-5">病院情報</h2>
+              <h2 className="text-base font-bold text-slate-800 mb-1">病院情報</h2>
+              <p className="text-xs text-slate-400 mb-5">予約申請時に事業所へ通知される病院情報を入力します（ステップ 2/2）</p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="label">病院名 <span className="text-red-500">*</span></label>

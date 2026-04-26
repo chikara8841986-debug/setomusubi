@@ -228,7 +228,7 @@ export default function BusinessIntroduction() {
   return (
     <div>
       <h1 className="text-xl font-bold text-slate-800 mb-1">事業所紹介ページ</h1>
-      <p className="text-xs text-slate-400 mb-3">MSWが事業所を選ぶ際に参照する紹介ページを設定します</p>
+      <p className="text-xs text-slate-400 mb-3">MSWが事業所を選ぶ際に参照する紹介ページを設定します。写真やPR文・料金を充実させると選ばれやすくなります。「プレビュー」でMSWに見える表示を確認できます。</p>
 
       {isDirty && (
         <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">

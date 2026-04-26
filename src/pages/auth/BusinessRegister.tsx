@@ -104,7 +104,8 @@ export default function BusinessRegister() {
         <div className="bg-white rounded-2xl shadow-auth p-7">
           {step === 1 ? (
             <>
-              <h2 className="text-base font-bold text-slate-800 mb-5">アカウント情報</h2>
+              <h2 className="text-base font-bold text-slate-800 mb-1">アカウント情報</h2>
+              <p className="text-xs text-slate-400 mb-5">ログインに使うメールアドレスとパスワードを設定します（ステップ 1/2）</p>
               <form onSubmit={handleStep1} className="space-y-4">
                 <div>
                   <label className="label">メールアドレス <span className="text-red-500">*</span></label>
@@ -145,7 +146,8 @@ export default function BusinessRegister() {
             </>
           ) : (
             <>
-              <h2 className="text-base font-bold text-slate-800 mb-5">事業所情報</h2>
+              <h2 className="text-base font-bold text-slate-800 mb-1">事業所情報</h2>
+              <p className="text-xs text-slate-400 mb-5">登録後、管理者承認を経てサービスが利用可能になります（ステップ 2/2）</p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="label">事業所名 <span className="text-red-500">*</span></label>

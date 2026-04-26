@@ -37,7 +37,7 @@ export default function ResetPassword() {
     const { error: err } = await supabase.auth.updateUser({ password })
     setLoading(false)
     if (err) {
-      setError('更新に失敗しました: ' + err.message)
+      setError('パスワードの更新に失敗しました。リンクの有効期限が切れている可能性があります。パスワード再設定メールを再度お送りください。')
     } else {
       setDone(true)
       setTimeout(() => navigate('/login', { state: { message: 'パスワードを変更しました。新しいパスワードでログインしてください。' } }), 2500)

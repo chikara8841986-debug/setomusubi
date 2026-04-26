@@ -152,7 +152,7 @@ export default function MswFavorites() {
           </button>
         )}
       </div>
-      <p className="text-xs text-slate-400 mb-3">よく使う事業所を登録しておくと検索結果で目印になります</p>
+      <p className="text-xs text-slate-400 mb-3">よく使う事業所を登録しておくと検索結果で目印になります。「空き確認」ボタンで日時を指定して空き枠をまとめて確認できます。</p>
 
       {availCheck && (
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-2">

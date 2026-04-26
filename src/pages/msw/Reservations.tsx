@@ -179,7 +179,8 @@ export default function MswReservations() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-4">予約履歴</h1>
+      <h1 className="text-xl font-bold text-slate-800 mb-1">予約履歴</h1>
+      <p className="text-xs text-slate-400 mb-4">「進行中」は申請中・確定済みの予約、「過去の予約」は完了・キャンセル・却下された予約を確認できます。</p>
 
       <div className="flex gap-2 mb-4">
         <button onClick={() => switchTab('active')}
