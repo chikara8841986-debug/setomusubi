@@ -25,10 +25,12 @@ export default function ProtectedRoute({ children, allowedRoles }: Props) {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (allowedRoles && (role === null || !allowedRoles.includes(role))) {
     if (role === 'business') return <Navigate to="/business/calendar" replace />
     if (role === 'msw') return <Navigate to="/msw/search" replace />
     if (role === 'admin') return <Navigate to="/admin/approvals" replace />
+    // role が null（プロフィール未取得）の場合もログインへ
+    return <Navigate to="/login" replace />
   }
 
   // Business pending approval
