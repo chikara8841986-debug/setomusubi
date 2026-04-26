@@ -47,12 +47,12 @@ export default function MswRegister() {
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
       if (signUpError) throw signUpError
-      if (!data.user) throw new Error('ユーザー作成に失敗しました')
+      if (!data.user) throw new Error('user_not_created')
 
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({ id: data.user.id, role: 'msw' })
-      if (profileError) throw profileError
+      if (profileError) throw new Error('partial_failure')
 
       const { data: hospital, error: hospError } = await supabase
         .from('hospitals')
@@ -64,7 +64,7 @@ export default function MswRegister() {
         })
         .select()
         .single()
-      if (hospError) throw hospError
+      if (hospError) throw new Error('partial_failure')
 
       if (contactName.trim() && hospital) {
         await supabase
@@ -74,11 +74,13 @@ export default function MswRegister() {
 
       navigate('/msw/search')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '登録に失敗しました'
-      if (msg.includes('already registered')) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('already registered') || msg.includes('already been registered')) {
         setError('このメールアドレスは既に登録されています')
+      } else if (msg === 'partial_failure') {
+        setError('登録処理中にエラーが発生しました。しばらくしてから再度お試しいただくか、管理者までご連絡ください。')
       } else {
-        setError(msg)
+        setError('登録に失敗しました。入力内容を確認のうえ、再試行してください。')
       }
     } finally {
       setLoading(false)
@@ -115,7 +117,7 @@ export default function MswRegister() {
                 <div>
                   <label className="label">メールアドレス <span className="text-red-500">*</span></label>
                   <input type="email" className="input-base" value={email}
-                    onChange={e => setEmail(e.target.value)} required maxLength={255} placeholder="msw@hospital.jp" />
+                    onChange={e => setEmail(e.target.value)} required maxLength={255} placeholder="msw@hospital.jp" autoComplete="email" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -126,7 +128,7 @@ export default function MswRegister() {
                     </button>
                   </div>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={password}
-                    onChange={e => setPassword(e.target.value)} required maxLength={128} placeholder="••••••••" />
+                    onChange={e => setPassword(e.target.value)} required maxLength={128} placeholder="••••••••" autoComplete="new-password" />
                   {password.length > 0 && password.length < 8 && (
                     <p className="text-xs text-amber-500 mt-0.5">あと{8 - password.length}文字必要です</p>
                   )}
@@ -137,7 +139,7 @@ export default function MswRegister() {
                 <div>
                   <label className="label">パスワード（確認）</label>
                   <input type={showPassword ? 'text' : 'password'} className="input-base" value={passwordConfirm}
-                    onChange={e => setPasswordConfirm(e.target.value)} required maxLength={128} placeholder="••••••••" />
+                    onChange={e => setPasswordConfirm(e.target.value)} required maxLength={128} placeholder="••••••••" autoComplete="new-password" />
                   {passwordConfirm.length > 0 && password !== passwordConfirm && (
                     <p className="text-xs text-red-500 mt-0.5">パスワードが一致していません</p>
                   )}

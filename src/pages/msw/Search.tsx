@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import { jstTodayStr, jstHour, jstDateOffsetStr } from '../../lib/jst'
 import type { Business, AvailabilitySlot, MswContact } from '../../types/database'
 
@@ -66,6 +67,7 @@ type SearchPrefillState = {
 
 export default function MswSearch() {
   const { hospitalId } = useAuth()
+  const { showToast } = useToast()
   const location = useLocation()
   const navigate = useNavigate()
   const prefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.prefill
@@ -177,11 +179,13 @@ export default function MswSearch() {
   const toggleFavorite = async (businessId: string) => {
     if (!hospitalId) return
     if (favorites.has(businessId)) {
-      await supabase.from('favorites').delete()
+      const { error } = await supabase.from('favorites').delete()
         .eq('hospital_id', hospitalId).eq('business_id', businessId)
+      if (error) { showToast('お気に入りの解除に失敗しました', 'error'); return }
       setFavorites(prev => { const s = new Set(prev); s.delete(businessId); return s })
     } else {
-      await supabase.from('favorites').insert({ hospital_id: hospitalId, business_id: businessId })
+      const { error } = await supabase.from('favorites').insert({ hospital_id: hospitalId, business_id: businessId })
+      if (error) { showToast('お気に入りの登録に失敗しました', 'error'); return }
       setFavorites(prev => new Set([...prev, businessId]))
     }
   }

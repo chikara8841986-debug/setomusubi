@@ -91,7 +91,12 @@ export default function MswContacts() {
   const handleDelete = async (id: string) => {
     setDeleteConfirmId(null)
     setDeletingId(id)
-    await supabase.from('msw_contacts').delete().eq('id', id)
+    const { error } = await supabase.from('msw_contacts').delete().eq('id', id)
+    if (error) {
+      showToast('削除に失敗しました。再試行してください。', 'error')
+      setDeletingId(null)
+      return
+    }
     setContacts(prev => prev.filter(c => c.id !== id))
     setDeletingId(null)
     showToast('担当者を削除しました', 'error')
@@ -106,7 +111,12 @@ export default function MswContacts() {
     const name = editName.trim()
     if (!name || !editingId) return
     setSavingEdit(true)
-    await supabase.from('msw_contacts').update({ name }).eq('id', editingId)
+    const { error } = await supabase.from('msw_contacts').update({ name }).eq('id', editingId)
+    if (error) {
+      showToast('更新に失敗しました。再試行してください。', 'error')
+      setSavingEdit(false)
+      return
+    }
     setContacts(prev => prev.map(c => c.id === editingId ? { ...c, name } : c))
     setEditingId(null)
     setSavingEdit(false)

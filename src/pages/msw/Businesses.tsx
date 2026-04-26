@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import { jstTodayStr, jstDateOffsetStr, jstHour } from '../../lib/jst'
 import type { Business } from '../../types/database'
 
@@ -27,8 +28,18 @@ function closedDaysText(days: number[]): string {
   return '定休: ' + days.sort((a, b) => a - b).map(d => DAY_LABELS[d]).join('・')
 }
 
+const EQUIP_OPTIONS = [
+  { key: 'has_wheelchair', label: '車椅子' },
+  { key: 'has_reclining_wheelchair', label: 'リクライニング' },
+  { key: 'has_stretcher', label: 'ストレッチャー' },
+  { key: 'has_female_caregiver', label: '女性介護者' },
+  { key: 'long_distance', label: '長距離対応' },
+  { key: 'same_day', label: '当日対応' },
+] as const
+
 export default function MswBusinesses() {
   const { hospitalId } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
@@ -82,11 +93,13 @@ export default function MswBusinesses() {
   const toggleFavorite = async (businessId: string) => {
     if (!hospitalId) return
     if (favorites.has(businessId)) {
-      await supabase.from('favorites').delete()
+      const { error } = await supabase.from('favorites').delete()
         .eq('hospital_id', hospitalId).eq('business_id', businessId)
+      if (error) { showToast('お気に入りの解除に失敗しました', 'error'); return }
       setFavorites(prev => { const s = new Set(prev); s.delete(businessId); return s })
     } else {
-      await supabase.from('favorites').insert({ hospital_id: hospitalId, business_id: businessId })
+      const { error } = await supabase.from('favorites').insert({ hospital_id: hospitalId, business_id: businessId })
+      if (error) { showToast('お気に入りの登録に失敗しました', 'error'); return }
       setFavorites(prev => new Set([...prev, businessId]))
     }
   }
@@ -104,19 +117,23 @@ export default function MswBusinesses() {
     }
     setAvailTimeError('')
     setCheckingAvail(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('availability_slots')
       .select('business_id')
       .eq('date', availDate)
       .eq('is_available', true)
       .lte('start_time', availStart)
       .gte('end_time', availEnd)
+    setCheckingAvail(false)
+    if (error) {
+      setAvailTimeError('空き確認に失敗しました。再試行してください。')
+      return
+    }
     const map: Record<string, boolean> = {}
     for (const row of data ?? []) {
       map[row.business_id] = true
     }
     setAvailMap(map)
-    setCheckingAvail(false)
   }
 
   // 空き確認モードON時・日付/時間変更時に自動チェック
@@ -124,15 +141,6 @@ export default function MswBusinesses() {
     if (!availCheck) { setAvailMap({}); setAvailTimeError(''); return }
     checkAvailability()
   }, [availCheck, availDate, availStart, availEnd])
-
-  const EQUIP_OPTIONS = [
-    { key: 'has_wheelchair', label: '車椅子' },
-    { key: 'has_reclining_wheelchair', label: 'リクライニング' },
-    { key: 'has_stretcher', label: 'ストレッチャー' },
-    { key: 'has_female_caregiver', label: '女性介護者' },
-    { key: 'long_distance', label: '長距離対応' },
-    { key: 'same_day', label: '当日対応' },
-  ] as const
 
   const filtered = businesses
     .filter(biz => {
