@@ -86,7 +86,7 @@ export default function MswFavorites() {
       return
     }
     setAvailTimeError('')
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('availability_slots')
       .select('business_id')
       .in('business_id', ids)
@@ -94,6 +94,11 @@ export default function MswFavorites() {
       .eq('is_available', true)
       .lte('start_time', availStart)
       .gte('end_time', availEnd)
+    if (error) {
+      setAvailTimeError('空き確認に失敗しました。再試行してください。')
+      setAvailMap({})
+      return
+    }
     const map: Record<string, boolean> = {}
     for (const row of data ?? []) map[row.business_id] = true
     setAvailMap(map)

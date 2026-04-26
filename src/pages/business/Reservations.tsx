@@ -566,7 +566,7 @@ export default function BusinessReservations() {
                   </button>
                 </dd>
               </div>
-              <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment]} />
+              <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment] ?? selected.equipment} />
               <Row label="機材貸出" value={selected.equipment_rental ? 'あり' : 'なし'} />
               {selected.notes && <Row label="備考" value={selected.notes} />}
             </dl>

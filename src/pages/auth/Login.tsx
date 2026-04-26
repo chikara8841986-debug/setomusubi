@@ -34,11 +34,15 @@ export default function Login() {
       else if (profile.role === 'msw') navigate('/msw/search')
       else if (profile.role === 'admin') navigate('/admin/approvals')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'ログインに失敗しました'
+      const msg = err instanceof Error ? err.message : ''
       if (msg.includes('Invalid login credentials')) {
         setError('メールアドレスまたはパスワードが正しくありません')
-      } else {
+      } else if (msg.includes('Email not confirmed')) {
+        setError('メールアドレスの確認が完了していません。確認メールをご確認ください。')
+      } else if (msg === 'プロフィールが見つかりません') {
         setError(msg)
+      } else {
+        setError('ログインに失敗しました。入力内容を確認のうえ、再試行してください。')
       }
     } finally {
       setLoading(false)

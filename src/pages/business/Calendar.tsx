@@ -337,13 +337,18 @@ export default function BusinessCalendar() {
     }
 
     // Check which dates already have a slot with same time to avoid duplicates
-    const { data: existing } = await supabase
+    const { data: existing, error: existErr } = await supabase
       .from('availability_slots')
       .select('date, start_time, end_time')
       .eq('business_id', businessId)
       .in('date', datesToAdd)
       .eq('start_time', recurStart)
       .eq('end_time', recurEnd)
+    if (existErr) {
+      setRecurError('重複確認に失敗しました。再試行してください。')
+      setRecurSaving(false)
+      return
+    }
 
     const existingKeys = new Set((existing ?? []).map(s => s.date))
     const newDates = datesToAdd.filter(d => !existingKeys.has(d))
