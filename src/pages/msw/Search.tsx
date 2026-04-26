@@ -594,41 +594,33 @@ export default function MswSearch() {
                         🚐
                       </div>
                     )}
-                  <div className="flex-1 min-w-0 flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-slate-800">{biz.name}</h3>
-                        <button
-                          onClick={() => toggleFavorite(biz.id)}
-                          className="text-lg flex-shrink-0 leading-none"
-                          title={favorites.has(biz.id) ? 'お気に入り解除' : 'お気に入り登録'}
-                        >
-                          {favorites.has(biz.id) ? '⭐' : '☆'}
-                        </button>
-                      </div>
-                      {biz.address ? (
-                        <a
-                          href={mapsUrl(biz.address)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-teal-700 hover:underline mt-0.5 inline-block"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          📍 {biz.address}
-                        </a>
-                      ) : null}
-                      {formatHours(biz.business_hours_start, biz.business_hours_end) && (
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
-                        </p>
-                      )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-slate-800">{biz.name}</h3>
+                      <button
+                        onClick={() => toggleFavorite(biz.id)}
+                        className="text-lg flex-shrink-0 leading-none"
+                        title={favorites.has(biz.id) ? 'お気に入り解除' : 'お気に入り登録'}
+                      >
+                        {favorites.has(biz.id) ? '⭐' : '☆'}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleSelectBusiness(biz)}
-                      className="btn-primary text-sm px-4 py-1.5 flex-shrink-0"
-                    >
-                      申請する
-                    </button>
+                    {biz.address ? (
+                      <a
+                        href={mapsUrl(biz.address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-teal-700 hover:underline mt-0.5 inline-block"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        📍 {biz.address}
+                      </a>
+                    ) : null}
+                    {formatHours(biz.business_hours_start, biz.business_hours_end) && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
+                      </p>
+                    )}
                   </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -655,25 +647,38 @@ export default function MswSearch() {
                   {!biz.pricing && !biz.qualifications && biz.pr_text && (
                     <p className="text-xs text-slate-500 mt-2 border-t pt-2 line-clamp-2">{biz.pr_text}</p>
                   )}
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t gap-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setPreviewBusiness(biz)}
-                        className="text-xs text-teal-700 hover:underline"
-                      >
-                        詳細を見る →
-                      </button>
-                      {(biz.matchedSlot.capacity ?? 1) > 1 && (
-                        <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                          空き{(biz.matchedSlot.capacity ?? 1) - (biz.matchedSlot.confirmed_count ?? 0)}台
-                        </span>
-                      )}
-                    </div>
+                  <div className="mt-2 pt-2 border-t space-y-2">
+                    {/* 電話確認ボタン（電話で先に確認したい場合） */}
                     {biz.cancel_phone && (
-                      <a href={`tel:${biz.cancel_phone}`} className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">
-                        📞 {biz.cancel_phone}
+                      <a
+                        href={`tel:${biz.cancel_phone}`}
+                        className="flex items-center justify-center gap-2 w-full py-2 bg-teal-50 border border-teal-200 rounded-lg text-sm font-semibold text-teal-800 hover:bg-teal-100 transition-colors"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        📞 {biz.cancel_phone}　で電話確認
                       </a>
                     )}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        <button
+                          onClick={() => setPreviewBusiness(biz)}
+                          className="text-xs text-teal-700 hover:underline"
+                        >
+                          詳細を見る →
+                        </button>
+                        {(biz.matchedSlot.capacity ?? 1) > 1 && (
+                          <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                            空き{(biz.matchedSlot.capacity ?? 1) - (biz.matchedSlot.confirmed_count ?? 0)}台
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleSelectBusiness(biz)}
+                        className="btn-primary text-xs px-4 py-1.5 flex-shrink-0"
+                      >
+                        オンライン申請 →
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -692,14 +697,15 @@ export default function MswSearch() {
           {/* Summary + phone option */}
           <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 mb-4">
             <p className="font-semibold text-teal-800 text-sm">{selectedBusiness.name}</p>
-            <p className="text-teal-600 text-xs">{fmtDate(date)} {startTime}〜{endTime}</p>
+            <p className="text-teal-600 text-xs mt-0.5">{fmtDate(date)} {startTime}〜{endTime}</p>
             {selectedBusiness.cancel_phone && (
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-teal-200">
-                <p className="text-xs text-teal-700">急ぎの場合は直接電話でご確認ください</p>
-                <a href={`tel:${selectedBusiness.cancel_phone}`} className="text-xs font-bold text-teal-800 bg-white border border-teal-300 px-3 py-1 rounded-lg flex-shrink-0">
-                  📞 {selectedBusiness.cancel_phone}
-                </a>
-              </div>
+              <a
+                href={`tel:${selectedBusiness.cancel_phone}`}
+                className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-teal-200 text-base font-bold text-teal-900 hover:text-teal-700 transition-colors"
+              >
+                📞 {selectedBusiness.cancel_phone}
+                <span className="text-xs font-normal text-teal-600">（電話で直接確認する）</span>
+              </a>
             )}
           </div>
 
@@ -836,7 +842,7 @@ export default function MswSearch() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800">事業所詳細</h3>
-              <button onClick={() => setPreviewBusiness(null)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl">×</button>
+              <button onClick={() => setPreviewBusiness(null)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
 
             <div className="flex items-start gap-3 mb-3">

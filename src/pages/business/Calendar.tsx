@@ -63,6 +63,7 @@ export default function BusinessCalendar() {
   const [recurSaving, setRecurSaving] = useState(false)
   const [recurResult, setRecurResult] = useState<{ added: number; skipped: number } | null>(null)
   const [recurError, setRecurError] = useState('')
+  const [quickAddingDates, setQuickAddingDates] = useState<Set<string>>(new Set())
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
@@ -186,6 +187,39 @@ export default function BusinessCalendar() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [fetchSlots, fetchMonthStats, businessId])
+
+  // ワンタップ即時追加（営業時間枠をモーダルなしで追加）
+  const handleQuickAdd = async (date: Date) => {
+    if (!businessId) return
+    const dateStr = format(date, 'yyyy-MM-dd')
+    // 同じ時間帯のスロットが既に存在する場合はモーダルを開く
+    const alreadyExists = slots.some(s =>
+      s.date === dateStr &&
+      s.start_time.slice(0, 5) === bizHoursStart &&
+      s.end_time.slice(0, 5) === bizHoursEnd
+    )
+    if (alreadyExists) {
+      openAddModal(date)
+      return
+    }
+    setQuickAddingDates(prev => new Set([...prev, dateStr]))
+    const { error } = await supabase.from('availability_slots').insert({
+      business_id: businessId,
+      date: dateStr,
+      start_time: bizHoursStart,
+      end_time: bizHoursEnd,
+      is_available: true,
+      capacity: 1,
+      confirmed_count: 0,
+    })
+    setQuickAddingDates(prev => { const s = new Set(prev); s.delete(dateStr); return s })
+    if (error) {
+      showToast('追加に失敗しました。再試行してください。', 'error')
+    } else {
+      showToast(`${format(date, 'M/d')} 営業時間枠を追加しました`)
+      fetchSlots()
+    }
+  }
 
   const openAddModal = (date: Date) => {
     setShowRecurModal(false) // 週次モーダルと排他
@@ -440,6 +474,63 @@ export default function BusinessCalendar() {
         {format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 {format(addDays(weekStart, 6), 'M月d日', { locale: ja })}
       </p>
 
+      {/* 週間ステータスストリップ：一目で各日の状態を把握 */}
+      <div className="grid grid-cols-7 gap-1 mb-3 bg-white rounded-xl border border-slate-100 px-2 py-2 shadow-sm">
+        {weekDays.map(date => {
+          const dateStr = format(date, 'yyyy-MM-dd')
+          const daySlots = !loading ? slotsForDay(date) : []
+          const past = isPastDay(date)
+          const todayFlag = isTodayJST(dateStr)
+          const dow = date.getDay()
+          const isSun = dow === 0
+          const isSat = dow === 6
+          const isClosed = closedDays.includes(dow)
+          const hasPending = daySlots.some(s =>
+            Array.isArray(s.reservation) && s.reservation.some(r => r.status === 'pending')
+          )
+          const hasConfirmed = daySlots.some(s => (s.confirmed_count ?? 0) > 0)
+          const isFull = daySlots.length > 0 && daySlots.every(s => (s.capacity ?? 1) <= (s.confirmed_count ?? 0))
+          const hasOpen = daySlots.some(s => s.is_available && (s.confirmed_count ?? 0) < (s.capacity ?? 1))
+          const barColor = past ? 'bg-slate-100' :
+            loading ? 'bg-slate-100 animate-pulse' :
+            isFull ? 'bg-orange-400' :
+            hasPending ? 'bg-amber-400' :
+            hasConfirmed ? 'bg-teal-400' :
+            hasOpen ? 'bg-green-400' :
+            isClosed ? 'bg-red-100' :
+            'bg-slate-200'
+          return (
+            <div key={dateStr} className="text-center">
+              <p className={`text-[10px] font-medium leading-tight ${
+                isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-400'
+              }`}>{format(date, 'E', { locale: ja })}</p>
+              <p className={`text-xs font-bold leading-tight ${
+                todayFlag ? 'text-teal-600' :
+                past ? 'text-slate-300' :
+                isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-700'
+              }`}>{format(date, 'd')}</p>
+              <div className={`h-1.5 rounded-full mt-0.5 transition-colors ${barColor}`} />
+            </div>
+          )
+        })}
+      </div>
+      {/* ステータス凡例 */}
+      {!loading && !fetchError && (
+        <div className="flex items-center gap-3 mb-3 px-1 flex-wrap">
+          {[
+            { color: 'bg-green-400', label: '空き' },
+            { color: 'bg-teal-400', label: '予約あり' },
+            { color: 'bg-amber-400', label: '申請中' },
+            { color: 'bg-orange-400', label: '満車' },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-1">
+              <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
+              <span className="text-[10px] text-slate-400">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
       ) : fetchError ? (
@@ -448,32 +539,63 @@ export default function BusinessCalendar() {
           <button onClick={fetchSlots} className="btn-secondary text-sm">再試行</button>
         </div>
       ) : slots.length === 0 ? (
-        <div className="card text-center py-8 space-y-3">
-          <p className="text-slate-400 text-sm">この週の稼働枠がありません</p>
-          {!isBefore(addDays(weekStart, 6), todayJST) && (
-            <>
-              <p className="text-xs text-slate-400">「週次設定」で平日の枠をまとめて追加できます</p>
-              <button
-                onClick={() => {
-                  const defaults = [true, true, true, true, true, false, false]
-                  const presetDays = defaults.map((def, i) => {
-                    const jsDay = i < 6 ? i + 1 : 0
-                    return closedDays.includes(jsDay) ? false : def
-                  })
-                  setRecurDays(presetDays)
-                  setRecurStart(bizHoursStart)
-                  setRecurEnd(bizHoursEnd)
-                  setShowAddModal(false) // 単発モーダルと排他
-                  setShowRecurModal(true)
-                  setRecurResult(null)
-                  setRecurError('')
-                }}
-                className="btn-primary text-sm px-6"
-              >
-                週次設定で枠を追加する
-              </button>
-            </>
-          )}
+        <div className="card py-5">
+          <p className="text-slate-400 text-sm text-center mb-4">この週の稼働枠がありません</p>
+          {!isBefore(addDays(weekStart, 6), todayJST) ? (
+            <div className="space-y-2">
+              {weekDays.filter(d => !isPastDay(d)).map(date => {
+                const dow = date.getDay()
+                const isClosed = closedDays.includes(dow)
+                const dateStr = format(date, 'yyyy-MM-dd')
+                const isSun = dow === 0
+                const isSat = dow === 6
+                return (
+                  <div key={dateStr} className="flex items-center justify-between px-2 py-1">
+                    <span className={`text-sm font-medium ${
+                      isClosed ? 'text-slate-300' :
+                      isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-700'
+                    }`}>
+                      {format(date, 'M/d（E）', { locale: ja })}
+                      {isClosed && <span className="text-[11px] text-slate-300 ml-1.5">定休日</span>}
+                    </span>
+                    <button
+                      onClick={() => handleQuickAdd(date)}
+                      disabled={quickAddingDates.has(dateStr)}
+                      className={`text-xs px-4 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                        isClosed
+                          ? 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                          : 'bg-teal-600 text-white hover:bg-teal-700'
+                      }`}
+                      title={isClosed ? '定休日ですが追加できます' : `${bizHoursStart}〜${bizHoursEnd} で追加`}
+                    >
+                      {quickAddingDates.has(dateStr) ? '追加中...' : '＋ 追加'}
+                    </button>
+                  </div>
+                )
+              })}
+              <div className="border-t mt-3 pt-3 text-center">
+                <button
+                  onClick={() => {
+                    const defaults = [true, true, true, true, true, false, false]
+                    const presetDays = defaults.map((def, i) => {
+                      const jsDay = i < 6 ? i + 1 : 0
+                      return closedDays.includes(jsDay) ? false : def
+                    })
+                    setRecurDays(presetDays)
+                    setRecurStart(bizHoursStart)
+                    setRecurEnd(bizHoursEnd)
+                    setShowAddModal(false)
+                    setShowRecurModal(true)
+                    setRecurResult(null)
+                    setRecurError('')
+                  }}
+                  className="text-xs text-teal-600 hover:underline"
+                >
+                  週次設定で複数週まとめて追加する →
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-2">
@@ -514,17 +636,27 @@ export default function BusinessCalendar() {
                     )}
                   </div>
                   {!past && (
-                    <button
-                      onClick={() => openAddModal(date)}
-                      className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                        isClosedDay
-                          ? 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                          : 'bg-teal-50 text-teal-600 hover:bg-teal-100'
-                      }`}
-                      title={isClosedDay ? '定休日ですが追加できます' : undefined}
-                    >
-                      <span>＋</span> 枠追加
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleQuickAdd(date)}
+                        disabled={quickAddingDates.has(format(date, 'yyyy-MM-dd'))}
+                        className={`flex items-center gap-0.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                          isClosedDay
+                            ? 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                            : 'bg-teal-600 text-white hover:bg-teal-700'
+                        }`}
+                        title={`${bizHoursStart}〜${bizHoursEnd} で即追加${isClosedDay ? '（定休日）' : ''}`}
+                      >
+                        {quickAddingDates.has(format(date, 'yyyy-MM-dd')) ? '...' : '＋ 追加'}
+                      </button>
+                      <button
+                        onClick={() => openAddModal(date)}
+                        className="text-[11px] text-slate-400 hover:text-teal-600 px-1.5 py-1 rounded"
+                        title="時間・台数を指定して追加"
+                      >
+                        設定
+                      </button>
+                    </div>
                   )}
                 </div>
 
