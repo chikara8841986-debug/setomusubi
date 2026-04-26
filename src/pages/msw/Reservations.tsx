@@ -139,7 +139,12 @@ export default function MswReservations() {
     setShowCancelConfirm(false)
     setCancelling(true)
     setCancelError('')
-    await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', r.id)
+    const { error: cancelErr } = await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', r.id)
+    if (cancelErr) {
+      setCancelError('キャンセルに失敗しました。再試行してください。')
+      setCancelling(false)
+      return
+    }
     if (r.slot_id && r.status === 'confirmed') {
       // confirmed_count を1減らし、is_available を true に戻す
       const { data: slot } = await supabase

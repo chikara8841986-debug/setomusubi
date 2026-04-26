@@ -139,17 +139,17 @@ export default function BusinessIntroduction() {
   const removeVehicleImage = async (url: string) => {
     if (!businessId) return
     setDeleteConfirmUrl(null)
-    // Remove from storage
-    const path = url.split('/business-images/')[1]
-    if (path) await supabase.storage.from('business-images').remove([path])
-    // Update state and immediately save to DB (prevents broken URL in DB after storage deletion)
     const newUrls = vehicleImageUrls.filter(u => u !== url)
-    setVehicleImageUrls(newUrls)
+    // DB更新を先に行い、成功確認後にストレージ削除・状態更新する
     const { error } = await supabase.from('businesses').update({ vehicle_image_urls: newUrls }).eq('id', businessId)
     if (error) {
-      showToast('削除に失敗しました', 'error')
+      showToast('削除に失敗しました。再試行してください。', 'error')
       return
     }
+    // ストレージ削除（ベストエフォート：失敗してもUIに影響しない）
+    const path = url.split('/business-images/')[1]
+    if (path) supabase.storage.from('business-images').remove([path]).catch(() => {})
+    setVehicleImageUrls(newUrls)
     setSavedSnapshot(prev => {
       const snap = JSON.parse(prev || '{}')
       return JSON.stringify({ ...snap, vehicle_image_urls: newUrls })
