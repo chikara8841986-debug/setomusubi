@@ -811,7 +811,9 @@ export default function MswSearch() {
               <input type="checkbox" checked={form.equipmentRental}
                 onChange={e => setForm(f => ({ ...f, equipmentRental: e.target.checked }))}
                 className="w-4 h-4 rounded" />
-              <span className="text-sm text-slate-700">機材の貸出が必要</span>
+              <span className="text-sm text-slate-700">
+                {form.equipment === 'wheelchair' ? '普通型車椅子' : form.equipment === 'reclining_wheelchair' ? 'リクライニング車椅子' : 'ストレッチャー'}の貸出が必要
+              </span>
             </label>
             {form.equipmentRental && selectedBusiness && (() => {
               const rentalKey = form.equipment === 'wheelchair' ? 'rental_wheelchair'

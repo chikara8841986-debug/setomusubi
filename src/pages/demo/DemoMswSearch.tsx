@@ -295,7 +295,9 @@ export default function DemoMswSearch() {
                 onChange={e => setEquipmentRental(e.target.checked)}
                 className="w-4 h-4 accent-teal-600"
               />
-              <label htmlFor="rental" className="text-sm text-slate-700">機材の貸出を希望する</label>
+              <label htmlFor="rental" className="text-sm text-slate-700">
+                {equipment === 'wheelchair' ? '普通型車椅子' : equipment === 'reclining_wheelchair' ? 'リクライニング車椅子' : 'ストレッチャー'}の貸出を希望する
+              </label>
             </div>
             <div>
               <label className="label">備考</label>

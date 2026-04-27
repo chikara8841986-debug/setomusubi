@@ -125,27 +125,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Demo buttons */}
-        <div className="mt-4 bg-amber-400/90 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm">
-          <p className="text-center text-xs text-amber-900 font-bold mb-3">⚡ ログイン不要でデモを体験できます</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Link
-              to="/demo/msw/search"
-              className="flex flex-col items-center gap-1 bg-white/80 hover:bg-white rounded-xl px-3 py-2.5 transition-colors text-center"
-            >
-              <span className="text-lg">🏥</span>
-              <span className="text-xs font-bold text-slate-800">MSWとして体験</span>
-            </Link>
-            <Link
-              to="/demo/business/reservations"
-              className="flex flex-col items-center gap-1 bg-white/80 hover:bg-white rounded-xl px-3 py-2.5 transition-colors text-center"
-            >
-              <span className="text-lg">🚐</span>
-              <span className="text-xs font-bold text-slate-800">事業所として体験</span>
-            </Link>
-          </div>
-        </div>
-
         {/* Register links */}
         <div className="mt-3 bg-white/75 backdrop-blur-md rounded-2xl px-5 py-4 space-y-2 text-center text-sm text-slate-700 shadow-sm">
           <p>
@@ -167,6 +146,15 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {/* Subtle demo access button — bottom-right corner */}
+      <Link
+        to="/demo"
+        className="fixed bottom-4 right-4 z-20 w-9 h-9 flex items-center justify-center rounded-xl bg-white/25 hover:bg-white/40 backdrop-blur-sm text-white/60 hover:text-white/90 text-base transition-all shadow-sm"
+        title="デモを見る"
+      >
+        ≡
+      </Link>
     </div>
   )
 }
