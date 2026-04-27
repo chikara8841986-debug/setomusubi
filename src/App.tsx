@@ -25,6 +25,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/register/msw':          'MSW登録',
   '/auth/forgot-password':  'パスワードを忘れた方',
   '/auth/reset-password':   'パスワード再設定',
+  '/manual':               '使い方ガイド',
+  '/demo':                 'デモ',
 }
 
 function ScrollToTop() {
@@ -65,6 +67,16 @@ const AdminStats        = lazy(() => import('./pages/admin/Stats'))
 
 // Other pages
 const NotFound = lazy(() => import('./pages/NotFound'))
+const Manual = lazy(() => import('./pages/Manual'))
+
+// Demo pages
+const DemoIndex = lazy(() => import('./pages/demo/DemoIndex'))
+const DemoMswSearch = lazy(() => import('./pages/demo/DemoMswSearch'))
+const DemoMswReservations = lazy(() => import('./pages/demo/DemoMswReservations'))
+const DemoMswBusinesses = lazy(() => import('./pages/demo/DemoMswBusinesses'))
+const DemoBusinessCalendar = lazy(() => import('./pages/demo/DemoBusinessCalendar'))
+const DemoBusinessReservations = lazy(() => import('./pages/demo/DemoBusinessReservations'))
+const DemoBusinessProfile = lazy(() => import('./pages/demo/DemoBusinessProfile'))
 
 const Loader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -140,6 +152,19 @@ function AppRoutes() {
             </Layout>
           </ProtectedRoute>
         } />
+
+        {/* Manual (no auth required) */}
+        <Route path="/manual" element={<Manual />} />
+
+        {/* Demo routes (no auth required) */}
+        <Route path="/demo" element={<DemoIndex />} />
+        <Route path="/demo/msw/search"       element={<DemoMswSearch />} />
+        <Route path="/demo/msw/reservations" element={<DemoMswReservations />} />
+        <Route path="/demo/msw/businesses"   element={<DemoMswBusinesses />} />
+        <Route path="/demo/business/calendar"     element={<DemoBusinessCalendar />} />
+        <Route path="/demo/business/reservations" element={<DemoBusinessReservations />} />
+        <Route path="/demo/business/profile"      element={<DemoBusinessProfile />} />
+        <Route path="/demo/*"                element={<Navigate to="/demo" replace />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

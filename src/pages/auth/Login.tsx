@@ -125,8 +125,29 @@ export default function Login() {
           </div>
         </div>
 
+        {/* Demo buttons */}
+        <div className="mt-4 bg-amber-400/90 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm">
+          <p className="text-center text-xs text-amber-900 font-bold mb-3">⚡ ログイン不要でデモを体験できます</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              to="/demo/msw/search"
+              className="flex flex-col items-center gap-1 bg-white/80 hover:bg-white rounded-xl px-3 py-2.5 transition-colors text-center"
+            >
+              <span className="text-lg">🏥</span>
+              <span className="text-xs font-bold text-slate-800">MSWとして体験</span>
+            </Link>
+            <Link
+              to="/demo/business/reservations"
+              className="flex flex-col items-center gap-1 bg-white/80 hover:bg-white rounded-xl px-3 py-2.5 transition-colors text-center"
+            >
+              <span className="text-lg">🚐</span>
+              <span className="text-xs font-bold text-slate-800">事業所として体験</span>
+            </Link>
+          </div>
+        </div>
+
         {/* Register links */}
-        <div className="mt-5 bg-white/75 backdrop-blur-md rounded-2xl px-5 py-4 space-y-2 text-center text-sm text-slate-700 shadow-sm">
+        <div className="mt-3 bg-white/75 backdrop-blur-md rounded-2xl px-5 py-4 space-y-2 text-center text-sm text-slate-700 shadow-sm">
           <p>
             事業所の方（新規登録）→{' '}
             <Link to="/register/business" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
@@ -137,6 +158,11 @@ export default function Login() {
             MSW（病院）の方（新規登録）→{' '}
             <Link to="/register/msw" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
               MSW登録
+            </Link>
+          </p>
+          <p className="border-t border-slate-200 pt-2">
+            <Link to="/manual" target="_blank" className="text-slate-500 hover:text-teal-700 transition-colors text-xs">
+              📖 使い方ガイドを見る（PDF保存可）
             </Link>
           </p>
         </div>
