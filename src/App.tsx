@@ -68,6 +68,7 @@ const AdminStats        = lazy(() => import('./pages/admin/Stats'))
 // Other pages
 const NotFound = lazy(() => import('./pages/NotFound'))
 const Manual = lazy(() => import('./pages/Manual'))
+const DemoGuide = lazy(() => import('./pages/DemoGuide'))
 
 // Demo pages
 const DemoIndex = lazy(() => import('./pages/demo/DemoIndex'))
@@ -155,6 +156,7 @@ function AppRoutes() {
 
         {/* Manual (no auth required) */}
         <Route path="/manual" element={<Manual />} />
+        <Route path="/demo-guide" element={<DemoGuide />} />
 
         {/* Demo routes (no auth required) */}
         <Route path="/demo" element={<DemoIndex />} />
