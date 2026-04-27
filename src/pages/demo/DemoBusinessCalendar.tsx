@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import DemoLayout from './DemoLayout'
@@ -51,9 +51,6 @@ export default function DemoBusinessCalendar() {
   const isDraggingRef = useRef(false)
   const dragRef       = useRef<DragState | null>(null)
   const [drag, setDragState] = useState<DragState | null>(null)
-  const [addingSlot, setAddingSlot] = useState(false)
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
   const weekStart = startOfWeek(addDays(today, weekOffset * 7), { weekStartsOn: 1 })
   const weekDays  = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -99,51 +96,50 @@ export default function DemoBusinessCalendar() {
     dragRef.current = d; setDragState({ ...d })
   }, [])
 
-  // Finish drag → create slot
-  const finishDrag = useCallback(async () => {
-    if (!isDraggingRef.current) return
-    isDraggingRef.current = false
-    const d = dragRef.current
-    dragRef.current = null
-    setDragState(null)
-    if (!d) return
+  // mouseup / touchend → create slot
+  // Ref で最新値を参照することでクロージャの陳腐化を防ぐ
+  useEffect(() => {
+    const handler = () => {
+      if (!isDraggingRef.current) return
+      isDraggingRef.current = false
+      const d = dragRef.current
+      dragRef.current = null
+      setDragState(null)
+      if (!d) return
 
-    const startS = Math.min(d.startSlot, d.endSlot)
-    const endS   = Math.max(d.startSlot, d.endSlot) + 1
-    if (startS >= TOTAL_SLOTS) return
+      const startS = Math.min(d.startSlot, d.endSlot)
+      const endS   = Math.max(d.startSlot, d.endSlot) + 1
+      if (startS >= TOTAL_SLOTS) return
 
-    const startTime = slotToTime(startS)
-    const endTime   = slotToTime(Math.min(endS, TOTAL_SLOTS))
+      const startTime = slotToTime(startS)
+      const endTime   = slotToTime(Math.min(endS, TOTAL_SLOTS))
 
-    setAddingSlot(true)
-    // Simulate async
-    await new Promise(r => setTimeout(r, 150))
-    setAddingSlot(false)
-
-    setSlots(prev => [...prev, {
-      id: `demo-${Date.now()}`,
-      date: d.dateStr,
-      startTime,
-      endTime,
-    }])
-    showToast(`${d.dateStr.slice(5).replace('-', '/')} ${startTime}〜${endTime} を追加しました`)
-  }, [])
-
-  // Attach global mouseup / touchend
-  useState(() => {
-    window.addEventListener('mouseup', finishDrag)
-    window.addEventListener('touchend', finishDrag)
-    return () => {
-      window.removeEventListener('mouseup', finishDrag)
-      window.removeEventListener('touchend', finishDrag)
+      // setSlots は安定した setter なのでクロージャで安全に参照可能
+      setSlots(prev => [...prev, {
+        id: `demo-${Date.now()}`,
+        date: d.dateStr,
+        startTime,
+        endTime,
+      }])
+      // setToast は安定した setter
+      setToast(`${d.dateStr.slice(5).replace('-', '/')} ${startTime}〜${endTime} を追加しました`)
+      setTimeout(() => setToast(''), 2500)
     }
-  })
+
+    window.addEventListener('mouseup', handler)
+    window.addEventListener('touchend', handler)
+    return () => {
+      window.removeEventListener('mouseup', handler)
+      window.removeEventListener('touchend', handler)
+    }
+  }, []) // 依存なし：refs と安定な setState のみ使用
 
   const handleDelete = (id: string) => {
     setSlots(prev => prev.filter(s => s.id !== id))
     setDeleteConfirmId(null)
     setSelectedSlot(null)
-    showToast('削除しました')
+    setToast('削除しました')
+    setTimeout(() => setToast(''), 2500)
   }
 
   const isPastDay = (d: Date) => {
@@ -175,7 +171,7 @@ export default function DemoBusinessCalendar() {
 
         {/* Time grid */}
         <div
-          className={`bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden select-none ${addingSlot ? 'opacity-60 pointer-events-none' : ''}`}
+          className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden select-none"
           onTouchMove={handleGridTouchMove}
         >
           {/* Day headers */}

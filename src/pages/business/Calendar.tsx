@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek, isSameDay, parseISO, isBefore, startOfDay, addWeeks } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -73,7 +73,11 @@ export default function BusinessCalendar() {
 
   // ── 週ナビゲーション ──
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  // useMemo で weekStart が変わった時だけ再生成（handleCellMouseDown 等の useCallback 安定化）
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart]
+  )
 
   // ── スロットデータ ──
   const [slots,      setSlots]      = useState<SlotWithReservation[]>([])
@@ -170,6 +174,19 @@ export default function BusinessCalendar() {
     setSlots((data as unknown as SlotWithReservation[]) ?? [])
     setLoading(false)
   }, [businessId, weekStart])
+
+  // selectedSlot をリアルタイム更新に追従させる
+  // slots が再取得されると古い参照を持つ selectedSlot はデータが陳腐化するため同期する
+  useEffect(() => {
+    if (!selectedSlot) return
+    const updated = slots.find(s => s.id === selectedSlot.id)
+    if (updated) {
+      setSelectedSlot(updated as SlotWithReservation)
+    } else {
+      // 枠が外部から削除されたらモーダルを閉じる
+      setSelectedSlot(null)
+    }
+  }, [slots]) // selectedSlot は依存に入れない（無限ループ防止）
 
   // Keyboard shortcuts
   useEffect(() => {
