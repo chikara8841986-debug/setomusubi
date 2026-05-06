@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
@@ -7,11 +7,44 @@ import {
   INITIAL_DEMO_RESERVATIONS,
   EQUIPMENT_LABELS,
   STATUS_MAP,
+  addDemoApprovedSlot,
   type DemoReservation,
 } from './demoData'
 
 type Tab = 'pending' | 'upcoming' | 'past'
 type ConfirmAction = 'reject' | 'complete' | null
+
+type PhoneForm = {
+  date: string
+  startTime: string
+  endTime: string
+  patientName: string
+  patientAddress: string
+  destination: string
+  equipment: string
+  equipmentRental: boolean
+  callerName: string
+  callerPhone: string
+  notes: string
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0]
+}
+
+const EMPTY_PHONE_FORM: PhoneForm = {
+  date: '',
+  startTime: '',
+  endTime: '',
+  patientName: '',
+  patientAddress: '',
+  destination: '',
+  equipment: 'wheelchair',
+  equipmentRental: false,
+  callerName: '',
+  callerPhone: '',
+  notes: '',
+}
 
 function mapsUrl(address: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
@@ -24,15 +57,23 @@ export default function DemoBusinessReservations() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
   const [processing, setProcessing] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type?: 'error' | 'info' } | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 電話予約フォーム
+  const [showPhoneModal, setShowPhoneModal] = useState(false)
+  const [phoneForm, setPhoneForm] = useState<PhoneForm>({ ...EMPTY_PHONE_FORM, date: todayStr() })
+  const [phoneSaving, setPhoneSaving] = useState(false)
+  const [phoneError, setPhoneError] = useState('')
 
   const showToast = (msg: string, type?: 'error' | 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000)
   }
 
-  const pending = reservations.filter(r => r.status === 'pending')
+  const pending  = reservations.filter(r => r.status === 'pending')
   const upcoming = reservations.filter(r => r.status === 'confirmed')
-  const past = reservations.filter(r => ['completed', 'cancelled', 'rejected'].includes(r.status))
+  const past     = reservations.filter(r => ['completed', 'cancelled', 'rejected'].includes(r.status))
 
   const list = tab === 'pending' ? pending : tab === 'upcoming' ? upcoming : [...past].reverse()
 
@@ -40,11 +81,27 @@ export default function DemoBusinessReservations() {
     setProcessing(true)
     setTimeout(() => {
       setReservations(prev => prev.map(x => x.id === r.id ? { ...x, status: 'confirmed' as const } : x))
+      // カレンダー共有ストアに追加（カレンダー画面で反映される）
+      addDemoApprovedSlot({
+        id: `approved-${r.id}`,
+        date: r.reservation_date,
+        startTime: r.start_time,
+        endTime: r.end_time,
+        confirmed: true,
+        source: 'msw',
+        hospitalName: r.hospital_name,
+        patientName: r.patient_name,
+        patientAddress: r.patient_address,
+        destination: r.destination,
+        equipment: r.equipment,
+        equipmentRental: r.equipment_rental,
+        notes: r.notes,
+      })
       setSelected(null)
       setConfirmAction(null)
       setProcessing(false)
       setTab('upcoming')
-      showToast('予約を承認しました')
+      showToast('承認しました。カレンダーに枠が追加されました', 'info')
     }, 700)
   }
 
@@ -70,6 +127,64 @@ export default function DemoBusinessReservations() {
     }, 700)
   }
 
+  const handlePhoneSubmit = () => {
+    const f = phoneForm
+    if (!f.date || !f.startTime || !f.endTime) { setPhoneError('日付と時間を入力してください'); return }
+    if (f.startTime >= f.endTime) { setPhoneError('終了時間は開始時間より後にしてください'); return }
+    if (!f.patientName.trim()) { setPhoneError('患者氏名を入力してください'); return }
+    if (!f.patientAddress.trim()) { setPhoneError('乗車地を入力してください'); return }
+    if (!f.destination.trim()) { setPhoneError('目的地を入力してください'); return }
+
+    setPhoneSaving(true)
+    setTimeout(() => {
+      const newId = `phone-${Date.now()}`
+      const newRes: DemoReservation = {
+        id: newId,
+        status: 'confirmed',
+        source: 'phone',
+        hospital_name: '',
+        caller_name: f.callerName.trim(),
+        caller_phone: f.callerPhone.trim(),
+        contact_name: f.callerName.trim() || '電話予約',
+        patient_name: f.patientName.trim(),
+        patient_address: f.patientAddress.trim(),
+        destination: f.destination.trim(),
+        equipment: f.equipment as 'wheelchair' | 'reclining_wheelchair' | 'stretcher',
+        equipment_rental: f.equipmentRental,
+        reservation_date: f.date,
+        start_time: f.startTime,
+        end_time: f.endTime,
+        notes: f.notes.trim(),
+        created_at: new Date().toISOString(),
+        business_id: 'demo-biz-1',
+        business_name: 'せとうち介護タクシー',
+      }
+      setReservations(prev => [...prev, newRes])
+      // カレンダー共有ストアにも追加
+      addDemoApprovedSlot({
+        id: `phone-cal-${newId}`,
+        date: f.date,
+        startTime: f.startTime,
+        endTime: f.endTime,
+        confirmed: true,
+        source: 'phone',
+        callerName: f.callerName.trim(),
+        callerPhone: f.callerPhone.trim(),
+        patientName: f.patientName.trim(),
+        patientAddress: f.patientAddress.trim(),
+        destination: f.destination.trim(),
+        equipment: f.equipment,
+        equipmentRental: f.equipmentRental,
+        notes: f.notes.trim(),
+      })
+      setPhoneSaving(false)
+      setShowPhoneModal(false)
+      setPhoneForm({ ...EMPTY_PHONE_FORM, date: todayStr() })
+      setTab('upcoming')
+      showToast('電話予約を記録しました。カレンダーに枠が追加されました', 'info')
+    }, 700)
+  }
+
   return (
     <DemoLayout role="business">
       <div>
@@ -82,7 +197,15 @@ export default function DemoBusinessReservations() {
           </div>
         )}
 
-        <h1 className="text-xl font-bold text-slate-800 mb-1">予約管理</h1>
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-xl font-bold text-slate-800">予約管理</h1>
+          <button
+            onClick={() => { setShowPhoneModal(true); setPhoneError('') }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+          >
+            📞 電話予約を記録
+          </button>
+        </div>
         <p className="text-xs text-slate-400 mb-4">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定しMSWへ通知されます。</p>
 
         {/* Tabs */}
@@ -152,10 +275,15 @@ export default function DemoBusinessReservations() {
                 }`}>
                   <div className="flex items-start justify-between gap-2">
                     <button className="flex-1 text-left min-w-0" onClick={() => { setSelected(r); setConfirmAction(null) }}>
-                      <p className="text-sm font-semibold text-slate-800">
+                      <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
                         {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time}〜{r.end_time}
+                        {r.source === 'phone' && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium">📞 電話</span>
+                        )}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">{r.hospital_name} ／ {r.contact_name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {r.source === 'phone' ? (r.caller_name || '電話予約') : r.hospital_name} ／ {r.contact_name}
+                      </p>
                       <p className="text-xs text-slate-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                     </button>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -189,6 +317,13 @@ export default function DemoBusinessReservations() {
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
               </div>
 
+              {selected.source === 'phone' && (
+                <div className="mb-3 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  <span className="text-blue-500">📞</span>
+                  <span className="text-xs text-blue-700 font-medium">電話予約（手動記録）</span>
+                </div>
+              )}
+
               {selected.status === 'pending' && (
                 <div className="mb-3 rounded-lg px-3 py-2 border text-xs font-medium text-amber-600 bg-amber-50 border-amber-200">
                   申請から約2時間経過 — 早めにご対応ください
@@ -196,19 +331,57 @@ export default function DemoBusinessReservations() {
               )}
 
               <dl className="space-y-3 text-sm">
-                {[
-                  ['日時', `${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time}〜${selected.end_time}`],
-                  ['病院', selected.hospital_name],
-                  ['担当者', selected.contact_name],
-                  ['患者氏名', selected.patient_name],
-                  ['使用機材', EQUIPMENT_LABELS[selected.equipment]],
-                  ['機材貸出', selected.equipment_rental ? 'あり' : 'なし'],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex gap-3">
-                    <dt className="text-slate-500 w-20 flex-shrink-0">{label}</dt>
-                    <dd className="text-slate-800 font-medium">{value}</dd>
-                  </div>
-                ))}
+                <div className="flex gap-3">
+                  <dt className="text-slate-500 w-20 flex-shrink-0">日時</dt>
+                  <dd className="text-slate-800 font-medium">
+                    {format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} {selected.start_time}〜{selected.end_time}
+                  </dd>
+                </div>
+
+                {selected.source === 'phone' ? (
+                  <>
+                    {selected.caller_name && (
+                      <div className="flex gap-3">
+                        <dt className="text-slate-500 w-20 flex-shrink-0">連絡者</dt>
+                        <dd className="text-slate-800 font-medium">{selected.caller_name}</dd>
+                      </div>
+                    )}
+                    {selected.caller_phone && (
+                      <div className="flex gap-3">
+                        <dt className="text-slate-500 w-20 flex-shrink-0">連絡先</dt>
+                        <dd className="font-medium">
+                          <a href={`tel:${selected.caller_phone}`} className="text-teal-700 hover:underline">
+                            📞 {selected.caller_phone}
+                          </a>
+                        </dd>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex gap-3">
+                      <dt className="text-slate-500 w-20 flex-shrink-0">病院</dt>
+                      <dd className="text-slate-800 font-medium">{selected.hospital_name}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="text-slate-500 w-20 flex-shrink-0">担当者</dt>
+                      <dd className="text-slate-800 font-medium">{selected.contact_name}</dd>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-3">
+                  <dt className="text-slate-500 w-20 flex-shrink-0">患者氏名</dt>
+                  <dd className="text-slate-800 font-medium">{selected.patient_name}</dd>
+                </div>
+                <div className="flex gap-3">
+                  <dt className="text-slate-500 w-20 flex-shrink-0">使用機材</dt>
+                  <dd className="text-slate-800 font-medium">{EQUIPMENT_LABELS[selected.equipment]}</dd>
+                </div>
+                <div className="flex gap-3">
+                  <dt className="text-slate-500 w-20 flex-shrink-0">機材貸出</dt>
+                  <dd className="text-slate-800 font-medium">{selected.equipment_rental ? 'あり' : 'なし'}</dd>
+                </div>
                 <div className="flex gap-3">
                   <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
                   <dd className="font-medium text-sm flex-1 min-w-0">
@@ -274,6 +447,114 @@ export default function DemoBusinessReservations() {
                   )
                 )}
                 <button onClick={() => setSelected(null)} className="btn-secondary w-full">閉じる</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Phone reservation modal */}
+        {showPhoneModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-800">📞 電話予約を記録</h3>
+                <button onClick={() => { setShowPhoneModal(false); setPhoneError('') }}
+                  className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="label">日付<span className="text-red-500 ml-0.5">*</span></label>
+                  <input type="date" className="input-base"
+                    value={phoneForm.date}
+                    onChange={e => setPhoneForm(f => ({ ...f, date: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="label">開始時間<span className="text-red-500 ml-0.5">*</span></label>
+                    <input type="time" className="input-base"
+                      value={phoneForm.startTime}
+                      onChange={e => setPhoneForm(f => ({ ...f, startTime: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="label">終了時間<span className="text-red-500 ml-0.5">*</span></label>
+                    <input type="time" className="input-base"
+                      value={phoneForm.endTime}
+                      onChange={e => setPhoneForm(f => ({ ...f, endTime: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">連絡者名</label>
+                  <input type="text" className="input-base" placeholder="例: 田中MSW"
+                    value={phoneForm.callerName}
+                    onChange={e => setPhoneForm(f => ({ ...f, callerName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">連絡先電話</label>
+                  <input type="tel" className="input-base" placeholder="例: 087-000-0000"
+                    value={phoneForm.callerPhone}
+                    onChange={e => setPhoneForm(f => ({ ...f, callerPhone: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">患者氏名<span className="text-red-500 ml-0.5">*</span></label>
+                  <input type="text" className="input-base" placeholder="例: 山田 太郎"
+                    value={phoneForm.patientName}
+                    onChange={e => setPhoneForm(f => ({ ...f, patientName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">乗車地<span className="text-red-500 ml-0.5">*</span></label>
+                  <input type="text" className="input-base" placeholder="例: 香川県丸亀市〇〇町1-2-3"
+                    value={phoneForm.patientAddress}
+                    onChange={e => setPhoneForm(f => ({ ...f, patientAddress: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">目的地<span className="text-red-500 ml-0.5">*</span></label>
+                  <input type="text" className="input-base" placeholder="例: 丸亀市民病院"
+                    value={phoneForm.destination}
+                    onChange={e => setPhoneForm(f => ({ ...f, destination: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">使用機材<span className="text-red-500 ml-0.5">*</span></label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { value: 'wheelchair', label: '車椅子' },
+                      { value: 'reclining_wheelchair', label: 'リクライニング' },
+                      { value: 'stretcher', label: 'ストレッチャー' },
+                    ].map(opt => (
+                      <button key={opt.value} type="button"
+                        onClick={() => setPhoneForm(f => ({ ...f, equipment: opt.value }))}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          phoneForm.equipment === opt.value
+                            ? 'bg-teal-600 text-white border-teal-600'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
+                        }`}
+                      >{opt.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded border-slate-300 text-teal-600"
+                    checked={phoneForm.equipmentRental}
+                    onChange={e => setPhoneForm(f => ({ ...f, equipmentRental: e.target.checked }))} />
+                  <span className="text-sm text-slate-700">機材貸出あり</span>
+                </label>
+                <div>
+                  <label className="label">備考</label>
+                  <textarea className="input-base resize-none" rows={2} placeholder="特記事項など"
+                    value={phoneForm.notes}
+                    onChange={e => setPhoneForm(f => ({ ...f, notes: e.target.value }))} />
+                </div>
+              </div>
+
+              {phoneError && <p className="text-xs text-red-600 mt-3">{phoneError}</p>}
+
+              <div className="mt-4 flex gap-2">
+                <button onClick={() => { setShowPhoneModal(false); setPhoneError('') }} className="btn-secondary flex-1">
+                  キャンセル
+                </button>
+                <button onClick={handlePhoneSubmit} disabled={phoneSaving} className="btn-primary flex-1">
+                  {phoneSaving ? '保存中...' : '記録する'}
+                </button>
               </div>
             </div>
           </div>

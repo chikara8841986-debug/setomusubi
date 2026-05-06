@@ -37,7 +37,9 @@ export default function DemoMswReservations() {
 
   const active = reservations.filter(r => r.status === 'pending' || r.status === 'confirmed')
   const past = reservations.filter(r => ['completed', 'cancelled', 'rejected'].includes(r.status))
-  const list = tab === 'active' ? [...active].sort((a, b) => a.reservation_date.localeCompare(b.reservation_date)) : past
+  const list = tab === 'active'
+    ? [...active].sort((a, b) => a.reservation_date.localeCompare(b.reservation_date))
+    : [...past].sort((a, b) => b.reservation_date.localeCompare(a.reservation_date))
 
   const handleCancel = (id: string) => {
     setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' as const } : r))

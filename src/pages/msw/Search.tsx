@@ -606,7 +606,12 @@ export default function MswSearch() {
                     )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-slate-800">{biz.name}</h3>
+                      <button
+                        onClick={() => setPreviewBusiness(biz)}
+                        className="font-semibold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
+                      >
+                        {biz.name}
+                      </button>
                       <button
                         onClick={() => toggleFavorite(biz.id)}
                         className="text-lg flex-shrink-0 leading-none"
@@ -670,12 +675,6 @@ export default function MswSearch() {
                     )}
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2 flex-1">
-                        <button
-                          onClick={() => setPreviewBusiness(biz)}
-                          className="text-xs text-teal-700 hover:underline"
-                        >
-                          詳細を見る →
-                        </button>
                         {(biz.matchedSlot.capacity ?? 1) > 1 && (
                           <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
                             空き{(biz.matchedSlot.capacity ?? 1) - (biz.matchedSlot.confirmed_count ?? 0)}台

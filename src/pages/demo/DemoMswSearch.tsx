@@ -10,6 +10,10 @@ import {
   type DemoReservation,
 } from './demoData'
 
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
+
 function addDays(n: number): string {
   const d = new Date()
   d.setDate(d.getDate() + n)
@@ -36,6 +40,7 @@ export default function DemoMswSearch() {
   const [stage, setStage] = useState<Stage>('form')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedBizId, setSelectedBizId] = useState<string | null>(null)
+  const [preview, setPreview] = useState<typeof DEMO_BUSINESSES[number] | null>(null)
 
   // Search form
   const [searchDate, setSearchDate] = useState(addDays(1))
@@ -99,7 +104,10 @@ export default function DemoMswSearch() {
       const newRes: DemoReservation = {
         id: `demo-res-new-${Date.now()}`,
         status: 'pending',
+        source: 'msw',
         hospital_name: DEMO_HOSPITAL.name,
+        caller_name: '',
+        caller_phone: '',
         contact_name: contactName,
         patient_name: patientName.trim(),
         patient_address: patientAddress.trim(),
@@ -202,12 +210,17 @@ export default function DemoMswSearch() {
                       🚐
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-slate-800">{biz.name}</h3>
+                      <button
+                        onClick={() => setPreview(biz)}
+                        className="font-semibold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
+                      >
+                        {biz.name}
+                      </button>
                       <p className="text-xs text-slate-500 mt-0.5">📍 {biz.address}</p>
                       <p className="text-xs text-teal-700 mt-0.5">📞 {biz.cancel_phone}</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 mb-3">
+                  <div className="flex flex-wrap gap-1 mb-2">
                     {biz.has_wheelchair && <span className="badge-blue">車椅子</span>}
                     {biz.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
                     {biz.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
@@ -340,6 +353,52 @@ export default function DemoMswSearch() {
             >
               もう一件申請する
             </button>
+          </div>
+        </div>
+      )}
+      {/* Business detail modal */}
+      {preview && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={() => setPreview(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-800">事業所詳細</h3>
+              <button onClick={() => setPreview(null)} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
+            </div>
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center text-teal-400 text-2xl flex-shrink-0">🚐</div>
+              <div className="min-w-0">
+                <p className="font-bold text-slate-800">{preview.name}</p>
+                <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-teal-700 hover:underline block mt-0.5">📍 {preview.address}</a>
+                <a href={`tel:${preview.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">📞 {preview.cancel_phone}</a>
+                <p className="text-xs text-slate-500 mt-0.5">営業: {preview.business_hours_start?.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1 mb-3">
+              {preview.has_wheelchair && <span className="badge-blue">車椅子</span>}
+              {preview.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
+              {preview.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
+              {preview.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
+              {preview.has_female_caregiver && <span className="badge-green">女性介護者</span>}
+              {preview.long_distance && <span className="badge-gray">長距離対応</span>}
+              {preview.same_day && <span className="badge-gray">当日対応</span>}
+            </div>
+            {preview.pr_text && (
+              <p className="text-sm text-slate-700 whitespace-pre-line mb-3 border-t pt-3">{preview.pr_text}</p>
+            )}
+            {preview.pricing && (
+              <div className="border-t pt-3 text-sm">
+                <span className="text-xs text-slate-500">料金: </span>{preview.pricing}
+              </div>
+            )}
+            {preview.qualifications && (
+              <div className="border-t mt-2 pt-2 text-sm">
+                <span className="text-xs text-slate-500">資格・特徴: </span>{preview.qualifications}
+              </div>
+            )}
+            <button onClick={() => setPreview(null)} className="btn-secondary w-full mt-4">閉じる</button>
           </div>
         </div>
       )}

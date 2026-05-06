@@ -117,7 +117,7 @@ export default function AdminReservations() {
 
     const { data, error } = await query
     if (error) { setLoadError(true); setLoading(false); return }
-    setReservations((data as ReservationFull[]) ?? [])
+    setReservations((data as unknown as ReservationFull[]) ?? [])
     setLoading(false)
   }
 

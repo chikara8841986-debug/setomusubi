@@ -352,7 +352,12 @@ export default function MswBusinesses() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="font-semibold text-slate-800">{biz.name}</h3>
+                        <button
+                          onClick={() => setPreview(biz)}
+                          className="font-semibold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
+                        >
+                          {biz.name}
+                        </button>
                         {availCheck && !checkingAvail && (
                           availMap[biz.id]
                             ? <span className="text-[10px] bg-teal-100 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded-full font-medium">空きあり</span>
@@ -407,10 +412,6 @@ export default function MswBusinesses() {
                         📞 {biz.cancel_phone}
                       </a>
                     )}
-                    <button onClick={() => setPreview(biz)}
-                      className="text-xs text-teal-700 hover:underline">
-                      詳細を見る →
-                    </button>
                     {availCheck && availMap[biz.id] && (
                       <button
                         onClick={() => navigate('/msw/search', {

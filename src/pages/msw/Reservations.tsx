@@ -56,7 +56,7 @@ export default function MswReservations() {
       .order('reservation_date', { ascending: false })
       .order('start_time', { ascending: false })
     if (error) { setLoadError(true); setLoading(false); return }
-    setReservations((data as ReservationWithBusiness[]) ?? [])
+    setReservations((data as unknown as ReservationWithBusiness[]) ?? [])
     setLoading(false)
   }, [hospitalId])
 
@@ -139,24 +139,12 @@ export default function MswReservations() {
     setShowCancelConfirm(false)
     setCancelling(true)
     setCancelError('')
-    const { error: cancelErr } = await supabase.from('reservations').update({ status: 'cancelled' }).eq('id', r.id)
+    // cancel_reservation_by_msw RPC: status='cancelled' と slot解放を一括で行う
+    const { error: cancelErr } = await supabase.rpc('cancel_reservation_by_msw', { p_reservation_id: r.id })
     if (cancelErr) {
       setCancelError('キャンセルに失敗しました。再試行してください。')
       setCancelling(false)
       return
-    }
-    if (r.slot_id && r.status === 'confirmed') {
-      // confirmed_count を1減らし、is_available を true に戻す
-      const { data: slot } = await supabase
-        .from('availability_slots')
-        .select('confirmed_count')
-        .eq('id', r.slot_id)
-        .single()
-      const newCount = Math.max(0, (slot?.confirmed_count ?? 0) - 1)
-      await supabase
-        .from('availability_slots')
-        .update({ confirmed_count: newCount, is_available: true })
-        .eq('id', r.slot_id)
     }
     // 確定済みキャンセルは事業所へメール通知
     if (r.status === 'confirmed') {
@@ -165,7 +153,6 @@ export default function MswReservations() {
     setCancelling(false)
     setSelected(null)
     showToast('予約をキャンセルしました', 'error')
-    // 楽観更新ではなく完全再取得でスロット情報も同期
     fetchReservations()
   }
 

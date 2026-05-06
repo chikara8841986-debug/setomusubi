@@ -155,7 +155,10 @@ export const DEMO_SLOTS = [
 export type DemoReservation = {
   id: string
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected'
+  source: 'msw' | 'phone'
   hospital_name: string
+  caller_name: string
+  caller_phone: string
   contact_name: string
   patient_name: string
   patient_address: string
@@ -175,7 +178,10 @@ export const INITIAL_DEMO_RESERVATIONS: DemoReservation[] = [
   {
     id: 'demo-res-1',
     status: 'pending',
+    source: 'msw',
     hospital_name: '丸亀市立市民病院',
+    caller_name: '',
+    caller_phone: '',
     contact_name: '山田 花子',
     patient_name: '佐藤 一郎',
     patient_address: '香川県丸亀市浜町1-1-1',
@@ -193,7 +199,10 @@ export const INITIAL_DEMO_RESERVATIONS: DemoReservation[] = [
   {
     id: 'demo-res-2',
     status: 'confirmed',
+    source: 'msw',
     hospital_name: '善通寺市民病院',
+    caller_name: '',
+    caller_phone: '',
     contact_name: '田中 次郎',
     patient_name: '田中 八重子',
     patient_address: '香川県善通寺市与北町1-1',
@@ -210,8 +219,32 @@ export const INITIAL_DEMO_RESERVATIONS: DemoReservation[] = [
   },
   {
     id: 'demo-res-3',
+    status: 'confirmed',
+    source: 'phone',
+    hospital_name: '',
+    caller_name: '高松赤十字・中村MSW',
+    caller_phone: '087-831-7101',
+    contact_name: '中村 MSW',
+    patient_name: '山本 花子',
+    patient_address: '香川県高松市林町2-1',
+    destination: '香川県高松市番町1丁目（高松市民病院）',
+    equipment: 'wheelchair',
+    equipment_rental: false,
+    reservation_date: addDays(2),
+    start_time: '14:00',
+    end_time: '16:00',
+    notes: '車椅子から降りる際に介助が必要です',
+    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    business_id: 'demo-biz-1',
+    business_name: 'せとうち介護タクシー',
+  },
+  {
+    id: 'demo-res-4',
     status: 'completed',
+    source: 'msw',
     hospital_name: '丸亀市立市民病院',
+    caller_name: '',
+    caller_phone: '',
     contact_name: '山田 花子',
     patient_name: '鈴木 三郎',
     patient_address: '香川県丸亀市土器町東3丁目',
@@ -227,6 +260,76 @@ export const INITIAL_DEMO_RESERVATIONS: DemoReservation[] = [
     business_name: 'せとうち介護タクシー',
   },
 ]
+
+// ── カレンダー用スロット型（確定予約情報つき） ──
+export type DemoCalSlot = {
+  id: string
+  date: string
+  startTime: string
+  endTime: string
+  confirmed: boolean
+  source?: 'msw' | 'phone'
+  hospitalName?: string
+  callerName?: string
+  callerPhone?: string
+  patientName?: string
+  patientAddress?: string
+  destination?: string
+  equipment?: string
+  equipmentRental?: boolean
+  notes?: string
+}
+
+// 初期表示用の空き枠（緑）
+export const INITIAL_OPEN_CAL_SLOTS: DemoCalSlot[] = [
+  { id: 'init-1', date: addDays(1), startTime: '09:00', endTime: '12:00', confirmed: false },
+  { id: 'init-2', date: addDays(1), startTime: '14:00', endTime: '17:00', confirmed: false },
+  { id: 'init-3', date: addDays(3), startTime: '10:00', endTime: '15:00', confirmed: false },
+  { id: 'init-4', date: addDays(6), startTime: '08:30', endTime: '12:00', confirmed: false },
+]
+
+// 初期表示用の確定済み枠（水色）
+export const INITIAL_CONFIRMED_CAL_SLOTS: DemoCalSlot[] = [
+  {
+    id: 'demo-cal-msw',
+    date: addDays(5),
+    startTime: '09:00',
+    endTime: '11:00',
+    confirmed: true,
+    source: 'msw',
+    hospitalName: '善通寺市民病院',
+    patientName: '田中 八重子',
+    patientAddress: '香川県善通寺市与北町1-1',
+    destination: '香川県丸亀市川西町（丸亀市民病院）',
+    equipment: 'reclining_wheelchair',
+    equipmentRental: true,
+    notes: '',
+  },
+  {
+    id: 'demo-cal-phone',
+    date: addDays(2),
+    startTime: '14:00',
+    endTime: '16:00',
+    confirmed: true,
+    source: 'phone',
+    callerName: '高松赤十字・中村MSW',
+    callerPhone: '087-831-7101',
+    patientName: '山本 花子',
+    patientAddress: '香川県高松市林町2-1',
+    destination: '香川県高松市番町1丁目（高松市民病院）',
+    equipment: 'wheelchair',
+    equipmentRental: false,
+    notes: '車椅子から降りる際に介助が必要です',
+  },
+]
+
+// デモセッション中の承認追加スロット（予約管理→承認でここに積まれる）
+export const demoApprovedSlots: DemoCalSlot[] = []
+export function addDemoApprovedSlot(slot: DemoCalSlot) {
+  if (!demoApprovedSlots.find(s => s.id === slot.id)) {
+    demoApprovedSlots.push(slot)
+  }
+}
 
 export const EQUIPMENT_LABELS: Record<string, string> = {
   wheelchair: '車椅子',

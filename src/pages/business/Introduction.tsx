@@ -79,9 +79,11 @@ export default function BusinessIntroduction() {
   useEffect(() => { fetchData() }, [businessId])
 
   const uploadImage = async (file: File, path: string): Promise<string | null> => {
+    // upsert:false — paths are time+random unique, no overwrite needed.
+    // Storage bucket has no UPDATE policy by design (smaller attack surface).
     const { error } = await supabase.storage
       .from('business-images')
-      .upload(path, file, { upsert: true })
+      .upload(path, file, { upsert: false })
     if (error) { console.error(error); return null }
     const { data: urlData } = supabase.storage.from('business-images').getPublicUrl(path)
     return urlData.publicUrl

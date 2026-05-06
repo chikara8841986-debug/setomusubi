@@ -36,13 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function loadUserMeta(userId: string) {
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', userId)
       .single()
 
-    if (!profile) return
+    if (error || !profile) return
 
     setRole(profile.role)
 
@@ -85,11 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBusinessId(null)
         setHospitalId(null)
         setBusinessApproved(false)
-        // セッション期限切れ・強制ログアウト時にログイン画面へ
-        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-          if (!session) {
-            window.location.href = '/login'
-          }
+        // SIGNED_OUT のみログイン画面へリダイレクト
+        // TOKEN_REFRESHED はトークン更新成功を示すためリダイレクト不要
+        if (event === 'SIGNED_OUT' && !session) {
+          window.location.href = '/login'
         }
       }
     })

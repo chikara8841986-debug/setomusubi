@@ -213,8 +213,11 @@ export type Database = {
         Row: {
           id: string
           business_id: string
-          hospital_id: string
+          hospital_id: string | null
           slot_id: string | null
+          source: string
+          caller_name: string | null
+          caller_phone: string | null
           contact_name: string
           patient_name: string
           patient_address: string
@@ -232,8 +235,11 @@ export type Database = {
         Insert: {
           id?: string
           business_id: string
-          hospital_id: string
+          hospital_id?: string | null
           slot_id?: string | null
+          source?: string
+          caller_name?: string | null
+          caller_phone?: string | null
           contact_name: string
           patient_name: string
           patient_address: string
@@ -250,8 +256,11 @@ export type Database = {
         Update: {
           id?: string
           business_id?: string
-          hospital_id?: string
+          hospital_id?: string | null
           slot_id?: string | null
+          source?: string
+          caller_name?: string | null
+          caller_phone?: string | null
           contact_name?: string
           patient_name?: string
           patient_address?: string
@@ -269,7 +278,40 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      approve_reservation: {
+        Args: { p_reservation_id: string }
+        Returns: number
+      }
+      reject_reservation: {
+        Args: { p_reservation_id: string }
+        Returns: void
+      }
+      complete_reservation: {
+        Args: { p_reservation_id: string }
+        Returns: void
+      }
+      cancel_reservation_by_msw: {
+        Args: { p_reservation_id: string }
+        Returns: void
+      }
+      create_phone_reservation: {
+        Args: {
+          p_date: string
+          p_start_time: string
+          p_end_time: string
+          p_caller_name: string
+          p_caller_phone: string
+          p_patient_name: string
+          p_patient_address: string
+          p_destination: string
+          p_equipment: Equipment
+          p_equipment_rental: boolean
+          p_notes: string
+        }
+        Returns: string
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }

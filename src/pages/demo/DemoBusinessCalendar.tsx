@@ -2,8 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import DemoLayout from './DemoLayout'
+import {
+  INITIAL_OPEN_CAL_SLOTS,
+  INITIAL_CONFIRMED_CAL_SLOTS,
+  demoApprovedSlots,
+  EQUIPMENT_LABELS,
+  type DemoCalSlot,
+} from './demoData'
 
-// ── Grid constants (same as real Calendar.tsx) ──
+// ── Grid constants ──
 const GRID_START  = 6
 const GRID_END    = 22
 const TOTAL_SLOTS = (GRID_END - GRID_START) * 2
@@ -21,18 +28,7 @@ function slotToTime(n: number): string {
 }
 function dateStr(d: Date) { return d.toISOString().split('T')[0] }
 
-// ── Types ──
-type Slot = { id: string; date: string; startTime: string; endTime: string }
 type DragState = { dayIdx: number; dateStr: string; startSlot: number; endSlot: number }
-
-// ── Demo initial data ──
-const today = new Date()
-const INITIAL_SLOTS: Slot[] = [
-  { id: 'init-1', date: dateStr(addDays(today, 1)), startTime: '09:00', endTime: '12:00' },
-  { id: 'init-2', date: dateStr(addDays(today, 1)), startTime: '14:00', endTime: '17:00' },
-  { id: 'init-3', date: dateStr(addDays(today, 3)), startTime: '10:00', endTime: '15:00' },
-  { id: 'init-4', date: dateStr(addDays(today, 5)), startTime: '08:30', endTime: '12:00' },
-]
 
 // Demo business hours
 const BIZ_START = '09:00'
@@ -40,12 +36,29 @@ const BIZ_END   = '18:00'
 const bizStartSlot = timeToSlot(BIZ_START)
 const bizEndSlot   = timeToSlot(BIZ_END)
 
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
+
 export default function DemoBusinessCalendar() {
+  const today = new Date()
   const [weekOffset, setWeekOffset] = useState(0)
-  const [slots, setSlots]           = useState<Slot[]>(INITIAL_SLOTS)
-  const [toast, setToast]           = useState('')
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
+
+  // スロット: 初期オープン + 初期確定 + 承認後追加分
+  const [slots, setSlots] = useState<DemoCalSlot[]>([
+    ...INITIAL_OPEN_CAL_SLOTS,
+    ...INITIAL_CONFIRMED_CAL_SLOTS,
+    ...demoApprovedSlots,
+  ])
+
+  const [toast, setToast] = useState('')
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<DemoCalSlot | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [editMode,  setEditMode]  = useState(false)
+  const [editStart, setEditStart] = useState('')
+  const [editEnd,   setEditEnd]   = useState('')
+  const [editError, setEditError] = useState('')
 
   // Drag state
   const isDraggingRef = useRef(false)
@@ -54,6 +67,16 @@ export default function DemoBusinessCalendar() {
 
   const weekStart = startOfWeek(addDays(today, weekOffset * 7), { weekStartsOn: 1 })
   const weekDays  = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  // 予約管理で承認追加されたスロットをカレンダーに反映（ページ遷移後に同期）
+  useEffect(() => {
+    if (demoApprovedSlots.length === 0) return
+    setSlots(prev => {
+      const existingIds = new Set(prev.map(s => s.id))
+      const newSlots = demoApprovedSlots.filter(s => !existingIds.has(s.id))
+      return newSlots.length > 0 ? [...prev, ...newSlots] : prev
+    })
+  }, [])
 
   // ── Drag handlers ──
   const handleCellMouseDown = useCallback((dayIdx: number, slotIdx: number) => {
@@ -96,8 +119,7 @@ export default function DemoBusinessCalendar() {
     dragRef.current = d; setDragState({ ...d })
   }, [])
 
-  // mouseup / touchend → create slot
-  // Ref で最新値を参照することでクロージャの陳腐化を防ぐ
+  // mouseup / touchend → 空き枠を追加
   useEffect(() => {
     const handler = () => {
       if (!isDraggingRef.current) return
@@ -114,16 +136,16 @@ export default function DemoBusinessCalendar() {
       const startTime = slotToTime(startS)
       const endTime   = slotToTime(Math.min(endS, TOTAL_SLOTS))
 
-      // setSlots は安定した setter なのでクロージャで安全に参照可能
       setSlots(prev => [...prev, {
         id: `demo-${Date.now()}`,
         date: d.dateStr,
         startTime,
         endTime,
+        confirmed: false,
       }])
-      // setToast は安定した setter
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
       setToast(`${d.dateStr.slice(5).replace('-', '/')} ${startTime}〜${endTime} を追加しました`)
-      setTimeout(() => setToast(''), 2500)
+      toastTimerRef.current = setTimeout(() => setToast(''), 2500)
     }
 
     window.addEventListener('mouseup', handler)
@@ -132,14 +154,35 @@ export default function DemoBusinessCalendar() {
       window.removeEventListener('mouseup', handler)
       window.removeEventListener('touchend', handler)
     }
-  }, []) // 依存なし：refs と安定な setState のみ使用
+  }, [])
+
+  // 別スロットを開いたら編集モードをリセット
+  useEffect(() => {
+    setEditMode(false)
+    setEditError('')
+  }, [selectedSlot?.id])
+
+  const showDemoToast = (msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToast(msg)
+    toastTimerRef.current = setTimeout(() => setToast(''), 2500)
+  }
+
+  const handleEdit = (id: string) => {
+    if (!editStart || !editEnd) { setEditError('時間を入力してください'); return }
+    if (editStart >= editEnd) { setEditError('終了は開始より後にしてください'); return }
+    setSlots(prev => prev.map(s => s.id === id ? { ...s, startTime: editStart, endTime: editEnd } : s))
+    setSelectedSlot(prev => prev && prev.id === id ? { ...prev, startTime: editStart, endTime: editEnd } : prev)
+    setEditMode(false)
+    setEditError('')
+    showDemoToast(`${editStart}〜${editEnd} に変更しました`)
+  }
 
   const handleDelete = (id: string) => {
     setSlots(prev => prev.filter(s => s.id !== id))
     setDeleteConfirmId(null)
     setSelectedSlot(null)
-    setToast('削除しました')
-    setTimeout(() => setToast(''), 2500)
+    showDemoToast('削除しました')
   }
 
   const isPastDay = (d: Date) => {
@@ -178,10 +221,10 @@ export default function DemoBusinessCalendar() {
           <div className="grid border-b border-slate-200" style={{ gridTemplateColumns: '38px repeat(7, 1fr)' }}>
             <div className="h-9 border-r border-slate-100" />
             {weekDays.map((date, _dayIdx) => {
-              const ds        = dateStr(date)
-              const isToday   = ds === dateStr(today)
-              const dow       = date.getDay()
-              const isSun     = dow === 0; const isSat = dow === 6
+              const ds      = dateStr(date)
+              const isToday = ds === dateStr(today)
+              const dow     = date.getDay()
+              const isSun   = dow === 0; const isSat = dow === 6
               return (
                 <div key={ds} className={`py-1 px-0.5 text-center border-l border-slate-100 ${isToday ? 'bg-teal-50' : ''}`}>
                   <p className={`text-[10px] ${isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-400'}`}>
@@ -215,9 +258,9 @@ export default function DemoBusinessCalendar() {
 
               {/* Day columns */}
               {weekDays.map((date, dayIdx) => {
-                const ds      = dateStr(date)
-                const past    = isPastDay(date)
-                const isToday = ds === dateStr(today)
+                const ds       = dateStr(date)
+                const past     = isPastDay(date)
+                const isToday  = ds === dateStr(today)
                 const daySlots = slots.filter(s => s.date === ds)
 
                 return (
@@ -261,15 +304,22 @@ export default function DemoBusinessCalendar() {
                       const endS   = timeToSlot(slot.endTime)
                       const top    = startS * CELL_H + 1
                       const height = Math.max((endS - startS) * CELL_H - 2, 6)
+                      const bgClass = slot.confirmed
+                        ? slot.source === 'phone'
+                          ? 'bg-blue-400 border-blue-500'
+                          : 'bg-teal-400 border-teal-500'
+                        : 'bg-green-400 border-green-500'
                       return (
                         <div key={slot.id}
                           style={{ top, height, left: 3, right: 3 }}
-                          className="absolute bg-green-400 border border-green-500 rounded text-white overflow-hidden cursor-pointer z-20 hover:brightness-95 transition-all"
+                          className={`absolute ${bgClass} border rounded text-white overflow-hidden cursor-pointer z-20 hover:brightness-95 transition-all`}
                           onMouseDown={e => { e.stopPropagation(); setSelectedSlot(slot); setDeleteConfirmId(null) }}
                           onTouchStart={e => { e.stopPropagation(); setSelectedSlot(slot); setDeleteConfirmId(null) }}
                         >
                           <div className="px-1 py-0.5 text-[9px] font-medium leading-tight whitespace-nowrap overflow-hidden">
                             {slot.startTime}〜{slot.endTime}
+                            {slot.confirmed && slot.source === 'phone' && <span className="ml-0.5">📞</span>}
+                            {slot.confirmed && slot.source === 'msw' && <span className="ml-0.5">✓</span>}
                           </div>
                         </div>
                       )
@@ -296,46 +346,158 @@ export default function DemoBusinessCalendar() {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-3 mt-2 px-1">
-          <div className="flex items-center gap-1">
-            <div className="w-0.5 h-3 bg-teal-200 rounded" />
-            <span className="text-[10px] text-slate-400">営業時間（9〜18時）</span>
-          </div>
+        <div className="flex items-center gap-3 mt-2 px-1 flex-wrap">
           <div className="flex items-center gap-1">
             <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-            <span className="text-[10px] text-slate-400">空き枠</span>
+            <span className="text-[10px] text-slate-400">空き</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2.5 h-2.5 rounded-full bg-teal-400" />
+            <span className="text-[10px] text-slate-400">予約確定（MSW）</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+            <span className="text-[10px] text-slate-400">電話予約</span>
+          </div>
+          <div className="flex items-center gap-1 ml-auto">
+            <div className="w-0.5 h-3 bg-teal-200 rounded" />
+            <span className="text-[10px] text-slate-400">営業時間（9〜18時）</span>
           </div>
         </div>
 
         <div className="mt-3 card bg-sky-50 border-sky-200 text-xs text-sky-800 space-y-1">
           <p className="font-semibold">💡 デモのヒント</p>
-          <p>グリッドをドラッグ（上から下）して空き枠を追加してみてください。緑のブロックをタップすると削除できます。</p>
+          <p>グリッドをドラッグして空き枠を追加。予約管理で承認すると水色のブロックが追加されます。ブロックをタップすると詳細を確認できます。</p>
         </div>
 
         {/* Slot detail modal */}
         {selectedSlot && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
-            onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null) }}>
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-xs p-5 pb-8 sm:pb-5"
+            onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null); setEditMode(false); setEditError('') }}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-5 pb-8 sm:pb-5 max-h-[80vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
+
+              {/* Header */}
+              <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="font-bold text-slate-800">{selectedSlot.startTime}〜{selectedSlot.endTime}</p>
+                  <p className="font-bold text-slate-800 text-base">{selectedSlot.startTime}〜{selectedSlot.endTime}</p>
                   <p className="text-xs text-slate-400">{selectedSlot.date}</p>
                 </div>
-                <span className="badge-green">空き</span>
-              </div>
-              <p className="text-xs text-slate-500 mb-4">※ デモモードのため予約は入りません</p>
-              {deleteConfirmId === selectedSlot.id ? (
-                <div className="flex gap-2">
-                  <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary text-sm">戻る</button>
-                  <button onClick={() => handleDelete(selectedSlot.id)}
-                    className="flex-1 text-sm bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium">削除確定</button>
+                <div className="flex items-center gap-2">
+                  {selectedSlot.confirmed ? (
+                    selectedSlot.source === 'phone'
+                      ? <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">📞 電話予約</span>
+                      : <span className="badge-blue">確定</span>
+                  ) : (
+                    <span className="badge-green">空き</span>
+                  )}
+                  <button
+                    onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null); setEditMode(false); setEditError('') }}
+                    className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center"
+                  >×</button>
                 </div>
-              ) : (
-                <button onClick={() => setDeleteConfirmId(selectedSlot.id)}
-                  className="w-full text-xs text-red-400 hover:text-red-600 text-center py-1">
-                  この枠を削除する
+              </div>
+
+              {/* 確定予約の詳細 */}
+              {selectedSlot.confirmed && (
+                <div className="border-t border-slate-100 pt-3 mb-3 space-y-1 text-xs text-slate-600">
+                  {selectedSlot.source === 'phone' ? (
+                    <>
+                      {selectedSlot.callerName && (
+                        <p><span className="text-slate-400">連絡者：</span><span className="font-medium text-slate-700">{selectedSlot.callerName}</span></p>
+                      )}
+                      {selectedSlot.callerPhone && (
+                        <p>
+                          <span className="text-slate-400">連絡先：</span>
+                          <a href={`tel:${selectedSlot.callerPhone}`} className="text-teal-700 hover:underline font-medium">
+                            📞 {selectedSlot.callerPhone}
+                          </a>
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    selectedSlot.hospitalName && (
+                      <p><span className="text-slate-400">病院：</span><span className="font-medium text-slate-700">{selectedSlot.hospitalName}</span></p>
+                    )
+                  )}
+                  {selectedSlot.patientName && (
+                    <p><span className="text-slate-400">患者：</span><span className="font-medium text-slate-700">{selectedSlot.patientName}</span>　<span className="text-slate-400">{EQUIPMENT_LABELS[selectedSlot.equipment ?? ''] ?? selectedSlot.equipment}{selectedSlot.equipmentRental ? '（貸出あり）' : ''}</span></p>
+                  )}
+                  {selectedSlot.patientAddress && (
+                    <div className="flex items-center gap-1">
+                      <a href={mapsUrl(selectedSlot.patientAddress)} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 truncate text-teal-700 hover:underline">📍 乗車：{selectedSlot.patientAddress}</a>
+                    </div>
+                  )}
+                  {selectedSlot.destination && (
+                    <div className="flex items-center gap-1">
+                      <a href={mapsUrl(selectedSlot.destination)} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 truncate text-teal-700 hover:underline">📍 目的：{selectedSlot.destination}</a>
+                    </div>
+                  )}
+                  {selectedSlot.notes && (
+                    <p className="text-slate-500 italic">📝 {selectedSlot.notes}</p>
+                  )}
+                  <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-50">※ デモモードのため完了処理は予約管理画面で行います</p>
+                </div>
+              )}
+
+              {/* 空き枠の操作（確定済みには表示しない） */}
+              {!selectedSlot.confirmed && (
+                <>
+                  <p className="text-xs text-slate-500 mb-3">※ デモモードのため予約は入りません</p>
+                  <div className="space-y-2">
+                    {editMode ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-slate-600">時間を変更（1分単位）</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">開始</label>
+                            <input type="time" className="input-base text-sm" value={editStart} onChange={e => setEditStart(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">終了</label>
+                            <input type="time" className="input-base text-sm" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
+                          </div>
+                        </div>
+                        {editError && <p className="text-xs text-red-500">{editError}</p>}
+                        <div className="flex gap-2">
+                          <button onClick={() => { setEditMode(false); setEditError('') }} className="flex-1 btn-secondary text-sm">キャンセル</button>
+                          <button onClick={() => handleEdit(selectedSlot.id)} className="flex-1 btn-primary text-sm">保存する</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => { setEditMode(true); setDeleteConfirmId(null); setEditStart(selectedSlot.startTime); setEditEnd(selectedSlot.endTime) }}
+                          className="w-full text-xs text-slate-500 hover:text-teal-600 text-center py-1.5 border border-slate-200 rounded-lg hover:border-teal-300 transition-colors"
+                        >
+                          ✏️ 時間を変更する
+                        </button>
+                        {deleteConfirmId === selectedSlot.id ? (
+                          <div className="flex gap-2">
+                            <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary text-sm">戻る</button>
+                            <button onClick={() => handleDelete(selectedSlot.id)}
+                              className="flex-1 text-sm bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium">削除確定</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setDeleteConfirmId(selectedSlot.id)}
+                            className="w-full text-xs text-red-400 hover:text-red-600 text-center py-1">
+                            この枠を削除する
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {selectedSlot.confirmed && (
+                <button
+                  onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null) }}
+                  className="btn-secondary w-full mt-2"
+                >
+                  閉じる
                 </button>
               )}
             </div>

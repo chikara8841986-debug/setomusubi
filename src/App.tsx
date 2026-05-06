@@ -25,8 +25,15 @@ const PAGE_TITLES: Record<string, string> = {
   '/register/msw':          'MSW登録',
   '/auth/forgot-password':  'パスワードを忘れた方',
   '/auth/reset-password':   'パスワード再設定',
-  '/manual':               '使い方ガイド',
-  '/demo':                 'デモ',
+  '/manual':                        '使い方ガイド',
+  '/demo-guide':                    'デモガイド',
+  '/demo/msw/search':               'デモ：予約する',
+  '/demo/msw/reservations':         'デモ：予約履歴',
+  '/demo/msw/businesses':           'デモ：事業所一覧',
+  '/demo/business/calendar':        'デモ：カレンダー',
+  '/demo/business/reservations':    'デモ：予約管理',
+  '/demo/business/profile':         'デモ：プロフィール',
+  '/demo':                          'デモ',
 }
 
 function ScrollToTop() {

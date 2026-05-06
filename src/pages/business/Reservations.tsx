@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { isTodayJST } from '../../lib/jst'
+import { isTodayJST, jstTodayStr } from '../../lib/jst'
 import type { Reservation } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -14,6 +14,34 @@ function mapsUrl(address: string) {
 
 type ReservationWithHospital = Reservation & {
   hospitals: { name: string; phone: string | null } | null
+}
+
+type PhoneForm = {
+  date: string
+  startTime: string
+  endTime: string
+  patientName: string
+  patientAddress: string
+  destination: string
+  equipment: string
+  equipmentRental: boolean
+  callerName: string
+  callerPhone: string
+  notes: string
+}
+
+const EMPTY_PHONE_FORM: PhoneForm = {
+  date: '',
+  startTime: '',
+  endTime: '',
+  patientName: '',
+  patientAddress: '',
+  destination: '',
+  equipment: 'wheelchair',
+  equipmentRental: false,
+  callerName: '',
+  callerPhone: '',
+  notes: '',
 }
 
 const EQUIPMENT_LABELS: Record<string, string> = {
@@ -39,6 +67,10 @@ export default function BusinessReservations() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
   const [nameSearch, setNameSearch] = useState('')
   const [pastStatusFilter, setPastStatusFilter] = useState<'' | 'completed' | 'cancelled' | 'rejected'>('')
+  const [showPhoneModal, setShowPhoneModal] = useState(false)
+  const [phoneForm, setPhoneForm] = useState<PhoneForm>({ ...EMPTY_PHONE_FORM, date: jstTodayStr() })
+  const [phoneSaving, setPhoneSaving] = useState(false)
+  const [phoneError, setPhoneError] = useState('')
 
   const fetchReservations = useCallback(async () => {
     if (!businessId) return
@@ -50,7 +82,7 @@ export default function BusinessReservations() {
       .order('reservation_date', { ascending: true })
       .order('start_time', { ascending: true })
     if (error) { setLoadError(true); setLoading(false); return }
-    setReservations((data as ReservationWithHospital[]) ?? [])
+    setReservations((data as unknown as ReservationWithHospital[]) ?? [])
     setLoading(false)
   }, [businessId])
 
@@ -85,7 +117,10 @@ export default function BusinessReservations() {
   // ESCキーでモーダルを閉じる
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setSelected(null); setConfirmAction(null) }
+      if (e.key === 'Escape') {
+        setSelected(null); setConfirmAction(null)
+        setShowPhoneModal(false); setPhoneError('')
+      }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
@@ -145,56 +180,15 @@ export default function BusinessReservations() {
     setProcessing(true)
     setActionError('')
 
-    let autoRejectedCount = 0
-
-    if (r.slot_id) {
-      const { data: slot } = await supabase
-        .from('availability_slots')
-        .select('capacity, confirmed_count, is_available')
-        .eq('id', r.slot_id)
-        .single()
-
-      const capacity = slot?.capacity ?? 1
-      const confirmedCount = slot?.confirmed_count ?? 0
-      const newCount = confirmedCount + 1
-      const nowFull = newCount >= capacity
-
-      const { error: slotErr } = await supabase
-        .from('availability_slots')
-        .update({ confirmed_count: newCount, is_available: !nowFull })
-        .eq('id', r.slot_id)
-
-      if (slotErr) {
-        setActionError('スロット情報の更新に失敗しました。再試行してください。')
-        setProcessing(false)
-        return
-      }
-
-      if (nowFull) {
-        // Count other pending requests for this slot before rejecting
-        const { count: otherPending } = await supabase
-          .from('reservations')
-          .select('*', { count: 'exact', head: true })
-          .eq('slot_id', r.slot_id)
-          .eq('status', 'pending')
-          .neq('id', r.id)
-        autoRejectedCount = otherPending ?? 0
-
-        await supabase
-          .from('reservations')
-          .update({ status: 'rejected' })
-          .eq('slot_id', r.slot_id)
-          .eq('status', 'pending')
-          .neq('id', r.id)
-      }
-    }
-
-    const { error: confirmErr } = await supabase.from('reservations').update({ status: 'confirmed' }).eq('id', r.id)
-    if (confirmErr) {
+    // approve_reservation RPC: トランザクションで slot.confirmed_count++ /
+    // 満車時の自動却下 / status='confirmed' をまとめて行う
+    const { data, error } = await supabase.rpc('approve_reservation', { p_reservation_id: r.id })
+    if (error) {
       setActionError('承認に失敗しました。再試行してください。')
       setProcessing(false)
       return
     }
+    const autoRejectedCount: number = typeof data === 'number' ? data : 0
     supabase.functions.invoke('send-confirmation', { body: { reservation_id: r.id } }).catch(() => {})
 
     closeModal()
@@ -210,7 +204,7 @@ export default function BusinessReservations() {
   const handleReject = async (r: ReservationWithHospital) => {
     setProcessing(true)
     setActionError('')
-    const { error } = await supabase.from('reservations').update({ status: 'rejected' }).eq('id', r.id)
+    const { error } = await supabase.rpc('reject_reservation', { p_reservation_id: r.id })
     if (error) {
       setActionError('却下に失敗しました。再試行してください。')
       setProcessing(false)
@@ -226,27 +220,53 @@ export default function BusinessReservations() {
   const handleComplete = async (r: ReservationWithHospital) => {
     setProcessing(true)
     setActionError('')
-    const { error } = await supabase.from('reservations').update({ status: 'completed' }).eq('id', r.id)
+    const { error } = await supabase.rpc('complete_reservation', { p_reservation_id: r.id })
     if (error) {
       setActionError('完了処理に失敗しました。再試行してください。')
       setProcessing(false)
       return
     }
-    if (r.slot_id) {
-      const { data: slot } = await supabase
-        .from('availability_slots')
-        .select('confirmed_count')
-        .eq('id', r.slot_id)
-        .single()
-      const newCount = Math.max(0, (slot?.confirmed_count ?? 0) - 1)
-      await supabase
-        .from('availability_slots')
-        .update({ confirmed_count: newCount, is_available: true })
-        .eq('id', r.slot_id)
-    }
     closeModal()
     setProcessing(false)
     showToast('完了にしました')
+    fetchReservations()
+  }
+
+  const handlePhoneSubmit = async () => {
+    const f = phoneForm
+    if (!businessId) return
+    if (!f.date || !f.startTime || !f.endTime) { setPhoneError('日付と時間を入力してください'); return }
+    if (f.startTime >= f.endTime) { setPhoneError('終了時間は開始時間より後にしてください'); return }
+    if (!f.patientName.trim()) { setPhoneError('患者氏名を入力してください'); return }
+    if (!f.patientAddress.trim()) { setPhoneError('乗車地を入力してください'); return }
+    if (!f.destination.trim()) { setPhoneError('目的地を入力してください'); return }
+
+    setPhoneSaving(true); setPhoneError('')
+
+    // create_phone_reservation RPC: スロット作成と予約作成をトランザクションで実行
+    const { error } = await supabase.rpc('create_phone_reservation', {
+      p_date: f.date,
+      p_start_time: f.startTime + ':00',
+      p_end_time: f.endTime + ':00',
+      p_caller_name: f.callerName,
+      p_caller_phone: f.callerPhone,
+      p_patient_name: f.patientName,
+      p_patient_address: f.patientAddress,
+      p_destination: f.destination,
+      p_equipment: f.equipment as 'wheelchair' | 'reclining_wheelchair' | 'stretcher',
+      p_equipment_rental: f.equipmentRental,
+      p_notes: f.notes,
+    })
+
+    setPhoneSaving(false)
+    if (error) {
+      setPhoneError('予約の登録に失敗しました。再試行してください。')
+      return
+    }
+
+    setShowPhoneModal(false)
+    setPhoneForm({ ...EMPTY_PHONE_FORM, date: jstTodayStr() })
+    showToast('電話予約を記録しました')
     fetchReservations()
   }
 
@@ -275,7 +295,15 @@ export default function BusinessReservations() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-1">予約管理</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-xl font-bold text-slate-800">予約管理</h1>
+        <button
+          onClick={() => { setShowPhoneModal(true); setPhoneError('') }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+        >
+          📞 電話予約を記録
+        </button>
+      </div>
       <p className="text-xs text-slate-400 mb-4">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定し、MSWへ通知メールが送られます。</p>
 
       {/* Tabs */}
@@ -448,10 +476,13 @@ export default function BusinessReservations() {
             }`}>
               <div className="flex items-start justify-between gap-2">
                 <button className="flex-1 text-left min-w-0" onClick={() => openModal(r)}>
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
                     {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
+                    {r.source === 'phone' && <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium">📞 電話</span>}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">{r.hospitals?.name ?? '—'} ／ {r.contact_name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {r.source === 'phone' ? (r.caller_name || '電話予約') : (r.hospitals?.name ?? '—')} ／ {r.contact_name}
+                  </p>
                   <p className="text-xs text-slate-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                 </button>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -526,20 +557,45 @@ export default function BusinessReservations() {
               )
             })()}
 
+            {selected.source === 'phone' && (
+              <div className="mb-3 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                <span className="text-blue-500">📞</span>
+                <span className="text-xs text-blue-700 font-medium">電話予約（手動記録）</span>
+              </div>
+            )}
+
             <dl className="space-y-3 text-sm">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
-              <Row label="病院" value={selected.hospitals?.name ?? '—'} />
-              {selected.hospitals?.phone && (
-                <div className="flex gap-3">
-                  <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">病院電話</dt>
-                  <dd className="font-medium text-sm">
-                    <a href={`tel:${selected.hospitals.phone}`} className="text-teal-700 hover:underline">
-                      📞 {selected.hospitals.phone}
-                    </a>
-                  </dd>
-                </div>
+              {selected.source === 'phone' ? (
+                <>
+                  {selected.caller_name && <Row label="連絡者" value={selected.caller_name} />}
+                  {selected.caller_phone && (
+                    <div className="flex gap-3">
+                      <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">連絡先</dt>
+                      <dd className="font-medium text-sm">
+                        <a href={`tel:${selected.caller_phone}`} className="text-teal-700 hover:underline">
+                          📞 {selected.caller_phone}
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Row label="病院" value={selected.hospitals?.name ?? '—'} />
+                  {selected.hospitals?.phone && (
+                    <div className="flex gap-3">
+                      <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">病院電話</dt>
+                      <dd className="font-medium text-sm">
+                        <a href={`tel:${selected.hospitals.phone}`} className="text-teal-700 hover:underline">
+                          📞 {selected.hospitals.phone}
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                  <Row label="担当者" value={selected.contact_name} />
+                </>
               )}
-              <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
                 <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
@@ -649,6 +705,122 @@ export default function BusinessReservations() {
                 )
               )}
               <button onClick={closeModal} className="btn-secondary w-full">閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Phone reservation modal */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-800">📞 電話予約を記録</h3>
+              <button onClick={() => { setShowPhoneModal(false); setPhoneError('') }}
+                className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center" aria-label="閉じる">×</button>
+            </div>
+
+            <div className="space-y-3">
+              {/* 日時 */}
+              <div>
+                <label className="label">日付<span className="text-red-500 ml-0.5">*</span></label>
+                <input type="date" className="input-base"
+                  value={phoneForm.date}
+                  onChange={e => setPhoneForm(f => ({ ...f, date: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">開始時間<span className="text-red-500 ml-0.5">*</span></label>
+                  <input type="time" className="input-base"
+                    value={phoneForm.startTime}
+                    onChange={e => setPhoneForm(f => ({ ...f, startTime: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">終了時間<span className="text-red-500 ml-0.5">*</span></label>
+                  <input type="time" className="input-base"
+                    value={phoneForm.endTime}
+                    onChange={e => setPhoneForm(f => ({ ...f, endTime: e.target.value }))} />
+                </div>
+              </div>
+
+              {/* 連絡者 */}
+              <div>
+                <label className="label">連絡者名</label>
+                <input type="text" className="input-base" placeholder="例: 田中MSW"
+                  value={phoneForm.callerName}
+                  onChange={e => setPhoneForm(f => ({ ...f, callerName: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">連絡先電話</label>
+                <input type="tel" className="input-base" placeholder="例: 087-000-0000"
+                  value={phoneForm.callerPhone}
+                  onChange={e => setPhoneForm(f => ({ ...f, callerPhone: e.target.value }))} />
+              </div>
+
+              {/* 患者情報 */}
+              <div>
+                <label className="label">患者氏名<span className="text-red-500 ml-0.5">*</span></label>
+                <input type="text" className="input-base" placeholder="例: 山田 太郎"
+                  value={phoneForm.patientName}
+                  onChange={e => setPhoneForm(f => ({ ...f, patientName: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">乗車地<span className="text-red-500 ml-0.5">*</span></label>
+                <input type="text" className="input-base" placeholder="例: 香川県高松市〇〇町1-2-3"
+                  value={phoneForm.patientAddress}
+                  onChange={e => setPhoneForm(f => ({ ...f, patientAddress: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">目的地<span className="text-red-500 ml-0.5">*</span></label>
+                <input type="text" className="input-base" placeholder="例: 高松赤十字病院"
+                  value={phoneForm.destination}
+                  onChange={e => setPhoneForm(f => ({ ...f, destination: e.target.value }))} />
+              </div>
+
+              {/* 機材 */}
+              <div>
+                <label className="label">使用機材<span className="text-red-500 ml-0.5">*</span></label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: 'wheelchair', label: '車椅子' },
+                    { value: 'reclining_wheelchair', label: 'リクライニング' },
+                    { value: 'stretcher', label: 'ストレッチャー' },
+                  ].map(opt => (
+                    <button key={opt.value} type="button"
+                      onClick={() => setPhoneForm(f => ({ ...f, equipment: opt.value }))}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        phoneForm.equipment === opt.value
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
+                      }`}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="rounded border-slate-300 text-teal-600"
+                  checked={phoneForm.equipmentRental}
+                  onChange={e => setPhoneForm(f => ({ ...f, equipmentRental: e.target.checked }))} />
+                <span className="text-sm text-slate-700">機材貸出あり</span>
+              </label>
+
+              {/* 備考 */}
+              <div>
+                <label className="label">備考</label>
+                <textarea className="input-base resize-none" rows={2} placeholder="特記事項など"
+                  value={phoneForm.notes}
+                  onChange={e => setPhoneForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+            </div>
+
+            {phoneError && <p className="text-xs text-red-600 mt-3">{phoneError}</p>}
+
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => { setShowPhoneModal(false); setPhoneError('') }} className="btn-secondary flex-1">
+                キャンセル
+              </button>
+              <button onClick={handlePhoneSubmit} disabled={phoneSaving} className="btn-primary flex-1">
+                {phoneSaving ? '保存中...' : '記録する'}
+              </button>
             </div>
           </div>
         </div>

@@ -107,6 +107,13 @@ export default function BusinessCalendar() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [completeConfirm, setCompleteConfirm] = useState<{ reservationId: string; slotId: string } | null>(null)
 
+  // ── 時間編集 ──
+  const [editMode,   setEditMode]   = useState(false)
+  const [editStart,  setEditStart]  = useState('')
+  const [editEnd,    setEditEnd]    = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError,  setEditError]  = useState('')
+
   // ── 週次設定モーダル ──
   const [showRecurModal, setShowRecurModal] = useState(false)
   const [recurDays,      setRecurDays]      = useState<boolean[]>([true, true, true, true, true, false, false])
@@ -188,6 +195,12 @@ export default function BusinessCalendar() {
     }
   }, [slots]) // selectedSlot は依存に入れない（無限ループ防止）
 
+  // 別のスロットを開いた際に編集モードをリセット
+  useEffect(() => {
+    setEditMode(false)
+    setEditError('')
+  }, [selectedSlot?.id])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -196,6 +209,8 @@ export default function BusinessCalendar() {
         setDeleteConfirmId(null)
         setCompleteConfirm(null)
         setSelectedSlot(null)
+        setEditMode(false)
+        setEditError('')
       }
       const tag = (e.target as HTMLElement).tagName
       if (showRecurModal || selectedSlot) return
@@ -317,6 +332,23 @@ export default function BusinessCalendar() {
   // ────────────────────────────────────────────────
   // Slot CRUD
   // ────────────────────────────────────────────────
+  const handleEditSlot = async (slotId: string) => {
+    if (!editStart || !editEnd) { setEditError('開始・終了時間を入力してください'); return }
+    if (editStart >= editEnd) { setEditError('終了時間は開始時間より後にしてください'); return }
+    setEditSaving(true)
+    setEditError('')
+    const { error } = await supabase
+      .from('availability_slots')
+      .update({ start_time: editStart + ':00', end_time: editEnd + ':00' })
+      .eq('id', slotId)
+      .eq('business_id', businessId!) // アプリ層でも business_id を検証（RLS の多重防衛）
+    setEditSaving(false)
+    if (error) { setEditError('変更に失敗しました。再試行してください。'); return }
+    showToast(`${editStart}〜${editEnd} に変更しました`)
+    setEditMode(false)
+    fetchSlots()
+  }
+
   const handleDeleteSlot = async (slotId: string) => {
     setDeleteConfirmId(null)
     const { error } = await supabase.from('availability_slots').delete().eq('id', slotId)
@@ -326,14 +358,15 @@ export default function BusinessCalendar() {
     fetchSlots()
   }
 
-  const handleComplete = async (reservation: Reservation, slotId: string) => {
+  const handleComplete = async (reservation: Reservation, _slotId: string) => {
     setCompleteConfirm(null)
     setCompletingId(reservation.id)
-    const { error } = await supabase.from('reservations').update({ status: 'completed' }).eq('id', reservation.id)
-    if (error) { showToast('完了処理に失敗しました。再試行してください。', 'error'); setCompletingId(null); return }
-    const { data: slot } = await supabase.from('availability_slots').select('confirmed_count').eq('id', slotId).single()
-    const newCount = Math.max(0, (slot?.confirmed_count ?? 0) - 1)
-    await supabase.from('availability_slots').update({ confirmed_count: newCount, is_available: true }).eq('id', slotId)
+    const { error } = await supabase.rpc('complete_reservation', { p_reservation_id: reservation.id })
+    if (error) {
+      showToast('完了処理に失敗しました。再試行してください。', 'error')
+      setCompletingId(null)
+      return
+    }
     setCompletingId(null)
     showToast('完了にしました')
     fetchSlots(); fetchMonthStats()
@@ -707,7 +740,7 @@ export default function BusinessCalendar() {
         return (
           <div
             className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
-            onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null); setCompleteConfirm(null) }}
+            onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null); setCompleteConfirm(null); setEditMode(false); setEditError('') }}
           >
             <div
               className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-5 pb-8 sm:pb-5 max-h-[80vh] overflow-y-auto"
@@ -735,7 +768,7 @@ export default function BusinessCalendar() {
                     <span className="badge-green">空き{capacity > 1 ? `${capacity}台` : ''}</span>
                   )}
                   <button
-                    onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null); setCompleteConfirm(null) }}
+                    onClick={() => { setSelectedSlot(null); setDeleteConfirmId(null); setCompleteConfirm(null); setEditMode(false); setEditError('') }}
                     className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center"
                   >×</button>
                 </div>
@@ -748,12 +781,29 @@ export default function BusinessCalendar() {
                     <div key={res.id} className="text-xs text-slate-600 space-y-1">
                       {capacity > 1 && <p className="text-[10px] text-slate-400 font-medium">── 予約{idx + 1}</p>}
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-slate-700">{res.hospitals?.name ?? '—'} ／ {res.contact_name}</span>
-                        {res.hospitals?.phone && (
-                          <a href={`tel:${res.hospitals.phone}`}
-                            className="text-[10px] text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-full hover:bg-teal-100">
-                            📞 {res.hospitals.phone}
-                          </a>
+                        {(res as any).source === 'phone' ? (
+                          <>
+                            <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium">📞 電話予約</span>
+                            {(res as any).caller_name && (
+                              <span className="font-medium text-slate-700">{(res as any).caller_name}</span>
+                            )}
+                            {(res as any).caller_phone && (
+                              <a href={`tel:${(res as any).caller_phone}`}
+                                className="text-[10px] text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-full hover:bg-teal-100">
+                                📞 {(res as any).caller_phone}
+                              </a>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-medium text-slate-700">{res.hospitals?.name ?? '—'} ／ {res.contact_name}</span>
+                            {res.hospitals?.phone && (
+                              <a href={`tel:${res.hospitals.phone}`}
+                                className="text-[10px] text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-full hover:bg-teal-100">
+                                📞 {res.hospitals.phone}
+                              </a>
+                            )}
+                          </>
                         )}
                       </div>
                       <p>患者：{res.patient_name}　<span className="text-slate-400">{EQUIPMENT_LABELS[res.equipment] ?? res.equipment}{res.equipment_rental ? '（貸出あり）' : ''}</span></p>
@@ -769,6 +819,9 @@ export default function BusinessCalendar() {
                         <button onClick={() => navigator.clipboard.writeText(res.destination).then(() => showToast('コピーしました')).catch(() => {})}
                           className="text-slate-300 hover:text-slate-600 text-[11px] px-1">コピー</button>
                       </div>
+                      {res.notes && (
+                        <p className="text-slate-500 italic">📝 {res.notes}</p>
+                      )}
                       {/* Complete button */}
                       {completeConfirm?.reservationId === res.id ? (
                         <div className="mt-1.5 bg-orange-50 border border-orange-200 rounded-lg p-2 space-y-1.5">
@@ -819,20 +872,51 @@ export default function BusinessCalendar() {
                 </div>
               )}
 
-              {/* Delete */}
+              {/* Edit / Delete section */}
               {confirmedCount === 0 && !hasPending && (
-                <div className="border-t border-slate-100 pt-3 mt-3">
-                  {deleteConfirmId === slot.id ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary text-sm">戻る</button>
-                      <button onClick={() => handleDeleteSlot(slot.id)}
-                        className="flex-1 text-sm bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium">削除確定</button>
+                <div className="border-t border-slate-100 pt-3 mt-3 space-y-2">
+                  {editMode ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-slate-600">時間を変更（1分単位）</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">開始</label>
+                          <input type="time" className="input-base text-sm" value={editStart} onChange={e => setEditStart(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">終了</label>
+                          <input type="time" className="input-base text-sm" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
+                        </div>
+                      </div>
+                      {editError && <p className="text-xs text-red-500">{editError}</p>}
+                      <div className="flex gap-2">
+                        <button onClick={() => { setEditMode(false); setEditError('') }} className="flex-1 btn-secondary text-sm">キャンセル</button>
+                        <button onClick={() => handleEditSlot(slot.id)} disabled={editSaving} className="flex-1 btn-primary text-sm">
+                          {editSaving ? '保存中...' : '保存する'}
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <button onClick={() => setDeleteConfirmId(slot.id)}
-                      className="w-full text-xs text-red-400 hover:text-red-600 text-center py-1">
-                      この枠を削除する
-                    </button>
+                    <>
+                      <button
+                        onClick={() => { setEditMode(true); setDeleteConfirmId(null); setEditError(''); setEditStart(slot.start_time.slice(0, 5)); setEditEnd(slot.end_time.slice(0, 5)) }}
+                        className="w-full text-xs text-slate-500 hover:text-teal-600 text-center py-1.5 border border-slate-200 rounded-lg hover:border-teal-300 transition-colors"
+                      >
+                        ✏️ 時間を変更する
+                      </button>
+                      {deleteConfirmId === slot.id ? (
+                        <div className="flex gap-2">
+                          <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary text-sm">戻る</button>
+                          <button onClick={() => handleDeleteSlot(slot.id)}
+                            className="flex-1 text-sm bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium">削除確定</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteConfirmId(slot.id)}
+                          className="w-full text-xs text-red-400 hover:text-red-600 text-center py-1">
+                          この枠を削除する
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}

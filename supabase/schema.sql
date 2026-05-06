@@ -1,13 +1,15 @@
 -- =====================================================
--- せとむすび データベーススキーマ
--- Supabase SQL Editor で実行してください
+-- せとむすび データベーススキーマ（本番DBと同期）
+-- Supabase SQL Editor で実行してください（新規環境構築用）
+-- 既存環境のマイグレーションは Supabase Dashboard > Migrations を参照
 -- =====================================================
 
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
+create extension if not exists "uuid-ossp" with schema extensions;
+create extension if not exists "pgcrypto"  with schema extensions;
+-- pg_net / pg_cron は Supabase 既定で有効
 
 -- =====================================================
--- profiles (auth.usersと1:1)
+-- profiles (auth.users と 1:1)
 -- =====================================================
 create table if not exists profiles (
   id uuid references auth.users on delete cascade primary key,
@@ -17,13 +19,33 @@ create table if not exists profiles (
 
 alter table profiles enable row level security;
 
-create policy "profiles: own row" on profiles
-  for all using (auth.uid() = id);
-
+-- 自分の行のみ SELECT/INSERT/UPDATE 可（DELETE は ON DELETE CASCADE で代替）
+drop policy if exists "profiles self select" on profiles;
+drop policy if exists "profiles self insert" on profiles;
+drop policy if exists "profiles self update" on profiles;
+drop policy if exists "profiles: admin read all" on profiles;
+create policy "profiles self select" on profiles
+  for select using (auth.uid() = id);
+create policy "profiles self insert" on profiles
+  for insert with check (auth.uid() = id);
+create policy "profiles self update" on profiles
+  for update using (auth.uid() = id) with check (auth.uid() = id);
 create policy "profiles: admin read all" on profiles
   for select using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
+
+-- profiles.id, profiles.role は変更不可（owner も admin もアプリ層から触らない）
+create or replace function public.guard_profile_immutable()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if old.id   is distinct from new.id   then raise exception 'profile_id_immutable';   end if;
+  if old.role is distinct from new.role then raise exception 'profile_role_immutable'; end if;
+  return new;
+end $$;
+drop trigger if exists guard_profile_columns on profiles;
+create trigger guard_profile_columns before update on profiles
+  for each row execute function public.guard_profile_immutable();
 
 -- =====================================================
 -- businesses
@@ -60,22 +82,44 @@ create table if not exists businesses (
 
 alter table businesses enable row level security;
 
--- Own business: full access
-create policy "businesses: owner full access" on businesses
-  for all using (user_id = auth.uid());
-
--- MSW: read approved businesses
+drop policy if exists "businesses owner select" on businesses;
+drop policy if exists "businesses owner insert" on businesses;
+drop policy if exists "businesses owner update" on businesses;
+drop policy if exists "businesses owner delete" on businesses;
+drop policy if exists "businesses: msw read approved" on businesses;
+drop policy if exists "businesses: admin full access" on businesses;
+create policy "businesses owner select" on businesses
+  for select using (user_id = auth.uid());
+create policy "businesses owner insert" on businesses
+  for insert with check (user_id = auth.uid());
+create policy "businesses owner update" on businesses
+  for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "businesses owner delete" on businesses
+  for delete using (user_id = auth.uid());
 create policy "businesses: msw read approved" on businesses
   for select using (
     approved = true and
     exists (select 1 from profiles where id = auth.uid() and role = 'msw')
   );
-
--- Admin: full access
 create policy "businesses: admin full access" on businesses
   for all using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
+
+-- owner は user_id / approved を変更不可（admin はアプリ層から approved を切り替える）
+create or replace function public.guard_business_owner_immutable()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_is_owner boolean := (auth.uid() = old.user_id);
+begin
+  if v_is_owner then
+    if old.user_id  is distinct from new.user_id  then raise exception 'business_user_id_immutable'; end if;
+    if old.approved is distinct from new.approved then raise exception 'business_approved_owner_change_forbidden'; end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_business_columns on businesses;
+create trigger guard_business_columns before update on businesses
+  for each row execute function public.guard_business_owner_immutable();
 
 -- =====================================================
 -- hospitals
@@ -91,18 +135,41 @@ create table if not exists hospitals (
 
 alter table hospitals enable row level security;
 
-create policy "hospitals: owner full access" on hospitals
-  for all using (user_id = auth.uid());
-
+drop policy if exists "hospitals owner select" on hospitals;
+drop policy if exists "hospitals owner insert" on hospitals;
+drop policy if exists "hospitals owner update" on hospitals;
+drop policy if exists "hospitals owner delete" on hospitals;
+drop policy if exists "hospitals: business read" on hospitals;
+drop policy if exists "hospitals: admin full access" on hospitals;
+create policy "hospitals owner select" on hospitals
+  for select using (user_id = auth.uid());
+create policy "hospitals owner insert" on hospitals
+  for insert with check (user_id = auth.uid());
+create policy "hospitals owner update" on hospitals
+  for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "hospitals owner delete" on hospitals
+  for delete using (user_id = auth.uid());
 create policy "hospitals: business read" on hospitals
   for select using (
     exists (select 1 from profiles where id = auth.uid() and role = 'business')
   );
-
 create policy "hospitals: admin full access" on hospitals
   for all using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
+
+create or replace function public.guard_hospital_owner_immutable()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_is_owner boolean := (auth.uid() = old.user_id);
+begin
+  if v_is_owner then
+    if old.user_id is distinct from new.user_id then raise exception 'hospital_user_id_immutable'; end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_hospital_columns on hospitals;
+create trigger guard_hospital_columns before update on hospitals
+  for each row execute function public.guard_hospital_owner_immutable();
 
 -- =====================================================
 -- msw_contacts
@@ -116,6 +183,7 @@ create table if not exists msw_contacts (
 
 alter table msw_contacts enable row level security;
 
+drop policy if exists "msw_contacts: hospital owner full access" on msw_contacts;
 create policy "msw_contacts: hospital owner full access" on msw_contacts
   for all using (
     exists (
@@ -136,6 +204,7 @@ create table if not exists favorites (
 
 alter table favorites enable row level security;
 
+drop policy if exists "favorites: hospital owner full access" on favorites;
 create policy "favorites: hospital owner full access" on favorites
   for all using (
     exists (
@@ -153,37 +222,27 @@ create table if not exists availability_slots (
   start_time time not null,
   end_time time not null,
   is_available boolean not null default true,
-  capacity integer not null default 1,          -- 対応可能な台数
-  confirmed_count integer not null default 0,    -- 確定済み予約数
+  capacity integer not null default 1,
+  confirmed_count integer not null default 0,
   created_at timestamptz default now() not null
 );
 
--- ▼ 既存DBへのマイグレーション（初回のみ実行）
--- alter table availability_slots
---   add column if not exists capacity integer not null default 1,
---   add column if not exists confirmed_count integer not null default 0;
-
 alter table availability_slots enable row level security;
 
--- Business: own slots full access
+drop policy if exists "slots: business owner full access" on availability_slots;
+drop policy if exists "slots: msw read available" on availability_slots;
 create policy "slots: business owner full access" on availability_slots
   for all using (
     exists (
       select 1 from businesses b where b.id = business_id and b.user_id = auth.uid()
     )
   );
-
--- MSW: read available slots of approved businesses
 create policy "slots: msw read available" on availability_slots
   for select using (
     exists (select 1 from profiles where id = auth.uid() and role = 'msw')
   );
-
--- MSW: update slot availability (for booking)
-create policy "slots: msw update for booking" on availability_slots
-  for update using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'msw')
-  );
+-- 注: かつての "slots: msw update for booking" は廃止。
+-- MSWの予約取消は cancel_reservation_by_msw() RPC が行う。
 
 -- =====================================================
 -- reservations
@@ -191,8 +250,11 @@ create policy "slots: msw update for booking" on availability_slots
 create table if not exists reservations (
   id uuid primary key default gen_random_uuid(),
   business_id uuid references businesses(id) on delete restrict not null,
-  hospital_id uuid references hospitals(id) on delete restrict not null,
+  hospital_id uuid references hospitals(id) on delete restrict, -- nullable: 電話予約は null
   slot_id uuid references availability_slots(id) on delete set null,
+  source text not null default 'msw' check (source in ('msw', 'phone')),
+  caller_name text,    -- 電話予約の連絡者名
+  caller_phone text,   -- 電話予約の連絡先
   contact_name text not null,
   patient_name text not null,
   patient_address text not null,
@@ -203,73 +265,78 @@ create table if not exists reservations (
   reservation_date date not null,
   start_time time not null,
   end_time time not null,
-  status text not null default 'pending' check (status in ('pending', 'confirmed', 'completed', 'cancelled', 'rejected')),
+  status text not null default 'pending'
+    check (status in ('pending', 'confirmed', 'completed', 'cancelled', 'rejected')),
   reminder_sent boolean not null default false,
   created_at timestamptz default now() not null
 );
 
 alter table reservations enable row level security;
 
--- Business: read own reservations
+drop policy if exists "reservations: business read own" on reservations;
+drop policy if exists "reservations: msw insert" on reservations;
+drop policy if exists "reservations: msw read own" on reservations;
+drop policy if exists "reservations: admin read all" on reservations;
+drop policy if exists "reservations: admin update all" on reservations;
+drop policy if exists "business can insert phone reservations" on reservations;
+-- 注: 旧 "reservations: business update status" / "reservations: msw update own" は廃止。
+-- 直接 UPDATE は禁止。すべての status 変更は RPC（approve/reject/complete/cancel）経由。
+
 create policy "reservations: business read own" on reservations
   for select using (
-    exists (
-      select 1 from businesses b where b.id = business_id and b.user_id = auth.uid()
-    )
+    exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
   );
-
--- Business: update status (complete)
-create policy "reservations: business update status" on reservations
-  for update using (
-    exists (
-      select 1 from businesses b where b.id = business_id and b.user_id = auth.uid()
-    )
-  );
-
--- MSW: insert reservations
+-- MSW（仮予約申請）
 create policy "reservations: msw insert" on reservations
   for insert with check (
-    exists (
-      select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid()
-    )
+    exists (select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid())
   );
-
--- MSW: read own hospital's reservations
 create policy "reservations: msw read own" on reservations
   for select using (
-    exists (
-      select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid()
-    )
+    exists (select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid())
   );
-
--- MSW: cancel own reservations (update to cancelled)
-create policy "reservations: msw update own" on reservations
-  for update using (
-    exists (
-      select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid()
-    )
+-- 事業所による電話予約は create_phone_reservation() RPC で作成するが、
+-- 念のため直接 INSERT も許可（旧 migration 互換）
+create policy "business can insert phone reservations" on reservations
+  for insert to authenticated with check (
+    exists (select 1 from businesses where id = business_id and user_id = auth.uid())
   );
-
--- Admin: read all (excluding patient PII is enforced in app layer)
+-- admin
 create policy "reservations: admin read all" on reservations
   for select using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
-
--- Admin: update any reservation status
 create policy "reservations: admin update all" on reservations
   for update using (
     exists (select 1 from profiles where id = auth.uid() and role = 'admin')
   );
 
+-- 列ロック: business_id / hospital_id / source / slot_id / status は非adminから変更不可
+create or replace function public.guard_reservation_columns()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_is_admin boolean;
+begin
+  select exists(select 1 from profiles where id = auth.uid() and role = 'admin') into v_is_admin;
+  if v_is_admin then return new; end if;
+  if old.business_id is distinct from new.business_id then raise exception 'reservation_business_id_immutable'; end if;
+  if old.hospital_id is distinct from new.hospital_id then raise exception 'reservation_hospital_id_immutable'; end if;
+  if old.source      is distinct from new.source      then raise exception 'reservation_source_immutable'; end if;
+  if old.slot_id     is distinct from new.slot_id     then raise exception 'reservation_slot_id_immutable'; end if;
+  if old.status      is distinct from new.status      then raise exception 'reservation_status_change_via_rpc_only'; end if;
+  return new;
+end $$;
+drop trigger if exists guard_reservation_columns on reservations;
+create trigger guard_reservation_columns before update on reservations
+  for each row execute function public.guard_reservation_columns();
+
 -- =====================================================
--- Enable realtime for availability_slots and reservations
+-- Realtime
 -- =====================================================
 alter publication supabase_realtime add table availability_slots;
 alter publication supabase_realtime add table reservations;
 
 -- =====================================================
--- Performance indexes
+-- Indexes
 -- =====================================================
 create index if not exists idx_availability_slots_business_date
   on availability_slots (business_id, date);
@@ -289,58 +356,280 @@ create index if not exists idx_reservations_reminder
   where status = 'confirmed' and reminder_sent = false;
 
 -- =====================================================
--- Storage buckets for business images
--- Run in SQL Editor after creating the bucket in Dashboard
+-- 登録トリガ：auth.users INSERT で原子的に profiles/businesses/hospitals を作成
+-- クライアントは supabase.auth.signUp({ options: { data: { role, ... } } }) を呼ぶだけ。
+-- 'admin' は signUp 経由では作成不可（手動で profiles に INSERT する）。
 -- =====================================================
+create or replace function public.handle_new_user_registration()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_role text;
+  v_hospital_id uuid;
+begin
+  v_role := new.raw_user_meta_data->>'role';
+
+  -- Admin の Invite フローは role メタデータがないので skip（手動セットアップ）
+  if v_role is null then
+    return new;
+  end if;
+
+  if v_role not in ('business', 'msw') then
+    raise exception 'registration_invalid_role: %', v_role;
+  end if;
+
+  insert into public.profiles(id, role) values (new.id, v_role);
+
+  if v_role = 'business' then
+    insert into public.businesses(user_id, name, phone, approved, service_areas, closed_days)
+    values (
+      new.id,
+      coalesce(nullif(trim(new.raw_user_meta_data->>'business_name'), ''), '(未設定)'),
+      nullif(trim(new.raw_user_meta_data->>'business_phone'), ''),
+      false,
+      '{}'::text[],
+      '{}'::int[]
+    );
+  elsif v_role = 'msw' then
+    insert into public.hospitals(user_id, name, address, phone)
+    values (
+      new.id,
+      coalesce(nullif(trim(new.raw_user_meta_data->>'hospital_name'), ''), '(未設定)'),
+      nullif(trim(new.raw_user_meta_data->>'hospital_address'), ''),
+      nullif(trim(new.raw_user_meta_data->>'hospital_phone'), '')
+    )
+    returning id into v_hospital_id;
+
+    if nullif(trim(new.raw_user_meta_data->>'contact_name'), '') is not null then
+      insert into public.msw_contacts(hospital_id, name)
+      values (v_hospital_id, trim(new.raw_user_meta_data->>'contact_name'));
+    end if;
+  end if;
+
+  return new;
+end $$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user_registration();
+
+-- =====================================================
+-- Reservation RPCs (security definer + transactional)
+-- 事業所/MSW のクライアントは status 変更時に必ずこれを呼ぶ。
+-- =====================================================
+
+-- 承認: pending → confirmed。slot.confirmed_count 加算、
+--      満車になったら同 slot の他 pending を自動却下。
+-- Returns: 自動却下した件数
+create or replace function public.approve_reservation(p_reservation_id uuid)
+returns integer
+language plpgsql security definer set search_path = public as $$
+declare
+  v_caller uuid := auth.uid();
+  v_res    public.reservations%rowtype;
+  v_slot   public.availability_slots%rowtype;
+  v_capacity int;
+  v_new_count int;
+  v_auto_rejected int := 0;
+begin
+  select * into v_res from public.reservations where id = p_reservation_id for update;
+  if not found then raise exception 'reservation_not_found'; end if;
+  if v_res.status <> 'pending' then raise exception 'reservation_not_pending'; end if;
+  if not exists (select 1 from public.businesses where id = v_res.business_id and user_id = v_caller) then
+    raise exception 'reservation_approve_unauthorized';
+  end if;
+
+  if v_res.slot_id is not null then
+    select * into v_slot from public.availability_slots where id = v_res.slot_id for update;
+    if found then
+      v_capacity  := coalesce(v_slot.capacity, 1);
+      v_new_count := coalesce(v_slot.confirmed_count, 0) + 1;
+      update public.availability_slots
+        set confirmed_count = v_new_count,
+            is_available    = (v_new_count < v_capacity)
+        where id = v_slot.id;
+      if v_new_count >= v_capacity then
+        with rejected as (
+          update public.reservations
+            set status = 'rejected'
+            where slot_id = v_res.slot_id
+              and status = 'pending'
+              and id <> p_reservation_id
+            returning id
+        )
+        select count(*) into v_auto_rejected from rejected;
+      end if;
+    end if;
+  end if;
+
+  update public.reservations set status = 'confirmed' where id = p_reservation_id;
+  return v_auto_rejected;
+end $$;
+grant execute on function public.approve_reservation(uuid) to authenticated;
+
+-- 却下: pending → rejected
+create or replace function public.reject_reservation(p_reservation_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_caller uuid := auth.uid();
+  v_res public.reservations%rowtype;
+begin
+  select * into v_res from public.reservations where id = p_reservation_id for update;
+  if not found then raise exception 'reservation_not_found'; end if;
+  if v_res.status <> 'pending' then raise exception 'reservation_not_pending'; end if;
+  if not exists (select 1 from public.businesses where id = v_res.business_id and user_id = v_caller) then
+    raise exception 'reservation_reject_unauthorized';
+  end if;
+  update public.reservations set status = 'rejected' where id = p_reservation_id;
+end $$;
+grant execute on function public.reject_reservation(uuid) to authenticated;
+
+-- 完了: confirmed → completed。slot.confirmed_count 減算、is_available=true。
+create or replace function public.complete_reservation(p_reservation_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_caller uuid := auth.uid();
+  v_res public.reservations%rowtype;
+begin
+  select * into v_res from public.reservations where id = p_reservation_id for update;
+  if not found then raise exception 'reservation_not_found'; end if;
+  if v_res.status <> 'confirmed' then raise exception 'reservation_not_confirmed'; end if;
+  if not exists (select 1 from public.businesses where id = v_res.business_id and user_id = v_caller) then
+    raise exception 'reservation_complete_unauthorized';
+  end if;
+  update public.reservations set status = 'completed' where id = p_reservation_id;
+  if v_res.slot_id is not null then
+    update public.availability_slots
+      set confirmed_count = greatest(0, coalesce(confirmed_count, 0) - 1),
+          is_available    = true
+      where id = v_res.slot_id;
+  end if;
+end $$;
+grant execute on function public.complete_reservation(uuid) to authenticated;
+
+-- MSW キャンセル: pending/confirmed → cancelled。confirmed の場合 slot 解放。
+create or replace function public.cancel_reservation_by_msw(p_reservation_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_caller uuid := auth.uid();
+  v_res public.reservations%rowtype;
+begin
+  select * into v_res from public.reservations where id = p_reservation_id for update;
+  if not found then raise exception 'reservation_not_found'; end if;
+  if v_res.status not in ('pending', 'confirmed') then raise exception 'reservation_not_cancellable'; end if;
+  if v_res.hospital_id is null
+     or not exists (select 1 from public.hospitals where id = v_res.hospital_id and user_id = v_caller) then
+    raise exception 'reservation_cancel_unauthorized';
+  end if;
+  if v_res.status = 'confirmed' and v_res.slot_id is not null then
+    update public.availability_slots
+      set confirmed_count = greatest(0, coalesce(confirmed_count, 0) - 1),
+          is_available    = true
+      where id = v_res.slot_id;
+  end if;
+  update public.reservations set status = 'cancelled' where id = p_reservation_id;
+end $$;
+grant execute on function public.cancel_reservation_by_msw(uuid) to authenticated;
+
+-- 電話予約: 事業所がスロット作成と confirmed 予約を1トランザクションで作成
+create or replace function public.create_phone_reservation(
+  p_date date,
+  p_start_time time,
+  p_end_time time,
+  p_caller_name text,
+  p_caller_phone text,
+  p_patient_name text,
+  p_patient_address text,
+  p_destination text,
+  p_equipment text,
+  p_equipment_rental boolean,
+  p_notes text
+)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v_caller uuid := auth.uid();
+  v_business_id uuid;
+  v_slot_id uuid;
+  v_res_id uuid;
+begin
+  select id into v_business_id from public.businesses where user_id = v_caller;
+  if v_business_id is null then raise exception 'phone_reservation_no_business'; end if;
+  if p_start_time >= p_end_time then raise exception 'phone_reservation_invalid_time'; end if;
+  if p_equipment not in ('wheelchair','reclining_wheelchair','stretcher') then
+    raise exception 'phone_reservation_invalid_equipment';
+  end if;
+
+  insert into public.availability_slots(
+    business_id, date, start_time, end_time, is_available, capacity, confirmed_count
+  ) values (
+    v_business_id, p_date, p_start_time, p_end_time, false, 1, 1
+  ) returning id into v_slot_id;
+
+  insert into public.reservations(
+    business_id, hospital_id, slot_id, source, status,
+    contact_name, caller_name, caller_phone,
+    patient_name, patient_address, destination,
+    equipment, equipment_rental, notes,
+    reservation_date, start_time, end_time
+  ) values (
+    v_business_id, null, v_slot_id, 'phone', 'confirmed',
+    coalesce(nullif(trim(p_caller_name), ''), '電話予約'),
+    nullif(trim(p_caller_name), ''),
+    nullif(trim(p_caller_phone), ''),
+    trim(p_patient_name), trim(p_patient_address), trim(p_destination),
+    p_equipment, coalesce(p_equipment_rental, false), nullif(trim(p_notes), ''),
+    p_date, p_start_time, p_end_time
+  ) returning id into v_res_id;
+
+  return v_res_id;
+end $$;
+grant execute on function public.create_phone_reservation(date, time, time, text, text, text, text, text, text, boolean, text) to authenticated;
+
+-- =====================================================
+-- Storage: business-images bucket
+-- 公開バケット（CDN URL でアクセス）。SELECT policy は意図的に持たない
+-- （advisor: public_bucket_allows_listing 対応 — 一覧 API は無効化）。
+-- INSERT/DELETE のみ owner に許可。UPDATE 不要（アップロードは upsert:false）。
+-- =====================================================
+-- Dashboard で bucket 作成後に以下を実行（新規環境のみ）:
 -- insert into storage.buckets (id, name, public) values ('business-images', 'business-images', true);
 --
 -- create policy "business images: owner upload" on storage.objects
 --   for insert with check (
---     bucket_id = 'business-images' and
---     (storage.foldername(name))[1] = auth.uid()::text
+--     bucket_id = 'business-images' and (storage.foldername(name))[1] = auth.uid()::text
 --   );
---
--- create policy "business images: public read" on storage.objects
---   for select using (bucket_id = 'business-images');
---
 -- create policy "business images: owner delete" on storage.objects
 --   for delete using (
---     bucket_id = 'business-images' and
---     (storage.foldername(name))[1] = auth.uid()::text
+--     bucket_id = 'business-images' and (storage.foldername(name))[1] = auth.uid()::text
 --   );
+-- 注: SELECT policy は付けない（公開URLは /storage/v1/object/public/ 経由でアクセス可能）
 
 -- =====================================================
--- Migration: add pending/rejected statuses (run if schema already applied)
+-- Cron: send-reminder を毎時0分に実行
 -- =====================================================
--- alter table reservations drop constraint if exists reservations_status_check;
--- alter table reservations add constraint reservations_status_check
---   check (status in ('pending', 'confirmed', 'completed', 'cancelled', 'rejected'));
--- alter table reservations alter column status set default 'pending';
--- create policy "reservations: msw update own" on reservations
---   for update using (
---     exists (select 1 from hospitals h where h.id = hospital_id and h.user_id = auth.uid())
---   );
-
--- =====================================================
--- pg_net + pg_cron: send-reminder を毎時0分に実行
--- =====================================================
--- CREATE EXTENSION IF NOT EXISTS pg_net SCHEMA extensions;
+-- do $cronfix$
+-- begin
+--   if exists (select 1 from cron.job where jobname = 'send-reminder-hourly') then
+--     perform cron.unschedule('send-reminder-hourly');
+--   end if;
+-- end $cronfix$;
 --
--- SELECT cron.schedule(
+-- select cron.schedule(
 --   'send-reminder-hourly',
 --   '0 * * * *',
---   $$
---   SELECT extensions.http_post(
---     'https://lcuoeekhnmbhomcdbedi.supabase.co/functions/v1/send-reminder',
---     '{}',
---     'application/json'
---   );
---   $$
+--   $cmd$select net.http_post(url := 'https://<PROJECT_REF>.supabase.co/functions/v1/send-reminder', body := '{}'::jsonb);$cmd$
 -- );
 
 -- =====================================================
 -- Admin user setup
--- After running this schema, create the admin user via
--- Supabase Auth > Users > Invite, then run:
+-- Supabase Auth > Users > Invite で管理者メールを招待した後:
 -- insert into profiles (id, role) values ('<admin-user-id>', 'admin');
 -- =====================================================

@@ -220,7 +220,11 @@ export default function MswFavorites() {
                     <div>
                       <div className="flex items-center gap-1 flex-wrap">
                         <h3 className="font-semibold text-slate-800 flex items-center gap-1">
-                          <span>⭐</span> {biz.name}
+                          <span>⭐</span>
+                          <button
+                            onClick={() => setPreview(biz)}
+                            className="hover:text-teal-700 hover:underline text-left leading-snug"
+                          >{biz.name}</button>
                         </h3>
                         {availCheck && (
                           availMap[business_id]
@@ -284,12 +288,6 @@ export default function MswFavorites() {
                         📞 {biz.cancel_phone}
                       </a>
                     )}
-                    <button
-                      onClick={() => setPreview(biz)}
-                      className="text-xs text-teal-700 hover:underline"
-                    >
-                      詳細を見る →
-                    </button>
                     {availCheck && availMap[business_id] && (
                       <button
                         onClick={() => navigate('/msw/search', {

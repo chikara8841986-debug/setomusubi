@@ -45,7 +45,12 @@ export default function DemoMswBusinesses() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-1 flex-wrap">
-                          <h3 className="font-semibold text-slate-800 text-sm">{biz.name}</h3>
+                          <button
+                            onClick={() => setPreview(biz)}
+                            className="font-semibold text-slate-800 text-sm hover:text-teal-700 hover:underline text-left leading-snug"
+                          >
+                            {biz.name}
+                          </button>
                           {isClosed && (
                             <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">本日定休</span>
                           )}
@@ -84,9 +89,6 @@ export default function DemoMswBusinesses() {
                           📞 {biz.cancel_phone}
                         </a>
                       )}
-                      <button onClick={() => setPreview(biz)} className="text-xs text-teal-700 hover:underline">
-                        詳細を見る →
-                      </button>
                       <button
                         onClick={() => navigate('/demo/msw/search')}
                         className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 transition-colors"

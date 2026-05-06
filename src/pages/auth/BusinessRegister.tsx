@@ -43,34 +43,39 @@ export default function BusinessRegister() {
     setError('')
 
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+      // すべてのレコード作成は auth.users への INSERT トリガで原子的に処理される。
+      // クライアントは profiles/businesses を直接 INSERT しない（半端登録を防ぐため）。
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            role: 'business',
+            business_name: name.trim(),
+            business_phone: phone.trim() || null,
+          },
+        },
+      })
       if (signUpError) throw signUpError
       if (!data.user) throw new Error('user_not_created')
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({ id: data.user.id, role: 'business' })
-      if (profileError) throw new Error('partial_failure')
-
-      const { error: bizError } = await supabase
-        .from('businesses')
-        .insert({
-          user_id: data.user.id,
-          name: name.trim(),
-          phone: phone.trim() || null,
-          approved: false,
-          service_areas: [],
-          closed_days: [],
-        })
-      if (bizError) throw new Error('partial_failure')
+      // 既存メールでの再 signUp は data.user.identities が空配列で返る
+      if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        throw new Error('already_registered')
+      }
 
       navigate('/login', { state: { message: '登録申請が完了しました。管理者の承認をお待ちください。', email } })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('already registered') || msg.includes('already been registered')) {
+      if (msg === 'already_registered' || msg.includes('already registered') || msg.includes('already been registered')) {
         setError('このメールアドレスは既に登録されています')
-      } else if (msg === 'partial_failure') {
-        setError('登録処理中にエラーが発生しました。しばらくしてから再度お試しいただくか、管理者までご連絡ください。')
+      } else if (msg.includes('Password')) {
+        setError('パスワードが要件を満たしていません')
+      } else if (msg.includes('Email not confirmed')) {
+        setError('メールアドレスの確認が完了していません。確認メールをご確認ください。')
+      } else if (msg.includes('registration_invalid_role')) {
+        setError('登録ロールが不正です。サポートに連絡してください。')
+      } else if (msg === 'user_not_created') {
+        setError('アカウント作成に失敗しました。再試行してください。')
       } else {
         setError('登録に失敗しました。入力内容を確認のうえ、再試行してください。')
       }
