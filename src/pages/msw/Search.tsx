@@ -399,6 +399,38 @@ export default function MswSearch() {
 
     const vehicleId = selectedBusiness.availableVehicles.find((vehicle) => vehicle.business_id === selectedBusiness.id)?.id ?? null
 
+    // ── 申請直前に最新の空き状況を再確認（検索後に別の予約が入った場合のダブルブッキング防止）──
+    // occupied_slots（車両単位）の重複チェック
+    if (vehicleId) {
+      const { count: slotConflicts } = await supabase
+        .from('occupied_slots')
+        .select('*', { count: 'exact', head: true })
+        .eq('vehicle_id', vehicleId)
+        .eq('date', date)
+        .lt('start_time', endTime)
+        .gt('end_time', startTime)
+      if ((slotConflicts ?? 0) > 0) {
+        setSubmitError('この時間帯はすでに予約が入っています。お手数ですが再度検索してください。')
+        setSubmitting(false)
+        return
+      }
+    }
+    // reservations（事業所単位）の重複チェック（occupied_slot が未作成のケースも含む）
+    const { count: resConflicts } = await supabase
+      .from('reservations')
+      .select('*', { count: 'exact', head: true })
+      .eq('business_id', selectedBusiness.id)
+      .in('status', ['pending', 'confirmed'])
+      .eq('reservation_date', date)
+      .lt('start_time', endTime)
+      .gt('end_time', startTime)
+    if ((resConflicts ?? 0) > 0) {
+      setSubmitError('この時間帯はすでに予約申請が入っています。お手数ですが再度検索してください。')
+      setSubmitting(false)
+      return
+    }
+    // ────────────────────────────────────────────────────────────────────────────
+
     const { data: newReservation, error: reservationError } = await supabase
       .from('reservations')
       .insert({
