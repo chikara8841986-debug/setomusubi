@@ -82,6 +82,10 @@ export default function BusinessCalendar() {
   const [cancelPendingConfirmId, setCancelPendingConfirmId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null)
+  const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
 
   const [pendingReservations, setPendingReservations] = useState<ReservationWithHospital[]>([])
   const [monthPendingReservations, setMonthPendingReservations] = useState<ReservationWithHospital[]>([])
@@ -423,6 +427,8 @@ export default function BusinessCalendar() {
         setDeleteConfirmId(null)
         setCompleteConfirmId(null)
         setCancelPendingConfirmId(null)
+        setApproveConfirmId(null)
+        setRejectConfirmId(null)
       }
       const tag = (e.target as HTMLElement).tagName
       if (selectedSlot || selectedPendingRes) return
@@ -644,6 +650,47 @@ export default function BusinessCalendar() {
     setSelectedPendingRes(null)
     setSelectedSlot(null)
     showToast('予約をキャンセルしました', 'error')
+    fetchSlots()
+    fetchMonthSlots()
+    fetchPendingReservations()
+    fetchMonthPendingReservations()
+    fetchMonthStats()
+  }
+
+  const handleApproveReservation = async (reservationId: string) => {
+    setApproveConfirmId(null)
+    setApprovingId(reservationId)
+    const { data, error } = await supabase.rpc('approve_reservation', { p_reservation_id: reservationId })
+    setApprovingId(null)
+    if (error) {
+      showToast('承認に失敗しました', 'error')
+      return
+    }
+    const autoRejectedCount: number = typeof data === 'number' ? data : 0
+    supabase.functions.invoke('send-confirmation', { body: { reservation_id: reservationId } }).catch(() => {})
+    showToast(autoRejectedCount > 0 ? `承認しました。他${autoRejectedCount}件は自動でお断りしました` : '予約を承認しました')
+    setSelectedSlot(null)
+    setSelectedPendingRes(null)
+    fetchSlots()
+    fetchMonthSlots()
+    fetchPendingReservations()
+    fetchMonthPendingReservations()
+    fetchMonthStats()
+  }
+
+  const handleRejectReservation = async (reservationId: string) => {
+    setRejectConfirmId(null)
+    setRejectingId(reservationId)
+    const { error } = await supabase.rpc('reject_reservation', { p_reservation_id: reservationId })
+    setRejectingId(null)
+    if (error) {
+      showToast('お断り処理に失敗しました', 'error')
+      return
+    }
+    supabase.functions.invoke('send-rejection', { body: { reservation_id: reservationId } }).catch(() => {})
+    showToast('申請をお断りしました', 'error')
+    setSelectedSlot(null)
+    setSelectedPendingRes(null)
     fetchSlots()
     fetchMonthSlots()
     fetchPendingReservations()
@@ -1195,42 +1242,78 @@ export default function BusinessCalendar() {
                   )}
                 </div>
 
-                {selectedSlot.reservation.status === 'confirmed' && (
-                  deleteConfirmId === `cancel-${selectedSlot.reservation.id}` ? (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                      <p className="text-sm text-red-800 font-medium text-center">この予約をキャンセルしますか？</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary">
-                          戻る
-                        </button>
-                        <button onClick={() => handleCancelReservation(selectedSlot.reservation!.id, selectedSlot.id)} disabled={cancellingId === selectedSlot.reservation.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
-                          {cancellingId === selectedSlot.reservation.id ? '処理中...' : 'キャンセルする'}
-                        </button>
+                {selectedSlot.reservation.status === 'pending' ? (
+                  <div className="space-y-2">
+                    {approveConfirmId === selectedSlot.reservation.id ? (
+                      <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 space-y-2">
+                        <p className="text-sm text-teal-800 font-medium text-center">この申請を承認しますか？</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setApproveConfirmId(null)} className="flex-1 btn-secondary">戻る</button>
+                          <button onClick={() => handleApproveReservation(selectedSlot.reservation!.id)} disabled={approvingId === selectedSlot.reservation.id} className="flex-1 bg-teal-600 text-white rounded-xl px-4 py-2 hover:bg-teal-700 font-medium disabled:opacity-50">
+                            {approvingId === selectedSlot.reservation.id ? '処理中...' : '承認する'}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setDeleteConfirmId(`cancel-${selectedSlot.reservation!.id}`)} disabled={cancellingId === selectedSlot.reservation.id} className="w-full bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 disabled:opacity-50">
-                      予約をキャンセル
-                    </button>
-                  )
-                )}
-
-                {completeConfirmId === selectedSlot.reservation.id ? (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
-                    <p className="text-sm text-orange-800 font-medium text-center">この予約を完了にしますか？</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => setCompleteConfirmId(null)} className="flex-1 btn-secondary">
-                        キャンセル
+                    ) : (
+                      <button onClick={() => setApproveConfirmId(selectedSlot.reservation!.id)} disabled={approvingId === selectedSlot.reservation.id} className="w-full btn-primary disabled:opacity-50">
+                        承認する
                       </button>
-                      <button onClick={() => handleComplete(selectedSlot.reservation!.id)} disabled={completingId === selectedSlot.reservation.id} className="flex-1 bg-orange-500 text-white rounded-xl px-4 py-2 hover:bg-orange-600 font-medium disabled:opacity-50">
-                        {completingId === selectedSlot.reservation.id ? '処理中...' : '完了にする'}
+                    )}
+                    {rejectConfirmId === selectedSlot.reservation.id ? (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
+                        <p className="text-sm text-orange-800 font-medium text-center">この申請をお断りしますか？</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setRejectConfirmId(null)} className="flex-1 btn-secondary">戻る</button>
+                          <button onClick={() => handleRejectReservation(selectedSlot.reservation!.id)} disabled={rejectingId === selectedSlot.reservation.id} className="flex-1 bg-orange-500 text-white rounded-xl px-4 py-2 hover:bg-orange-600 font-medium disabled:opacity-50">
+                            {rejectingId === selectedSlot.reservation.id ? '処理中...' : 'お断りする'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setRejectConfirmId(selectedSlot.reservation!.id)} disabled={rejectingId === selectedSlot.reservation.id} className="w-full bg-orange-50 border border-orange-200 text-orange-700 rounded-xl px-4 py-2 text-sm font-medium hover:bg-orange-100 disabled:opacity-50">
+                        お断りする
                       </button>
-                    </div>
+                    )}
                   </div>
                 ) : (
-                  <button onClick={() => setCompleteConfirmId(selectedSlot.reservation!.id)} disabled={selectedSlot.reservation.status === 'completed'} className="w-full btn-primary disabled:opacity-50">
-                    {selectedSlot.reservation.status === 'completed' ? '完了済み' : '完了にする'}
-                  </button>
+                  <>
+                    {selectedSlot.reservation.status === 'confirmed' && (
+                      deleteConfirmId === `cancel-${selectedSlot.reservation.id}` ? (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                          <p className="text-sm text-red-800 font-medium text-center">この予約をキャンセルしますか？</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary">
+                              戻る
+                            </button>
+                            <button onClick={() => handleCancelReservation(selectedSlot.reservation!.id, selectedSlot.id)} disabled={cancellingId === selectedSlot.reservation.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
+                              {cancellingId === selectedSlot.reservation.id ? '処理中...' : 'キャンセルする'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteConfirmId(`cancel-${selectedSlot.reservation!.id}`)} disabled={cancellingId === selectedSlot.reservation.id} className="w-full bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 disabled:opacity-50">
+                          予約をキャンセル
+                        </button>
+                      )
+                    )}
+                    {completeConfirmId === selectedSlot.reservation.id ? (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
+                        <p className="text-sm text-orange-800 font-medium text-center">この予約を完了にしますか？</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setCompleteConfirmId(null)} className="flex-1 btn-secondary">
+                            キャンセル
+                          </button>
+                          <button onClick={() => handleComplete(selectedSlot.reservation!.id)} disabled={completingId === selectedSlot.reservation.id} className="flex-1 bg-orange-500 text-white rounded-xl px-4 py-2 hover:bg-orange-600 font-medium disabled:opacity-50">
+                            {completingId === selectedSlot.reservation.id ? '処理中...' : '完了にする'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setCompleteConfirmId(selectedSlot.reservation!.id)} disabled={selectedSlot.reservation.status === 'completed'} className="w-full btn-primary disabled:opacity-50">
+                        {selectedSlot.reservation.status === 'completed' ? '完了済み' : '完了にする'}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
@@ -1306,22 +1389,58 @@ export default function BusinessCalendar() {
                 )}
               </div>
 
-              {cancelPendingConfirmId === selectedPendingRes.id ? (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                  <p className="text-sm text-red-800 font-medium text-center">この予約をキャンセルしますか？</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setCancelPendingConfirmId(null)} className="flex-1 btn-secondary">
-                      戻る
+              {selectedPendingRes.status === 'pending' && (
+                <div className="space-y-2">
+                  {approveConfirmId === selectedPendingRes.id ? (
+                    <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 space-y-2">
+                      <p className="text-sm text-teal-800 font-medium text-center">この申請を承認しますか？</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setApproveConfirmId(null)} className="flex-1 btn-secondary">戻る</button>
+                        <button onClick={() => handleApproveReservation(selectedPendingRes.id)} disabled={approvingId === selectedPendingRes.id} className="flex-1 bg-teal-600 text-white rounded-xl px-4 py-2 hover:bg-teal-700 font-medium disabled:opacity-50">
+                          {approvingId === selectedPendingRes.id ? '処理中...' : '承認する'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setApproveConfirmId(selectedPendingRes.id)} disabled={approvingId === selectedPendingRes.id} className="w-full btn-primary disabled:opacity-50">
+                      承認する
                     </button>
-                    <button onClick={() => handleCancelReservation(selectedPendingRes.id)} disabled={cancellingId === selectedPendingRes.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
-                      {cancellingId === selectedPendingRes.id ? '処理中...' : 'キャンセルする'}
+                  )}
+                  {rejectConfirmId === selectedPendingRes.id ? (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
+                      <p className="text-sm text-orange-800 font-medium text-center">この申請をお断りしますか？</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setRejectConfirmId(null)} className="flex-1 btn-secondary">戻る</button>
+                        <button onClick={() => handleRejectReservation(selectedPendingRes.id)} disabled={rejectingId === selectedPendingRes.id} className="flex-1 bg-orange-500 text-white rounded-xl px-4 py-2 hover:bg-orange-600 font-medium disabled:opacity-50">
+                          {rejectingId === selectedPendingRes.id ? '処理中...' : 'お断りする'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setRejectConfirmId(selectedPendingRes.id)} disabled={rejectingId === selectedPendingRes.id} className="w-full bg-orange-50 border border-orange-200 text-orange-700 rounded-xl px-4 py-2 text-sm font-medium hover:bg-orange-100 disabled:opacity-50">
+                      お断りする
                     </button>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <button onClick={() => setCancelPendingConfirmId(selectedPendingRes.id)} disabled={cancellingId === selectedPendingRes.id} className="w-full bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 disabled:opacity-50">
-                  予約をキャンセル
-                </button>
+              )}
+              {selectedPendingRes.status === 'confirmed' && (
+                cancelPendingConfirmId === selectedPendingRes.id ? (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                    <p className="text-sm text-red-800 font-medium text-center">この予約をキャンセルしますか？</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setCancelPendingConfirmId(null)} className="flex-1 btn-secondary">
+                        戻る
+                      </button>
+                      <button onClick={() => handleCancelReservation(selectedPendingRes.id)} disabled={cancellingId === selectedPendingRes.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
+                        {cancellingId === selectedPendingRes.id ? '処理中...' : 'キャンセルする'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setCancelPendingConfirmId(selectedPendingRes.id)} disabled={cancellingId === selectedPendingRes.id} className="w-full bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 disabled:opacity-50">
+                    予約をキャンセル
+                  </button>
+                )
               )}
             </div>
           </div>

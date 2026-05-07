@@ -514,18 +514,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       confirmedSince={mswConfirmedSince}
                       onStatusChange={(status, name) =>
                         showNotif({
-                          title: status === 'confirmed' ? '予約が承認されました' : '予約が却下されました',
-                          body: name + '様の予約が' + (status === 'confirmed' ? '確定' : '却下') + 'されました',
+                          title: status === 'confirmed' ? '予約が承認されました' : '予約がお断りされました',
+                          body: name + '様の予約が' + (status === 'confirmed' ? '確定' : 'お断り') + 'されました',
                           type: status === 'confirmed' ? 'approved' : 'rejected',
                         })
                       }
                       onMount={(pending, confirmed, rejected) => {
                         if (confirmed > 0 && rejected > 0) {
-                          showNotif({ title: `${confirmed}件承認・${rejected}件却下されています`, body: '予約一覧から内容を確認してください', type: 'approved' })
+                          showNotif({ title: `${confirmed}件承認・${rejected}件お断りされています`, body: '予約一覧から内容を確認してください', type: 'approved' })
                         } else if (confirmed > 0) {
                           showNotif({ title: `${confirmed}件の予約が承認されています`, body: '予約一覧から確認してください', type: 'approved' })
                         } else if (rejected > 0) {
-                          showNotif({ title: `${rejected}件の予約が却下されました`, body: '予約一覧から内容を確認してください', type: 'rejected' })
+                          showNotif({ title: `${rejected}件の予約がお断りされました`, body: '予約一覧から内容を確認してください', type: 'rejected' })
                         } else if (pending > 0) {
                           showNotif({ title: `${pending}件の申請が審査中です`, body: '予約一覧から進捗を確認してください', type: 'new_reservation' })
                         }

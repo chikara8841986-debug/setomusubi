@@ -206,14 +206,14 @@ export default function BusinessReservations() {
     setActionError('')
     const { error } = await supabase.rpc('reject_reservation', { p_reservation_id: r.id })
     if (error) {
-      setActionError('却下に失敗しました。再試行してください。')
+      setActionError('お断り処理に失敗しました。再試行してください。')
       setProcessing(false)
       return
     }
     supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
     closeModal()
     setProcessing(false)
-    showToast('申請を却下しました', 'error')
+    showToast('申請をお断りしました', 'error')
     fetchReservations()
   }
 
@@ -342,7 +342,7 @@ export default function BusinessReservations() {
             { value: '' as const, label: 'すべて', count: past.length },
             { value: 'completed' as const, label: '完了', count: past.filter(r => r.status === 'completed').length },
             { value: 'cancelled' as const, label: 'キャンセル', count: past.filter(r => r.status === 'cancelled').length },
-            { value: 'rejected' as const, label: '却下', count: past.filter(r => r.status === 'rejected').length },
+            { value: 'rejected' as const, label: 'お断り', count: past.filter(r => r.status === 'rejected').length },
           ].filter(o => o.value === '' || o.count > 0)).map(opt => (
             <button
               key={opt.value}
@@ -648,8 +648,8 @@ export default function BusinessReservations() {
                   )}
 
                   {confirmAction === 'reject' ? (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
-                      <p className="text-sm text-red-700 font-medium text-center">この申請を却下しますか？</p>
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
+                      <p className="text-sm text-orange-700 font-medium text-center">この申請をお断りしますか？</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setConfirmAction(null)}
@@ -660,9 +660,9 @@ export default function BusinessReservations() {
                         <button
                           onClick={() => handleReject(selected)}
                           disabled={processing}
-                          className="flex-1 text-sm bg-red-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+                          className="flex-1 text-sm bg-orange-500 text-white px-4 py-2 rounded-xl font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors"
                         >
-                          {processing ? '処理中...' : '却下する'}
+                          {processing ? '処理中...' : 'お断りする'}
                         </button>
                       </div>
                     </div>
@@ -670,9 +670,9 @@ export default function BusinessReservations() {
                     <button
                       onClick={() => setConfirmAction('reject')}
                       disabled={processing}
-                      className="btn-danger w-full"
+                      className="w-full bg-orange-50 border border-orange-200 text-orange-700 rounded-xl px-4 py-2 text-sm font-medium hover:bg-orange-100 disabled:opacity-50"
                     >
-                      却下する
+                      お断りする
                     </button>
                   )}
                 </>
@@ -839,7 +839,7 @@ function StatusBadge({ status }: { status: string }) {
     confirmed: { cls: 'badge-blue', label: '確定' },
     completed: { cls: 'badge-green', label: '完了' },
     cancelled: { cls: 'badge-gray', label: 'キャンセル' },
-    rejected: { cls: 'badge-gray', label: '却下' },
+    rejected: { cls: 'badge-gray', label: 'お断り' },
   }
   const { cls, label } = map[status] ?? { cls: 'badge-gray', label: status }
   return <span className={cls}>{label}</span>
