@@ -270,12 +270,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-sm font-black text-white shadow-sm">
               結
             </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-lg font-black tracking-tight text-teal-700 leading-none">せとむすび</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-black tracking-tight text-teal-700">せとむすび</span>
               {(businessName || hospitalName) && (
-                <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5 truncate max-w-[140px]">
-                  {businessName ?? hospitalName}
-                </span>
+                <>
+                  <span className="text-slate-300 text-sm">|</span>
+                  <span className="text-sm font-semibold text-slate-600 truncate max-w-[160px]">
+                    {businessName ?? hospitalName}
+                  </span>
+                </>
               )}
             </div>
             {roleLabel && (
