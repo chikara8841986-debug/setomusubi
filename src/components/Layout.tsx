@@ -271,11 +271,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               結
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-black tracking-tight text-teal-700">せとむすび</span>
+              <span className="text-sm font-bold tracking-tight text-teal-600">せとむすび</span>
               {(businessName || hospitalName) && (
                 <>
-                  <span className="text-slate-300 text-sm">|</span>
-                  <span className="text-sm font-semibold text-slate-600 truncate max-w-[160px]">
+                  <span className="text-slate-300 text-xs">|</span>
+                  <span className="text-lg font-black text-slate-800 truncate max-w-[200px]">
                     {businessName ?? hospitalName}
                   </span>
                 </>
