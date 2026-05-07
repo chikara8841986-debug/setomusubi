@@ -178,6 +178,7 @@ export default function MswSearch() {
   })
   const [isNewContact, setIsNewContact] = useState(false)
   const [newContactName, setNewContactName] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
@@ -375,26 +376,22 @@ export default function MswSearch() {
     setStep(3)
   }
 
+  const handleShowConfirm = () => {
+    if (!hospitalId || !selectedBusiness) return
+    const contactName = isNewContact ? newContactName.trim() : form.contactName.trim()
+    if (!contactName) { setSubmitError('連絡担当者を入力してください'); return }
+    if (!form.patientName.trim()) { setSubmitError('患者名を入力してください'); return }
+    if (!form.patientAddress.trim()) { setSubmitError('患者住所を入力してください'); return }
+    if (!form.destination.trim()) { setSubmitError('行き先を入力してください'); return }
+    setSubmitError('')
+    setShowConfirm(true)
+  }
+
   const handleSubmitRequest = async () => {
     if (!hospitalId || !selectedBusiness) return
+    setShowConfirm(false)
 
     const contactName = isNewContact ? newContactName.trim() : form.contactName.trim()
-    if (!contactName) {
-      setSubmitError('連絡担当者を入力してください')
-      return
-    }
-    if (!form.patientName.trim()) {
-      setSubmitError('患者名を入力してください')
-      return
-    }
-    if (!form.patientAddress.trim()) {
-      setSubmitError('患者住所を入力してください')
-      return
-    }
-    if (!form.destination.trim()) {
-      setSubmitError('行き先を入力してください')
-      return
-    }
 
     setSubmitting(true)
     setSubmitError('')
@@ -466,6 +463,11 @@ export default function MswSearch() {
     () => (favOnlyResults ? results.filter((result) => favorites.has(result.id)) : results),
     [favOnlyResults, favorites, results],
   )
+  const contactName = isNewContact
+    ? newContactName.trim()
+    : contacts.find((contact) => contact.name === form.contactName)?.name ?? form.contactName.trim()
+  const equipmentLabel = EQUIPMENT_OPTIONS.find((option) => option.value === form.equipment)?.label ?? form.equipment
+  const wardRoom = [form.ward, form.roomNumber].filter(Boolean).join(' ')
 
   const todayDate = useMemo(() => startOfDay(parseISO(today)), [today])
   const calendarDays = useMemo(
@@ -1140,10 +1142,91 @@ export default function MswSearch() {
 
               {submitError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{submitError}</p>}
 
-              <button type="button" onClick={handleSubmitRequest} className="btn-primary w-full text-base py-3" disabled={submitting}>
-                {submitting ? '申請中...' : '予約申請を送信する'}
+              <button type="button" onClick={handleShowConfirm} className="btn-primary w-full text-base py-3" disabled={submitting}>
+                {submitting ? '申請中...' : '内容を確認して申請する →'}
               </button>
               <p className="text-xs text-slate-500 text-center">事業所が内容を確認後、対応可否を連絡します</p>
+
+              {showConfirm && (
+                <div
+                  className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center"
+                  onClick={() => setShowConfirm(false)}
+                >
+                  <div
+                    className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 className="text-lg font-bold text-slate-800">送信内容の確認</h3>
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+                      <div className="divide-y divide-slate-200 text-sm">
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">事業所</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{selectedBusiness.name}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">日時</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{fmtDate(date) + ' ' + startTime + '〜' + endTime}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">患者氏名</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{form.patientName}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">乗車地</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{form.patientAddress}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">目的地</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{form.destination}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">使用機材</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{equipmentLabel}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">機材貸出</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{form.equipmentRental ? 'あり' : 'なし'}</span>
+                        </div>
+                        {wardRoom && (
+                          <div className="flex gap-3 px-4 py-3">
+                            <span className="w-24 flex-shrink-0 text-slate-500">病棟・病室</span>
+                            <span className="min-w-0 flex-1 font-medium text-slate-800">{wardRoom}</span>
+                          </div>
+                        )}
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">同乗者</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{form.companionCount === 0 ? 'なし' : form.companionCount + '人'}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">担当者</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{contactName}</span>
+                        </div>
+                        <div className="flex gap-3 px-4 py-3">
+                          <span className="w-24 flex-shrink-0 text-slate-500">備考</span>
+                          <span className="min-w-0 flex-1 font-medium text-slate-800">{form.notes.trim() || 'なし'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        className="btn-primary flex-1"
+                        disabled={submitting}
+                        onClick={() => {
+                          setShowConfirm(false)
+                          handleSubmitRequest()
+                        }}
+                      >
+                        確定して送信する
+                      </button>
+                      <button type="button" className="btn-secondary flex-1" onClick={() => setShowConfirm(false)}>
+                        戻って修正する
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

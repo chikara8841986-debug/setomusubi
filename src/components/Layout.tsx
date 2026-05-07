@@ -63,7 +63,7 @@ function AdminPendingBadge() {
   )
 }
 
-function PendingBadge({ businessId }: { businessId: string }) {
+function PendingBadge({ businessId, onNew }: { businessId: string; onNew?: (name: string) => void }) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -87,14 +87,20 @@ function PendingBadge({ businessId }: { businessId: string }) {
           table: 'reservations',
           filter: `business_id=eq.${businessId}`,
         },
-        load,
+        (payload) => {
+          const p = payload as { eventType?: string; new?: Record<string, unknown> }
+          if (p.eventType === 'INSERT') {
+            onNew?.(String(p.new?.patient_name ?? '患者'))
+          }
+          load()
+        },
       )
       .subscribe()
     return () => {
       mounted = false
       supabase.removeChannel(channel)
     }
-  }, [businessId])
+  }, [businessId, onNew])
 
   if (count === 0) return null
   return (
@@ -164,7 +170,13 @@ function AdminReservationsBadge() {
   )
 }
 
-function MswPendingBadge({ hospitalId }: { hospitalId: string }) {
+function MswPendingBadge({
+  hospitalId,
+  onStatusChange,
+}: {
+  hospitalId: string
+  onStatusChange?: (status: 'confirmed' | 'rejected', name: string) => void
+}) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -188,14 +200,28 @@ function MswPendingBadge({ hospitalId }: { hospitalId: string }) {
           table: 'reservations',
           filter: `hospital_id=eq.${hospitalId}`,
         },
-        load,
+        (payload) => {
+          const p = payload as {
+            eventType?: string
+            new?: Record<string, unknown>
+            old?: Record<string, unknown>
+          }
+          if (p.eventType === 'UPDATE') {
+            const ns = String(p.new?.status ?? '')
+            const os = String(p.old?.status ?? '')
+            if (os === 'pending' && (ns === 'confirmed' || ns === 'rejected')) {
+              onStatusChange?.(ns as 'confirmed' | 'rejected', String(p.new?.patient_name ?? '患者'))
+            }
+          }
+          load()
+        },
       )
       .subscribe()
     return () => {
       mounted = false
       supabase.removeChannel(channel)
     }
-  }, [hospitalId])
+  }, [hospitalId, onStatusChange])
 
   if (count === 0) return null
   return (
@@ -214,24 +240,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [notif, setNotif] = useState<AppNotif | null>(null)
-  const [notifVisible, setNotifVisible] = useState(false)
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const showNotif = useCallback((n: AppNotif) => {
     if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
     setNotif(n)
-    setNotifVisible(false)
-    requestAnimationFrame(() => requestAnimationFrame(() => setNotifVisible(true)))
-    notifTimerRef.current = setTimeout(() => {
-      setNotifVisible(false)
-      setTimeout(() => setNotif(null), 350)
-    }, 6000)
+    notifTimerRef.current = setTimeout(() => setNotif(null), 6000)
   }, [])
 
   const closeNotif = useCallback(() => {
     if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
-    setNotifVisible(false)
-    setTimeout(() => setNotif(null), 350)
+    setNotif(null)
   }, [])
 
   const navItems = role === 'business' ? NAV_BUSINESS
@@ -275,69 +294,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  useEffect(() => {
-    if (!businessId || role !== 'business') return
-    let isInitialLoad = true
-    const timer = setTimeout(() => { isInitialLoad = false }, 1500)
-    const channel = supabase
-      .channel('notif-business-' + businessId)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'reservations',
-          filter: 'business_id=eq.' + businessId,
-        },
-        (payload: Record<string, unknown>) => {
-          if (isInitialLoad) return
-          const row = payload.new as Record<string, unknown>
-          showNotif({
-            title: '新しい予約申請が届きました',
-            body: String(row.patient_name ?? '患者') + '様からの予約申請',
-            type: 'new_reservation',
-          })
-        },
-      )
-      .subscribe()
-    return () => {
-      clearTimeout(timer)
-      supabase.removeChannel(channel)
-    }
-  }, [businessId, role, showNotif])
-
-  useEffect(() => {
-    if (!hospitalId || role !== 'msw') return
-    let isInitialLoad = true
-    const timer = setTimeout(() => { isInitialLoad = false }, 1500)
-    const channel = supabase
-      .channel('notif-msw-' + hospitalId)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'reservations',
-          filter: 'hospital_id=eq.' + hospitalId,
-        },
-        (payload: Record<string, unknown>) => {
-          if (isInitialLoad) return
-          const row = payload.new as Record<string, unknown>
-          const name = String(row.patient_name ?? '患者')
-          if (row.status === 'confirmed') {
-            showNotif({ title: '予約が承認されました', body: name + '様の予約が確定しました', type: 'approved' })
-          } else if (row.status === 'rejected') {
-            showNotif({ title: '予約が却下されました', body: name + '様の予約申請が却下されました', type: 'rejected' })
-          }
-        },
-      )
-      .subscribe()
-    return () => {
-      clearTimeout(timer)
-      supabase.removeChannel(channel)
-    }
-  }, [hospitalId, role, showNotif])
-
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
@@ -356,10 +312,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       style={{ background: 'linear-gradient(135deg, #f0f9f8 0%, #e8f5f3 50%, #f0f4ff 100%)' }}
     >
       {notif && (
-        <div
-          className={'fixed top-4 left-1/2 z-[100] w-80 max-w-[calc(100vw-2rem)] transition-all duration-300 ' + (notifVisible ? 'opacity-100 -translate-x-1/2 translate-y-0' : 'opacity-0 -translate-x-1/2 -translate-y-3 pointer-events-none')}
-          style={{ left: '50%' }}
-        >
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-80 max-w-[calc(100vw-2rem)] animate-slide-down">
           <div className={'overflow-hidden rounded-2xl border shadow-xl ' + (notif.type === 'new_reservation' ? 'border-teal-200 bg-teal-50' : notif.type === 'approved' ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
             <div className={'h-1 w-full ' + (notif.type === 'new_reservation' ? 'bg-teal-500' : notif.type === 'approved' ? 'bg-emerald-500' : 'bg-amber-500')} />
             <div className="flex items-start gap-3 p-4">
@@ -449,8 +402,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <span className="text-base leading-none">{icon}</span>
                   <span>{label}</span>
-                  {isReservationsNav && businessId && <PendingBadge businessId={businessId} />}
-                  {to === '/msw/reservations' && hospitalId && <MswPendingBadge hospitalId={hospitalId} />}
+                  {isReservationsNav && businessId && (
+                    <PendingBadge
+                      businessId={businessId}
+                      onNew={(name) => showNotif({ title: '新しい予約申請が届きました', body: name + '様からの予約申請が入りました', type: 'new_reservation' })}
+                    />
+                  )}
+                  {to === '/msw/reservations' && hospitalId && (
+                    <MswPendingBadge
+                      hospitalId={hospitalId}
+                      onStatusChange={(status, name) =>
+                        showNotif({
+                          title: status === 'confirmed' ? '予約が承認されました' : '予約が却下されました',
+                          body: name + '様の予約が' + (status === 'confirmed' ? '確定' : '却下') + 'されました',
+                          type: status === 'confirmed' ? 'approved' : 'rejected',
+                        })
+                      }
+                    />
+                  )}
                   {to === '/admin/approvals' && role === 'admin' && <AdminPendingBadge />}
                   {to === '/admin/reservations' && role === 'admin' && <AdminReservationsBadge />}
                 </Link>
