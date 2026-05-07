@@ -195,11 +195,12 @@ function MswPendingBadge({
 }: {
   hospitalId: string
   onStatusChange?: (status: 'confirmed' | 'rejected', name: string) => void
-  onMount?: (pendingCount: number, confirmedCount: number) => void
+  onMount?: (pendingCount: number, confirmedCount: number, rejectedCount: number) => void
   confirmedSince: string
 }) {
   const [count, setCount] = useState(0)
   const [confirmedCount, setConfirmedCount] = useState(0)
+  const [rejectedCount, setRejectedCount] = useState(0)
   const didMount = useRef(false)
   const onMountRef = useRef(onMount)
   useEffect(() => { onMountRef.current = onMount }, [onMount])
@@ -207,9 +208,8 @@ function MswPendingBadge({
   useEffect(() => {
     let mounted = true
     const load = async () => {
-      // confirmedSince が空なら全件（初回）、セット済みならその後の承認のみ
       const since = confirmedSince || '1970-01-01T00:00:00.000Z'
-      const [{ count: pending }, { count: confirmed }] = await Promise.all([
+      const [{ count: pending }, { count: confirmed }, { count: rejected }] = await Promise.all([
         supabase
           .from('reservations')
           .select('*', { count: 'exact', head: true })
@@ -221,13 +221,20 @@ function MswPendingBadge({
           .eq('hospital_id', hospitalId)
           .eq('status', 'confirmed')
           .gt('updated_at', since),
+        supabase
+          .from('reservations')
+          .select('*', { count: 'exact', head: true })
+          .eq('hospital_id', hospitalId)
+          .eq('status', 'rejected')
+          .gt('updated_at', since),
       ])
       if (mounted) {
         setCount(pending ?? 0)
         setConfirmedCount(confirmed ?? 0)
+        setRejectedCount(rejected ?? 0)
         if (!didMount.current) {
           didMount.current = true
-          onMountRef.current?.(pending ?? 0, confirmed ?? 0)
+          onMountRef.current?.(pending ?? 0, confirmed ?? 0, rejected ?? 0)
         }
       }
     }
@@ -251,12 +258,13 @@ function MswPendingBadge({
           if (p.eventType === 'UPDATE') {
             const ns = String(p.new?.status ?? '')
             const os = String(p.old?.status ?? '')
-            // REPLICA IDENTITY FULL により old.status が取れる。
-            // 万一 old が空でも ns === 'confirmed'/'rejected' なら通知する
+            // REPLICA IDENTITY FULL により old.status が取れる
+            // 万一 old が空でも confirmed/rejected なら通知する
             const wasStatusChange = os === 'pending' || os === ''
             if (wasStatusChange && (ns === 'confirmed' || ns === 'rejected')) {
               onStatusChange?.(ns as 'confirmed' | 'rejected', String(p.new?.patient_name ?? '患者'))
               if (ns === 'confirmed') setConfirmedCount((prev) => prev + 1)
+              if (ns === 'rejected') setRejectedCount((prev) => prev + 1)
             }
           }
           load()
@@ -269,7 +277,7 @@ function MswPendingBadge({
     }
   }, [hospitalId, onStatusChange, confirmedSince])
 
-  if (count === 0 && confirmedCount === 0) return null
+  if (count === 0 && confirmedCount === 0 && rejectedCount === 0) return null
   return (
     <>
       {count > 0 && (
@@ -285,6 +293,14 @@ function MswPendingBadge({
           <span className="absolute h-5 w-5 rounded-full bg-emerald-400 animate-ping opacity-60" />
           <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
             {confirmedCount > 9 ? '9+' : confirmedCount}
+          </span>
+        </span>
+      )}
+      {rejectedCount > 0 && (
+        <span className="relative ml-1 inline-flex items-center justify-center">
+          <span className="absolute h-5 w-5 rounded-full bg-red-400 animate-ping opacity-60" />
+          <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+            {rejectedCount > 9 ? '9+' : rejectedCount}
           </span>
         </span>
       )}
@@ -322,7 +338,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     notifTypeRef.current = n.type
     setNotif(n)
     notifTimerRef.current = setTimeout(() => {
-      if (notifTypeRef.current === 'approved') markApprovedSeen()
+      // 承認・却下どちらのポップアップも閉じたら「既読」にする
+      if (notifTypeRef.current === 'approved' || notifTypeRef.current === 'rejected') markApprovedSeen()
       notifTypeRef.current = null
       setNotif(null)
     }, 6000)
@@ -330,7 +347,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const closeNotif = useCallback(() => {
     if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
-    if (notifTypeRef.current === 'approved') markApprovedSeen()
+    if (notifTypeRef.current === 'approved' || notifTypeRef.current === 'rejected') markApprovedSeen()
     notifTypeRef.current = null
     setNotif(null)
   }, [markApprovedSeen])
@@ -502,9 +519,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           type: status === 'confirmed' ? 'approved' : 'rejected',
                         })
                       }
-                      onMount={(pending, confirmed) => {
-                        if (confirmed > 0) {
+                      onMount={(pending, confirmed, rejected) => {
+                        if (confirmed > 0 && rejected > 0) {
+                          showNotif({ title: `${confirmed}件承認・${rejected}件却下されています`, body: '予約一覧から内容を確認してください', type: 'approved' })
+                        } else if (confirmed > 0) {
                           showNotif({ title: `${confirmed}件の予約が承認されています`, body: '予約一覧から確認してください', type: 'approved' })
+                        } else if (rejected > 0) {
+                          showNotif({ title: `${rejected}件の予約が却下されました`, body: '予約一覧から内容を確認してください', type: 'rejected' })
                         } else if (pending > 0) {
                           showNotif({ title: `${pending}件の申請が審査中です`, body: '予約一覧から進捗を確認してください', type: 'new_reservation' })
                         }
