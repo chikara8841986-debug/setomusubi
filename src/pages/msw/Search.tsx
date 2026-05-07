@@ -655,11 +655,13 @@ export default function MswSearch() {
                         空き車両 {business.availableVehicles.length} 台
                       </span>
                       {business.profile_image_url && (
-                        <img
-                          src={business.profile_image_url}
-                          alt={business.name}
-                          className="w-14 h-14 rounded-xl object-cover border border-slate-100 shadow-sm"
-                        />
+                        <div className="w-14 h-14 rounded-xl border border-slate-100 shadow-sm bg-slate-50 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          <img
+                            src={business.profile_image_url}
+                            alt={business.name}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -890,14 +892,20 @@ export default function MswSearch() {
 
             <div className="space-y-3">
               {previewBusiness.profile_image_url && (
-                <img src={previewBusiness.profile_image_url} alt={previewBusiness.name}
-                  className="w-full h-40 object-cover rounded-xl border border-slate-100" />
+                <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={previewBusiness.profile_image_url}
+                    alt={previewBusiness.name}
+                    className="max-h-56 w-full object-contain"
+                  />
+                </div>
               )}
               {previewBusiness.vehicle_image_urls && previewBusiness.vehicle_image_urls.length > 0 && (
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                   {previewBusiness.vehicle_image_urls.map((url, i) => (
-                    <img key={i} src={url} alt={`車両${i + 1}`}
-                      className="w-28 h-20 rounded-lg object-cover flex-shrink-0 border border-slate-100" />
+                    <div key={i} className="flex-shrink-0 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden flex items-center justify-center" style={{ width: 140, height: 96 }}>
+                      <img src={url} alt={`車両${i + 1}`} className="max-h-full max-w-full object-contain" />
+                    </div>
                   ))}
                 </div>
               )}
