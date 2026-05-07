@@ -63,8 +63,19 @@ function AdminPendingBadge() {
   )
 }
 
-function PendingBadge({ businessId, onNew }: { businessId: string; onNew?: (name: string) => void }) {
+function PendingBadge({
+  businessId,
+  onNew,
+  onMount,
+}: {
+  businessId: string
+  onNew?: (name: string) => void
+  onMount?: (count: number) => void
+}) {
   const [count, setCount] = useState(0)
+  const didMount = useRef(false)
+  const onMountRef = useRef(onMount)
+  useEffect(() => { onMountRef.current = onMount }, [onMount])
 
   useEffect(() => {
     let mounted = true
@@ -74,7 +85,13 @@ function PendingBadge({ businessId, onNew }: { businessId: string; onNew?: (name
         .select('*', { count: 'exact', head: true })
         .eq('business_id', businessId)
         .eq('status', 'pending')
-      if (mounted) setCount(c ?? 0)
+      if (mounted) {
+        setCount(c ?? 0)
+        if (!didMount.current) {
+          didMount.current = true
+          if ((c ?? 0) > 0) onMountRef.current?.(c ?? 0)
+        }
+      }
     }
     load()
     const channel = supabase
@@ -173,21 +190,43 @@ function AdminReservationsBadge() {
 function MswPendingBadge({
   hospitalId,
   onStatusChange,
+  onMount,
 }: {
   hospitalId: string
   onStatusChange?: (status: 'confirmed' | 'rejected', name: string) => void
+  onMount?: (pendingCount: number, confirmedCount: number) => void
 }) {
   const [count, setCount] = useState(0)
+  const [confirmedCount, setConfirmedCount] = useState(0)
+  const didMount = useRef(false)
+  const onMountRef = useRef(onMount)
+  useEffect(() => { onMountRef.current = onMount }, [onMount])
 
   useEffect(() => {
     let mounted = true
     const load = async () => {
-      const { count: c } = await supabase
-        .from('reservations')
-        .select('*', { count: 'exact', head: true })
-        .eq('hospital_id', hospitalId)
-        .eq('status', 'pending')
-      if (mounted) setCount(c ?? 0)
+      const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const [{ count: pending }, { count: confirmed }] = await Promise.all([
+        supabase
+          .from('reservations')
+          .select('*', { count: 'exact', head: true })
+          .eq('hospital_id', hospitalId)
+          .eq('status', 'pending'),
+        supabase
+          .from('reservations')
+          .select('*', { count: 'exact', head: true })
+          .eq('hospital_id', hospitalId)
+          .eq('status', 'confirmed')
+          .gte('updated_at', since24h),
+      ])
+      if (mounted) {
+        setCount(pending ?? 0)
+        setConfirmedCount(confirmed ?? 0)
+        if (!didMount.current) {
+          didMount.current = true
+          onMountRef.current?.(pending ?? 0, confirmed ?? 0)
+        }
+      }
     }
     load()
     const channel = supabase
@@ -211,6 +250,7 @@ function MswPendingBadge({
             const os = String(p.old?.status ?? '')
             if (os === 'pending' && (ns === 'confirmed' || ns === 'rejected')) {
               onStatusChange?.(ns as 'confirmed' | 'rejected', String(p.new?.patient_name ?? '患者'))
+              if (ns === 'confirmed') setConfirmedCount((prev) => prev + 1)
             }
           }
           load()
@@ -223,14 +263,26 @@ function MswPendingBadge({
     }
   }, [hospitalId, onStatusChange])
 
-  if (count === 0) return null
+  if (count === 0 && confirmedCount === 0) return null
   return (
-    <span className="relative ml-1 inline-flex items-center justify-center">
-      <span className="absolute h-5 w-5 rounded-full bg-amber-400 animate-ping opacity-60" />
-      <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-        {count > 9 ? '9+' : count}
-      </span>
-    </span>
+    <>
+      {count > 0 && (
+        <span className="relative ml-1 inline-flex items-center justify-center">
+          <span className="absolute h-5 w-5 rounded-full bg-amber-400 animate-ping opacity-60" />
+          <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+            {count > 9 ? '9+' : count}
+          </span>
+        </span>
+      )}
+      {confirmedCount > 0 && (
+        <span className="relative ml-1 inline-flex items-center justify-center">
+          <span className="absolute h-5 w-5 rounded-full bg-emerald-400 animate-ping opacity-60" />
+          <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
+            {confirmedCount > 9 ? '9+' : confirmedCount}
+          </span>
+        </span>
+      )}
+    </>
   )
 }
 
@@ -406,6 +458,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <PendingBadge
                       businessId={businessId}
                       onNew={(name) => showNotif({ title: '新しい予約申請が届きました', body: name + '様からの予約申請が入りました', type: 'new_reservation' })}
+                      onMount={(c) => showNotif({ title: `未承認の予約申請が${c}件あります`, body: '予約管理から確認・承認してください', type: 'new_reservation' })}
                     />
                   )}
                   {to === '/msw/reservations' && hospitalId && (
@@ -418,6 +471,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           type: status === 'confirmed' ? 'approved' : 'rejected',
                         })
                       }
+                      onMount={(pending, confirmed) => {
+                        if (confirmed > 0) {
+                          showNotif({ title: `${confirmed}件の予約が承認されています`, body: '予約一覧から確認してください', type: 'approved' })
+                        } else if (pending > 0) {
+                          showNotif({ title: `${pending}件の申請が審査中です`, body: '予約一覧から進捗を確認してください', type: 'new_reservation' })
+                        }
+                      }}
                     />
                   )}
                   {to === '/admin/approvals' && role === 'admin' && <AdminPendingBadge />}
