@@ -1,25 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import type { Business } from '../../types/database'
-
-const SERVICE_AREAS = [
-  '善通寺市', '丸亀市', '坂出市', '宇多津町',
-  '多度津町', '琴平町', 'まんのう町', '綾川町'
-]
+import type { Business, Vehicle } from '../../types/database'
+import { SERVICE_AREAS } from '../../lib/constants'
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 
 export default function BusinessProfile() {
-  const { user } = useAuth()
+  const { user, businessId } = useAuth()
   const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedSnapshot, setSavedSnapshot] = useState('')
+
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [vehicleCounts, setVehicleCounts] = useState<Record<string, number>>({})
+  const [newVehicleName, setNewVehicleName] = useState('')
+  const [addingVehicle, setAddingVehicle] = useState(false)
+  const [deletingVehicleId, setDeletingVehicleId] = useState<string | null>(null)
 
   const [form, setForm] = useState<Partial<Business>>({
     name: '',
@@ -46,64 +48,114 @@ export default function BusinessProfile() {
   const fetchProfile = async () => {
     if (!user) return
     setLoadError(false)
-    const { data, error } = await supabase
-      .from('businesses')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-    if (error && error.code !== 'PGRST116') { setLoadError(true); setLoading(false); return }
-    if (data) { setForm(data); setSavedSnapshot(JSON.stringify(data)) }
+
+    const { data, error } = await supabase.from('businesses').select('*').eq('user_id', user.id).single()
+    if (error && error.code !== 'PGRST116') {
+      setLoadError(true)
+      setLoading(false)
+      return
+    }
+
+    if (data) {
+      setForm(data)
+      setSavedSnapshot(JSON.stringify(data))
+    }
     setLoading(false)
   }
 
-  useEffect(() => { fetchProfile() }, [user])
+  const fetchVehicles = async () => {
+    if (!businessId) return
+
+    const { data: vehicleRows, error: vehicleError } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('business_id', businessId)
+      .order('sort_order', { ascending: true })
+
+    if (vehicleError) {
+      showToast('車両一覧の取得に失敗しました', 'error')
+      return
+    }
+
+    const nextVehicles = (vehicleRows ?? []) as Vehicle[]
+    setVehicles(nextVehicles)
+
+    if (nextVehicles.length === 0) {
+      setVehicleCounts({})
+      return
+    }
+
+    const { data: occupiedRows, error: occupiedError } = await supabase
+      .from('occupied_slots')
+      .select('vehicle_id')
+      .in('vehicle_id', nextVehicles.map((vehicle) => vehicle.id))
+
+    if (occupiedError) {
+      showToast('車両利用状況の取得に失敗しました', 'error')
+      return
+    }
+
+    const counts = ((occupiedRows ?? []) as Array<{ vehicle_id: string }>).reduce<Record<string, number>>((acc, row) => {
+      acc[row.vehicle_id] = (acc[row.vehicle_id] ?? 0) + 1
+      return acc
+    }, {})
+    setVehicleCounts(counts)
+  }
+
+  useEffect(() => {
+    fetchProfile()
+  }, [user])
+
+  useEffect(() => {
+    fetchVehicles()
+  }, [businessId])
 
   const toggleArea = (area: string) => {
-    setForm(f => ({
-      ...f,
-      service_areas: f.service_areas?.includes(area)
-        ? f.service_areas.filter(a => a !== area)
-        : [...(f.service_areas ?? []), area]
+    setForm((current) => ({
+      ...current,
+      service_areas: current.service_areas?.includes(area)
+        ? current.service_areas.filter((item) => item !== area)
+        : [...(current.service_areas ?? []), area],
     }))
   }
 
   const toggleDay = (day: number) => {
-    setForm(f => ({
-      ...f,
-      closed_days: f.closed_days?.includes(day)
-        ? f.closed_days.filter(d => d !== day)
-        : [...(f.closed_days ?? []), day]
+    setForm((current) => ({
+      ...current,
+      closed_days: current.closed_days?.includes(day)
+        ? current.closed_days.filter((item) => item !== day)
+        : [...(current.closed_days ?? []), day],
     }))
   }
 
   const toggleBool = (key: keyof Business) => {
-    setForm(f => {
-      const next = !f[key]
+    setForm((current) => {
+      const next = !current[key]
       const updates: Partial<Business> = { [key]: next }
-      // 基本機材をOFFにしたら対応する貸出もOFFにする
       if (!next) {
         if (key === 'has_wheelchair') updates.rental_wheelchair = false
         if (key === 'has_reclining_wheelchair') updates.rental_reclining_wheelchair = false
         if (key === 'has_stretcher') updates.rental_stretcher = false
       }
-      return { ...f, ...updates }
+      return { ...current, ...updates }
     })
   }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!user) return
+
     if (
       form.business_hours_start &&
       form.business_hours_end &&
       form.business_hours_start >= form.business_hours_end
     ) {
-      showToast('終了時間は開始時間より後にしてください', 'error')
+      showToast('終了時刻は開始時刻より後にしてください', 'error')
       return
     }
-    setSaving(true)
 
-    const { error: err } = await supabase
+    setSaving(true)
+    const { error } = await supabase
       .from('businesses')
       .update({
         name: form.name,
@@ -127,29 +179,102 @@ export default function BusinessProfile() {
         cancel_phone: form.cancel_phone,
       })
       .eq('user_id', user.id)
-
     setSaving(false)
-    if (err) {
+
+    if (error) {
       showToast('保存に失敗しました', 'error')
-    } else {
-      setSavedSnapshot(JSON.stringify(form))
-      showToast('プロフィールを保存しました')
+      return
     }
+
+    setSavedSnapshot(JSON.stringify(form))
+    showToast('プロフィールを保存しました')
+  }
+
+  const handleAddVehicle = async () => {
+    if (!businessId) return
+    const name = newVehicleName.trim()
+    if (!name) {
+      showToast('車両名を入力してください', 'error')
+      return
+    }
+
+    setAddingVehicle(true)
+    const nextSortOrder = vehicles.length > 0 ? Math.max(...vehicles.map((vehicle) => vehicle.sort_order ?? 0)) + 1 : 1
+    const { error } = await supabase.from('vehicles').insert({
+      business_id: businessId,
+      name,
+      active: true,
+      sort_order: nextSortOrder,
+    })
+    setAddingVehicle(false)
+
+    if (error) {
+      showToast('車両追加に失敗しました', 'error')
+      return
+    }
+
+    setNewVehicleName('')
+    showToast('車両を追加しました')
+    fetchVehicles()
+  }
+
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    if ((vehicleCounts[vehicleId] ?? 0) > 0) return
+
+    setDeletingVehicleId(vehicleId)
+    const { error } = await supabase.from('vehicles').delete().eq('id', vehicleId)
+    setDeletingVehicleId(null)
+
+    if (error) {
+      showToast('車両削除に失敗しました', 'error')
+      return
+    }
+
+    showToast('車両を削除しました')
+    fetchVehicles()
   }
 
   const isDirty = JSON.stringify(form) !== savedSnapshot
-
-  if (loading) return <div className="flex flex-col items-center justify-center py-16 gap-3"><span className="spinner" /><p className="text-sm text-slate-400">読み込み中...</p></div>
-  if (loadError) return (
-    <div className="card text-center py-10">
-      <div className="text-3xl mb-2">😵</div><p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
-      <button onClick={fetchProfile} className="btn-secondary text-sm">再試行</button>
-    </div>
+  const missingFields = useMemo(
+    () =>
+      [
+        !form.cancel_phone && 'キャンセル連絡先',
+        (!form.service_areas || form.service_areas.length === 0) && '対応エリア',
+      ].filter(Boolean) as string[],
+    [form.cancel_phone, form.service_areas],
   )
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <span className="spinner" />
+        <p className="text-sm text-slate-400">読み込み中...</p>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="card text-center py-10">
+        <div className="text-3xl mb-2">!</div>
+        <p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
+        <button onClick={fetchProfile} className="btn-secondary text-sm">
+          再読み込み
+        </button>
+      </div>
+    )
+  }
+
   const BoolRow = ({ label, field, disabled }: { label: string; field: keyof Business; disabled?: boolean }) => (
-    <label className={`flex items-center justify-between py-2.5 border-b border-slate-100 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-      <span className="text-sm text-slate-700">{label}{disabled && <span className="ml-1 text-[10px] text-slate-400">（基本機材が必要）</span>}</span>
+    <label
+      className={`flex items-center justify-between py-2.5 border-b border-slate-100 ${
+        disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+      }`}
+    >
+      <span className="text-sm text-slate-700">
+        {label}
+        {disabled && <span className="ml-1 text-[10px] text-slate-400">元機材が必要</span>}
+      </span>
       <button
         type="button"
         onClick={() => !disabled && toggleBool(field)}
@@ -158,17 +283,14 @@ export default function BusinessProfile() {
           form[field] ? 'bg-teal-500' : 'bg-slate-200'
         }`}
       >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${
-          form[field] ? 'translate-x-4' : 'translate-x-0.5'
-        }`} />
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${
+            form[field] ? 'translate-x-4' : 'translate-x-0.5'
+          }`}
+        />
       </button>
     </label>
   )
-
-  const missingFields = [
-    !form.cancel_phone && 'キャンセル連絡先',
-    (!form.service_areas || form.service_areas.length === 0) && '対応エリア',
-  ].filter(Boolean) as string[]
 
   return (
     <div>
@@ -178,204 +300,227 @@ export default function BusinessProfile() {
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
           <p className="text-xs font-medium text-blue-700">未保存の変更があります</p>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              type="submit"
-              form="profile-form"
-              disabled={saving}
-              className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
-            >
+            <button type="submit" form="profile-form" disabled={saving} className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors">
               {saving ? '保存中...' : '保存する'}
             </button>
             <button
               type="button"
-              onClick={() => {
-                const snap = JSON.parse(savedSnapshot || '{}')
-                setForm(snap)
-              }}
+              onClick={() => setForm(JSON.parse(savedSnapshot || '{}'))}
               className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
-            >元に戻す</button>
+            >
+              元に戻す
+            </button>
           </div>
         </div>
       )}
 
       {missingFields.length > 0 ? (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-medium text-amber-800 mb-1.5">⚠️ 以下を設定するとMSWの検索に表示されます</p>
+          <p className="text-xs font-medium text-amber-800 mb-1.5">以下を設定すると MSW の検索に表示されます</p>
           <div className="flex flex-wrap gap-1.5">
-            {missingFields.map(f => (
-              <span key={f} className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{f}</span>
+            {missingFields.map((field) => (
+              <span key={field} className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">
+                {field}
+              </span>
             ))}
           </div>
         </div>
       ) : !isDirty && (
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
-          ✓ 必須項目はすべて設定されています
+          表示に必要な項目は設定済みです
           <span className="block font-normal text-teal-600 mt-0.5">
-            <Link to="/business/calendar" className="underline hover:text-teal-800">カレンダー</Link>に空き枠を追加するとMSWの検索に表示されます
+            <Link to="/business/calendar" className="underline hover:text-teal-800">
+              カレンダー
+            </Link>
+            で稼働ブロックを登録できます
           </span>
         </div>
       )}
 
       <form id="profile-form" onSubmit={handleSubmit} className="space-y-4">
-        {/* Basic info */}
         <div className="card space-y-3">
           <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">基本情報</h2>
           <div>
             <label className="label">事業所名 <span className="text-red-500">*</span></label>
-            <input className="input-base" value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required maxLength={100} />
+            <input className="input-base" value={form.name ?? ''} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} required maxLength={100} />
           </div>
           <div>
-            <label className="label">所在地</label>
-            <input className="input-base" value={form.address ?? ''} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} maxLength={300} placeholder="香川県丸亀市〇〇町1-2-3" />
+            <label className="label">住所</label>
+            <input className="input-base" value={form.address ?? ''} onChange={(e) => setForm((current) => ({ ...current, address: e.target.value }))} maxLength={300} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">電話番号</label>
-              <input className="input-base" value={form.phone ?? ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} maxLength={20} placeholder="0877-00-0000" />
+              <input className="input-base" value={form.phone ?? ''} onChange={(e) => setForm((current) => ({ ...current, phone: e.target.value }))} maxLength={20} />
             </div>
             <div>
               <label className="label">キャンセル連絡先 <span className="text-red-500">*</span></label>
-              <input className="input-base" value={form.cancel_phone ?? ''} onChange={e => setForm(f => ({ ...f, cancel_phone: e.target.value }))} maxLength={20} placeholder="0877-00-0000" />
-              <p className="text-xs text-slate-400 mt-0.5">MSWの申請画面に表示される直通番号です</p>
+              <input className="input-base" value={form.cancel_phone ?? ''} onChange={(e) => setForm((current) => ({ ...current, cancel_phone: e.target.value }))} maxLength={20} />
+              <p className="text-xs text-slate-400 mt-0.5">MSW の申請確認画面に表示されます</p>
             </div>
           </div>
         </div>
 
-        {/* Service hours */}
         <div className="card space-y-3">
           <div className="border-b pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">営業時間・定休日</h2>
-            <p className="text-xs text-slate-400 mt-0.5">カレンダーで「＋ 追加」ボタンを押したとき、この時間帯で空き枠が自動作成されます</p>
+            <h2 className="text-sm font-semibold text-slate-700">営業時間・休業日</h2>
+            <p className="text-xs text-slate-400 mt-0.5">カレンダーの初期表示に使います</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">開始時間</label>
-              <input type="time" className="input-base" value={form.business_hours_start ?? ''} onChange={e => setForm(f => ({ ...f, business_hours_start: e.target.value }))} />
+              <label className="label">開始時刻</label>
+              <input type="time" className="input-base" value={form.business_hours_start ?? ''} onChange={(e) => setForm((current) => ({ ...current, business_hours_start: e.target.value }))} />
             </div>
             <div>
-              <label className="label">終了時間</label>
-              <input type="time" className="input-base" value={form.business_hours_end ?? ''} onChange={e => setForm(f => ({ ...f, business_hours_end: e.target.value }))} />
+              <label className="label">終了時刻</label>
+              <input type="time" className="input-base" value={form.business_hours_end ?? ''} onChange={(e) => setForm((current) => ({ ...current, business_hours_end: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className="label">定休日</label>
-            <p className="text-xs text-slate-400 mb-2">設定した曜日はカレンダー上でグレー表示になります</p>
+            <label className="label">休業日</label>
             <div className="flex gap-2 flex-wrap">
-              {DAYS.map((d, i) => (
+              {DAYS.map((day, index) => (
                 <button
-                  key={i}
+                  key={day}
                   type="button"
-                  onClick={() => toggleDay(i)}
+                  onClick={() => toggleDay(index)}
                   className={`w-9 h-9 rounded-full text-sm font-medium border transition-colors ${
-                    form.closed_days?.includes(i)
+                    form.closed_days?.includes(index)
                       ? 'bg-red-500 text-white border-red-500'
                       : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                   }`}
                 >
-                  {d}
+                  {day}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Service areas */}
         <div className="card space-y-3">
           <div className="flex items-center justify-between border-b pb-2">
             <div>
               <h2 className="text-sm font-semibold text-slate-700">対応エリア <span className="text-red-500">*</span></h2>
-              <p className="text-xs text-slate-400 mt-0.5">MSWが乗車地エリアで絞り込む際に使用されます</p>
+              <p className="text-xs text-slate-400 mt-0.5">MSW の検索対象になります</p>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setForm(f => ({ ...f, service_areas: [...SERVICE_AREAS] }))}
-                className="text-xs text-teal-600 hover:underline">全選択</button>
-              <button type="button" onClick={() => setForm(f => ({ ...f, service_areas: [] }))}
-                className="text-xs text-slate-400 hover:underline">全解除</button>
+              <button type="button" onClick={() => setForm((current) => ({ ...current, service_areas: [...SERVICE_AREAS] }))} className="text-xs text-teal-600 hover:underline">
+                全選択
+              </button>
+              <button type="button" onClick={() => setForm((current) => ({ ...current, service_areas: [] }))} className="text-xs text-slate-400 hover:underline">
+                解除
+              </button>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {SERVICE_AREAS.map(area => (
+            {SERVICE_AREAS.map((area) => (
               <label key={area} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.service_areas?.includes(area) ?? false}
-                  onChange={() => toggleArea(area)}
-                  className="w-4 h-4 rounded border-slate-200 text-teal-600"
-                />
+                <input type="checkbox" checked={form.service_areas?.includes(area) ?? false} onChange={() => toggleArea(area)} className="w-4 h-4 rounded border-slate-200 text-teal-600" />
                 <span className="text-sm text-slate-700">{area}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {/* Equipment */}
         <div className="card">
           <div className="border-b pb-2 mb-1">
-            <h2 className="text-sm font-semibold text-slate-700">車両・機材</h2>
-            <p className="text-xs text-slate-400 mt-0.5">MSWが「車椅子対応」などの条件で絞り込む際に使われます</p>
+            <h2 className="text-sm font-semibold text-slate-700">機材・貸出</h2>
+            <p className="text-xs text-slate-400 mt-0.5">検索条件と事業所詳細に表示されます</p>
           </div>
           <BoolRow label="車椅子対応" field="has_wheelchair" />
           <BoolRow label="リクライニング車椅子対応" field="has_reclining_wheelchair" />
           <BoolRow label="ストレッチャー対応" field="has_stretcher" />
           <BoolRow label="車椅子貸出" field="rental_wheelchair" disabled={!form.has_wheelchair} />
-          <BoolRow label="リクライニング車椅子貸出" field="rental_reclining_wheelchair" disabled={!form.has_reclining_wheelchair} />
+          <BoolRow label="リクライニング貸出" field="rental_reclining_wheelchair" disabled={!form.has_reclining_wheelchair} />
           <BoolRow label="ストレッチャー貸出" field="rental_stretcher" disabled={!form.has_stretcher} />
         </div>
 
-        {/* Options */}
         <div className="card">
-          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2 mb-1">その他の対応</h2>
-          <BoolRow label="女性介護者在籍" field="has_female_caregiver" />
-          <BoolRow label="長距離・県外対応" field="long_distance" />
+          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2 mb-1">その他対応</h2>
+          <BoolRow label="女性介助者対応" field="has_female_caregiver" />
+          <BoolRow label="長距離対応" field="long_distance" />
           <BoolRow label="当日対応" field="same_day" />
         </div>
 
-        {/* Free text */}
         <div className="card space-y-3">
           <div className="border-b pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">資格・料金・特徴</h2>
-            <p className="text-xs text-slate-400 mt-0.5">事業所一覧・紹介ページに表示されます。充実させると選ばれやすくなります</p>
+            <h2 className="text-sm font-semibold text-slate-700">資格・料金・PR</h2>
           </div>
           <div>
             <label className="label">資格・特徴</label>
-            <textarea
-              className="input-base resize-none"
-              rows={3}
-              maxLength={2000}
-              value={form.qualifications ?? ''}
-              onChange={e => setForm(f => ({ ...f, qualifications: e.target.value }))}
-              placeholder="介護士資格保有・酸素吸入対応可 など"
-            />
-            {(form.qualifications?.length ?? 0) > 0 && (
-              <p className="text-xs text-slate-400 mt-0.5 text-right">{form.qualifications?.length ?? 0}文字</p>
-            )}
+            <textarea className="input-base resize-none" rows={3} maxLength={2000} value={form.qualifications ?? ''} onChange={(e) => setForm((current) => ({ ...current, qualifications: e.target.value }))} />
           </div>
           <div>
-            <label className="label">料金体系</label>
-            <textarea
-              className="input-base resize-none"
-              rows={3}
-              maxLength={2000}
-              value={form.pricing ?? ''}
-              onChange={e => setForm(f => ({ ...f, pricing: e.target.value }))}
-              placeholder="基本料金〇〇円＋距離料金〇〇円/km など"
-            />
-            {(form.pricing?.length ?? 0) > 0 && (
-              <p className="text-xs text-slate-400 mt-0.5 text-right">{form.pricing?.length ?? 0}文字</p>
-            )}
+            <label className="label">料金情報</label>
+            <textarea className="input-base resize-none" rows={3} maxLength={2000} value={form.pricing ?? ''} onChange={(e) => setForm((current) => ({ ...current, pricing: e.target.value }))} />
           </div>
         </div>
 
-        <button type="submit" className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
-          isDirty
-            ? 'bg-teal-600 text-white hover:bg-teal-700'
-            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-        }`} disabled={saving || !isDirty}>
+        <button
+          type="submit"
+          className={`w-full font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
+            isDirty ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+          }`}
+          disabled={saving || !isDirty}
+        >
           {saving ? '保存中...' : isDirty ? '変更を保存する' : '保存済み'}
         </button>
       </form>
+
+      <div className="card mt-6 space-y-4">
+        <div className="border-b pb-2">
+          <h2 className="text-sm font-semibold text-slate-700">車両管理</h2>
+          <p className="text-xs text-slate-400 mt-0.5">カレンダーと空き検索で利用する車両を管理します</p>
+        </div>
+
+        <div className="space-y-2">
+          {vehicles.length === 0 ? (
+            <p className="text-sm text-slate-500">登録済みの車両はありません</p>
+          ) : (
+            vehicles.map((vehicle) => {
+              const occupiedCount = vehicleCounts[vehicle.id] ?? 0
+              const canDelete = occupiedCount === 0
+              return (
+                <div key={vehicle.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{vehicle.name}</p>
+                    <p className="text-xs text-slate-400">occupied slot: {occupiedCount}件</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteVehicle(vehicle.id)}
+                    disabled={!canDelete || deletingVehicleId === vehicle.id}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      canDelete
+                        ? 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100'
+                        : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {deletingVehicleId === vehicle.id ? '削除中...' : '削除'}
+                  </button>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        <div className="border-t pt-4">
+          <label className="label">車両名</label>
+          <div className="flex gap-2">
+            <input
+              className="input-base flex-1"
+              value={newVehicleName}
+              onChange={(e) => setNewVehicleName(e.target.value)}
+              maxLength={100}
+              placeholder="例: 車両2"
+            />
+            <button type="button" onClick={handleAddVehicle} disabled={addingVehicle} className="btn-primary whitespace-nowrap">
+              {addingVehicle ? '追加中...' : '車両追加'}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">occupied slot がある車両は削除できません</p>
+        </div>
+      </div>
     </div>
   )
 }
-
-

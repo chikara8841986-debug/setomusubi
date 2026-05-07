@@ -5,13 +5,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { jstTodayStr, jstDateOffsetStr, jstHour } from '../../lib/jst'
 import type { Business } from '../../types/database'
+import { SERVICE_AREAS } from '../../lib/constants'
 
 type FavoriteEntry = { business_id: string }
-
-const SERVICE_AREAS = [
-  '善通寺市', '丸亀市', '坂出市', '宇多津町',
-  '多度津町', '琴平町', 'まんのう町', '綾川町',
-]
 
 function mapsUrl(address: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`

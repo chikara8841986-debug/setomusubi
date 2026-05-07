@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { jstTodayStr, jstHour, jstDateOffsetStr } from '../../lib/jst'
-import type { Business, AvailabilitySlot, MswContact } from '../../types/database'
+import { jstDateOffsetStr, jstHour, jstTodayStr } from '../../lib/jst'
+import type { AvailabilitySlot, Business, MswContact, Vehicle } from '../../types/database'
+import { SERVICE_AREAS } from '../../lib/constants'
 
 function fmtDate(dateStr: string) {
   return format(parseISO(dateStr), 'M月d日（E）', { locale: ja })
@@ -16,6 +17,7 @@ type FavoriteEntry = { business_id: string }
 
 type SearchResult = Business & {
   matchedSlot: AvailabilitySlot
+  availableVehicles: Vehicle[]
 }
 
 type BookingForm = {
@@ -27,26 +29,6 @@ type BookingForm = {
   equipmentRental: boolean
   notes: string
 }
-
-function mapsUrl(address: string) {
-  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
-}
-
-function formatHours(start: string | null, end: string | null) {
-  if (!start || !end) return null
-  return `${start.slice(0, 5)}〜${end.slice(0, 5)}`
-}
-
-const SERVICE_AREAS = [
-  '善通寺市', '丸亀市', '坂出市', '宇多津町',
-  '多度津町', '琴平町', 'まんのう町', '綾川町'
-]
-
-const EQUIPMENT_OPTIONS = [
-  { value: 'wheelchair', label: '車椅子' },
-  { value: 'reclining_wheelchair', label: 'リクライニング車椅子' },
-  { value: 'stretcher', label: 'ストレッチャー' },
-] as const
 
 type PrefillState = {
   patientName?: string
@@ -65,40 +47,59 @@ type SearchPrefillState = {
   area?: string
 }
 
+type VehicleWithBusiness = Vehicle & {
+  businesses: Business | null
+}
+
+
+const EQUIPMENT_OPTIONS = [
+  { value: 'wheelchair', label: '車椅子' },
+  { value: 'reclining_wheelchair', label: 'リクライニング車椅子' },
+  { value: 'stretcher', label: 'ストレッチャー' },
+] as const
+
+function mapsUrl(address: string) {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
+}
+
+function formatHours(start: string | null, end: string | null) {
+  if (!start || !end) return null
+  return `${start.slice(0, 5)}〜${end.slice(0, 5)}`
+}
+
+function defaultStartTime() {
+  const hour = jstHour()
+  const next = hour < 9 ? 9 : hour >= 17 ? 10 : hour + 1
+  return `${String(next).padStart(2, '0')}:00`
+}
+
+function addHour(time: string, hours = 1) {
+  const [h, m] = time.split(':').map(Number)
+  return `${String(Math.min(h + hours, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 export default function MswSearch() {
   const { hospitalId } = useAuth()
   const { showToast } = useToast()
   const location = useLocation()
   const navigate = useNavigate()
-  const prefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.prefill
-  const searchPrefill = (location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null)?.searchPrefill
+  const state = location.state as { prefill?: PrefillState; searchPrefill?: SearchPrefillState } | null
+  const prefill = state?.prefill
+  const searchPrefill = state?.searchPrefill
+
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
-  // hospitalIdを含んだlocalStorageキー（複数病院で同じブラウザを共有しても混在しない）
   const lsKey = (name: string) => `msw_${hospitalId ?? 'anon'}_last_${name}`
-
   const today = jstTodayStr()
 
-  function defaultStartTime() {
-    const h = jstHour() // JST基準で現在時刻（時）を取得
-    const next = h < 9 ? 9 : h >= 17 ? 10 : h + 1
-    return `${String(next).padStart(2, '0')}:00`
-  }
-  function addHour(time: string, hours = 1): string {
-    const [h, m] = time.split(':').map(Number)
-    const total = h + hours
-    return `${String(Math.min(total, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-
-  // Step 1
   const [date, setDate] = useState(searchPrefill?.date ?? today)
   const [startTime, setStartTime] = useState(
-    searchPrefill?.startTime ?? sessionStorage.getItem(lsKey('start_time')) ?? defaultStartTime()
+    searchPrefill?.startTime ?? sessionStorage.getItem(lsKey('start_time')) ?? defaultStartTime(),
   )
   const [endTime, setEndTime] = useState(
-    searchPrefill?.endTime ?? sessionStorage.getItem(lsKey('end_time')) ?? addHour(defaultStartTime())
+    searchPrefill?.endTime ?? sessionStorage.getItem(lsKey('end_time')) ?? addHour(defaultStartTime()),
   )
-  const [area, setArea] = useState(() => searchPrefill?.area ?? sessionStorage.getItem(lsKey('area')) ?? '')
+  const [area, setArea] = useState(searchPrefill?.area ?? sessionStorage.getItem(lsKey('area')) ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
   const [needStretcher, setNeedStretcher] = useState(false)
@@ -106,10 +107,7 @@ export default function MswSearch() {
   const [needLongDistance, setNeedLongDistance] = useState(false)
   const [needSameDay, setNeedSameDay] = useState(false)
 
-  // Favorites
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
-
-  // Step 2
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
@@ -117,14 +115,16 @@ export default function MswSearch() {
   const [previewBusiness, setPreviewBusiness] = useState<SearchResult | null>(null)
   const [favOnlyResults, setFavOnlyResults] = useState(false)
 
-  // Step 3
   const [contacts, setContacts] = useState<MswContact[]>([])
   const [form, setForm] = useState<BookingForm>({
     contactName: prefill?.contactName ?? '',
     patientName: prefill?.patientName ?? '',
     patientAddress: prefill?.patientAddress ?? '',
     destination: prefill?.destination ?? '',
-    equipment: prefill?.equipment ?? (sessionStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair',
+    equipment:
+      prefill?.equipment ??
+      (sessionStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ??
+      'wheelchair',
     equipmentRental: prefill?.equipmentRental ?? false,
     notes: prefill?.notes ?? '',
   })
@@ -133,7 +133,6 @@ export default function MswSearch() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
-  // Confirmed state
   const [confirmed, setConfirmed] = useState<{
     cancelPhone: string | null
     businessName: string
@@ -145,7 +144,6 @@ export default function MswSearch() {
     contactName: string
   } | null>(null)
 
-  // ESCキーでプレビューモーダルを閉じる
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPreviewBusiness(null)
@@ -156,6 +154,7 @@ export default function MswSearch() {
 
   useEffect(() => {
     if (!hospitalId) return
+
     supabase
       .from('msw_contacts')
       .select('*')
@@ -164,88 +163,135 @@ export default function MswSearch() {
       .then(({ data }) => {
         setContacts(data ?? [])
         if (data?.length && !prefill?.contactName) {
-          setForm(f => (
-            f.contactName
-              ? f
-              : { ...f, contactName: data[0].name }
-          ))
+          setForm((current) => (current.contactName ? current : { ...current, contactName: data[0].name }))
         }
       })
+
     supabase
       .from('favorites')
       .select('business_id')
       .eq('hospital_id', hospitalId)
       .then(({ data }) => {
-        setFavorites(new Set((data as FavoriteEntry[] ?? []).map(f => f.business_id)))
+        setFavorites(new Set(((data as FavoriteEntry[] | null) ?? []).map((entry) => entry.business_id)))
       })
-  }, [hospitalId])
+  }, [hospitalId, prefill?.contactName])
 
   const toggleFavorite = async (businessId: string) => {
     if (!hospitalId) return
+
     if (favorites.has(businessId)) {
-      const { error } = await supabase.from('favorites').delete()
-        .eq('hospital_id', hospitalId).eq('business_id', businessId)
-      if (error) { showToast('お気に入りの解除に失敗しました', 'error'); return }
-      setFavorites(prev => { const s = new Set(prev); s.delete(businessId); return s })
-    } else {
-      const { error } = await supabase.from('favorites').insert({ hospital_id: hospitalId, business_id: businessId })
-      if (error) { showToast('お気に入りの登録に失敗しました', 'error'); return }
-      setFavorites(prev => new Set([...prev, businessId]))
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('hospital_id', hospitalId)
+        .eq('business_id', businessId)
+      if (error) {
+        showToast('お気に入り解除に失敗しました', 'error')
+        return
+      }
+      setFavorites((prev) => {
+        const next = new Set(prev)
+        next.delete(businessId)
+        return next
+      })
+      return
     }
+
+    const { error } = await supabase.from('favorites').insert({ hospital_id: hospitalId, business_id: businessId })
+    if (error) {
+      showToast('お気に入り登録に失敗しました', 'error')
+      return
+    }
+    setFavorites((prev) => new Set([...prev, businessId]))
   }
 
   const handleSearch = async () => {
-    if (!area) { setSearchError('対応エリアを選択してください'); return }
-    if (startTime >= endTime) { setSearchError('終了時間は開始時間より後にしてください'); return }
+    if (!area) {
+      setSearchError('対応エリアを選択してください')
+      return
+    }
+    if (startTime >= endTime) {
+      setSearchError('終了時刻は開始時刻より後にしてください')
+      return
+    }
+
     setSearchError('')
     setSearching(true)
     sessionStorage.setItem(lsKey('area'), area)
     sessionStorage.setItem(lsKey('start_time'), startTime)
     sessionStorage.setItem(lsKey('end_time'), endTime)
 
-    type SlotWithBusiness = AvailabilitySlot & { businesses: Business }
-    const { data: rawSlots, error: queryError } = await supabase
-      .from('availability_slots')
-      .select('*, businesses(*)')
+    const { data: busySlots, error: busyError } = await supabase
+      .from('occupied_slots')
+      .select('vehicle_id')
       .eq('date', date)
-      .eq('is_available', true)
-      .lte('start_time', startTime)
-      .gte('end_time', endTime)
+      .lt('start_time', endTime)
+      .gt('end_time', startTime)
 
-    if (queryError) {
-      setSearchError('検索に失敗しました。しばらくしてから再試行してください。')
+    if (busyError) {
+      setSearchError('検索に失敗しました。しばらくしてから再度お試しください。')
       setSearching(false)
       return
     }
 
-    const slots = rawSlots as unknown as SlotWithBusiness[] | null
+    const busyVehicleIds = Array.from(
+      new Set(((busySlots ?? []) as Array<{ vehicle_id: string | null }>).map((slot) => slot.vehicle_id).filter(Boolean)),
+    ) as string[]
 
-    if (!slots || slots.length === 0) {
-      setResults([])
+    let vehicleQuery = supabase.from('vehicles').select('*, businesses(*)').eq('active', true)
+    if (busyVehicleIds.length > 0) {
+      vehicleQuery = vehicleQuery.not('id', 'in', `(${busyVehicleIds.join(',')})`)
+    }
+
+    const { data: rawVehicles, error: vehicleError } = await vehicleQuery.order('sort_order', { ascending: true })
+
+    if (vehicleError) {
+      setSearchError('検索に失敗しました。しばらくしてから再度お試しください。')
       setSearching(false)
-      setStep(2)
       return
     }
 
-    const matched: SearchResult[] = []
-    for (const slot of slots) {
-      const biz = slot.businesses as Business
-      if (!biz || !biz.approved) continue
-      if (!biz.service_areas?.includes(area)) continue
-      if (needWheelchair && !biz.has_wheelchair) continue
-      if (needReclining && !biz.has_reclining_wheelchair) continue
-      if (needStretcher && !biz.has_stretcher) continue
-      if (needFemale && !biz.has_female_caregiver) continue
-      if (needLongDistance && !biz.long_distance) continue
-      if (needSameDay && !biz.same_day) continue
-      matched.push({ ...biz, matchedSlot: slot as AvailabilitySlot })
+    const grouped = new Map<string, { business: Business; availableVehicles: Vehicle[] }>()
+    for (const vehicle of ((rawVehicles as unknown as VehicleWithBusiness[] | null) ?? [])) {
+      const business = vehicle.businesses
+      if (!business || !business.approved) continue
+      if (!business.service_areas?.includes(area)) continue
+      if (needWheelchair && !business.has_wheelchair) continue
+      if (needReclining && !business.has_reclining_wheelchair) continue
+      if (needStretcher && !business.has_stretcher) continue
+      if (needFemale && !business.has_female_caregiver) continue
+      if (needLongDistance && !business.long_distance) continue
+      if (needSameDay && !business.same_day) continue
+
+      const existing = grouped.get(business.id)
+      if (existing) {
+        existing.availableVehicles.push(vehicle)
+      } else {
+        grouped.set(business.id, { business, availableVehicles: [vehicle] })
+      }
     }
 
-    // お気に入りを上位表示
+    const matched = Array.from(grouped.values()).map<SearchResult>(({ business, availableVehicles }) => ({
+      ...business,
+      availableVehicles,
+      matchedSlot: {
+        id: `vehicle-${availableVehicles[0].id}`,
+        business_id: business.id,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        is_available: true,
+        capacity: availableVehicles.length,
+        confirmed_count: 0,
+        created_at: '',
+      },
+    }))
+
     matched.sort((a, b) => {
       const aFav = favorites.has(a.id) ? 0 : 1
       const bFav = favorites.has(b.id) ? 0 : 1
-      return aFav - bFav
+      if (aFav !== bFav) return aFav - bFav
+      return a.name.localeCompare(b.name, 'ja')
     })
 
     setResults(matched)
@@ -254,32 +300,45 @@ export default function MswSearch() {
     setStep(2)
   }
 
-  const handleSelectBusiness = (biz: SearchResult) => {
-    setSelectedBusiness(biz)
+  const handleSelectBusiness = (business: SearchResult) => {
+    setSelectedBusiness(business)
     setStep(3)
   }
 
   const handleSubmitRequest = async () => {
     if (!hospitalId || !selectedBusiness) return
-    const contactName = isNewContact ? newContactName.trim() : form.contactName
-    if (!contactName) { setSubmitError('担当者名を入力してください'); return }
-    if (!form.patientName.trim()) { setSubmitError('患者氏名を入力してください'); return }
-    if (!form.patientAddress.trim()) { setSubmitError('乗車地を入力してください'); return }
-    if (!form.destination.trim()) { setSubmitError('目的地を入力してください'); return }
+
+    const contactName = isNewContact ? newContactName.trim() : form.contactName.trim()
+    if (!contactName) {
+      setSubmitError('連絡担当者を入力してください')
+      return
+    }
+    if (!form.patientName.trim()) {
+      setSubmitError('患者名を入力してください')
+      return
+    }
+    if (!form.patientAddress.trim()) {
+      setSubmitError('患者住所を入力してください')
+      return
+    }
+    if (!form.destination.trim()) {
+      setSubmitError('行き先を入力してください')
+      return
+    }
 
     setSubmitting(true)
     setSubmitError('')
     sessionStorage.setItem(lsKey('equipment'), form.equipment)
 
-    const slot = selectedBusiness.matchedSlot
+    const vehicleId = selectedBusiness.availableVehicles.find((vehicle) => vehicle.business_id === selectedBusiness.id)?.id ?? null
 
-    // Insert reservation as 'pending' — no slot locking yet (business decides)
-    const { data: newReservation, error: resError } = await supabase
+    const { data: newReservation, error: reservationError } = await supabase
       .from('reservations')
       .insert({
         business_id: selectedBusiness.id,
         hospital_id: hospitalId,
-        slot_id: slot.id,
+        slot_id: null,
+        vehicle_id: vehicleId,
         contact_name: contactName,
         patient_name: form.patientName.trim(),
         patient_address: form.patientAddress.trim(),
@@ -290,28 +349,26 @@ export default function MswSearch() {
         reservation_date: date,
         start_time: startTime,
         end_time: endTime,
-        status: 'pending' as const,
+        status: 'pending',
       })
       .select('id')
       .single()
 
-    if (resError) {
-      setSubmitError('申請に失敗しました。しばらくしてから再試行してください。')
+    if (reservationError) {
+      setSubmitError('申請に失敗しました。しばらくしてから再度お試しください。')
       setSubmitting(false)
       return
     }
 
-    // Save new contact if entered
     if (isNewContact && newContactName.trim()) {
       const { data: newContact } = await supabase
         .from('msw_contacts')
         .insert({ hospital_id: hospitalId, name: newContactName.trim() })
         .select()
         .single()
-      if (newContact) setContacts(prev => [...prev, newContact])
+      if (newContact) setContacts((prev) => [...prev, newContact])
     }
 
-    // Notify business of new request (non-blocking)
     if (newReservation?.id) {
       supabase.functions.invoke('send-request-received', {
         body: { reservation_id: newReservation.id },
@@ -326,20 +383,24 @@ export default function MswSearch() {
       endTime,
       patientName: form.patientName.trim(),
       equipment: form.equipment,
-      contactName: contactName,
+      contactName,
     })
     setSubmitting(false)
   }
+
+  const filteredResults = useMemo(
+    () => (favOnlyResults ? results.filter((result) => favorites.has(result.id)) : results),
+    [favOnlyResults, favorites, results],
+  )
 
   if (confirmed) {
     return (
       <div className="max-w-md mx-auto">
         <div className="card py-8">
-          <div className="text-5xl mb-4 text-center">📋</div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2 text-center">仮予約の申請が完了しました</h2>
-          <p className="text-sm text-slate-500 mb-4 text-center">事業所からの確定連絡をお待ちください</p>
+          <div className="text-5xl mb-4 text-center">✓</div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2 text-center">予約申請を送信しました</h2>
+          <p className="text-sm text-slate-500 mb-4 text-center">事業所からの確認連絡をお待ちください</p>
 
-          {/* Booking summary */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
             <div className="flex gap-3">
               <span className="text-slate-500 w-16 flex-shrink-0">事業所</span>
@@ -348,17 +409,17 @@ export default function MswSearch() {
             <div className="flex gap-3">
               <span className="text-slate-500 w-16 flex-shrink-0">日時</span>
               <span className="font-semibold text-slate-800">
-                {fmtDate(confirmed.date)} {confirmed.startTime.slice(0,5)}〜{confirmed.endTime.slice(0,5)}
+                {fmtDate(confirmed.date)} {confirmed.startTime.slice(0, 5)}〜{confirmed.endTime.slice(0, 5)}
               </span>
             </div>
             <div className="flex gap-3">
-              <span className="text-slate-500 w-16 flex-shrink-0">患者</span>
+              <span className="text-slate-500 w-16 flex-shrink-0">患者名</span>
               <span className="font-semibold text-slate-800">{confirmed.patientName}</span>
             </div>
             <div className="flex gap-3">
               <span className="text-slate-500 w-16 flex-shrink-0">機材</span>
               <span className="font-semibold text-slate-800">
-                {EQUIPMENT_OPTIONS.find(o => o.value === confirmed.equipment)?.label ?? confirmed.equipment}
+                {EQUIPMENT_OPTIONS.find((option) => option.value === confirmed.equipment)?.label ?? confirmed.equipment}
               </span>
             </div>
             <div className="flex gap-3">
@@ -367,9 +428,6 @@ export default function MswSearch() {
             </div>
           </div>
 
-          <p className="text-xs text-slate-400 mb-4 text-center">予約の確定・却下は「予約履歴」で確認できます</p>
-
-          {/* Favorite toggle for confirmed business */}
           {selectedBusiness && hospitalId && (
             <button
               onClick={() => toggleFavorite(selectedBusiness.id)}
@@ -379,34 +437,40 @@ export default function MswSearch() {
                   : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'
               }`}
             >
-              <span>{favorites.has(selectedBusiness.id) ? '⭐' : '☆'}</span>
-              {favorites.has(selectedBusiness.id) ? 'お気に入りに登録済み' : 'お気に入りに追加する'}
+              <span>{favorites.has(selectedBusiness.id) ? '★' : '☆'}</span>
+              {favorites.has(selectedBusiness.id) ? 'お気に入り登録済み' : 'お気に入りに追加する'}
             </button>
           )}
 
           {confirmed.cancelPhone && (
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-left text-sm mb-5">
-              <p className="font-medium text-teal-800 mb-1">急ぎの場合は直接お電話ください</p>
+              <p className="font-medium text-teal-800 mb-1">急ぎの変更は事業所へご連絡ください</p>
               <a href={`tel:${confirmed.cancelPhone}`} className="text-lg font-bold text-teal-900 block mt-1">
-                📞 {confirmed.cancelPhone}
+                TEL {confirmed.cancelPhone}
               </a>
             </div>
           )}
 
           <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/msw/reservations')}
-              className="btn-secondary flex-1"
-            >
-              予約履歴を見る
+            <button onClick={() => navigate('/msw/reservations')} className="btn-secondary flex-1">
+              申請一覧を見る
             </button>
             <button
               onClick={() => {
                 setStep(1)
                 setConfirmed(null)
                 setSelectedBusiness(null)
-                const lastEquip = (sessionStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair'
-                setForm(f => ({ contactName: f.contactName, patientName: '', patientAddress: '', destination: '', equipment: lastEquip, equipmentRental: false, notes: '' }))
+                const lastEquipment =
+                  (sessionStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair'
+                setForm({
+                  contactName: form.contactName,
+                  patientName: '',
+                  patientAddress: '',
+                  destination: '',
+                  equipment: lastEquipment,
+                  equipmentRental: false,
+                  notes: '',
+                })
                 setNewContactName('')
                 setIsNewContact(false)
               }}
@@ -421,279 +485,185 @@ export default function MswSearch() {
   }
 
   return (
-    <div>
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-6">
-        {[
-          { n: 1, label: '検索' },
-          { n: 2, label: '事業所選択' },
-          { n: 3, label: '申請内容' },
-        ].map(({ n, label }, i) => (
-          <div key={n} className="flex items-center gap-2 flex-1">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step >= n ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-500'
-            }`}>{n}</div>
-            <span className={`text-xs hidden sm:block ${step === n ? 'text-teal-600 font-medium' : 'text-slate-400'}`}>{label}</span>
-            {i < 2 && <div className={`flex-1 h-0.5 ${step > n ? 'bg-teal-500' : 'bg-slate-200'}`} />}
-          </div>
-        ))}
-      </div>
-
-      {/* Step 1: Search */}
+    <div className="max-w-3xl mx-auto space-y-4">
       {step === 1 && (
-        <div className="card">
-          <h2 className="text-base font-semibold text-slate-800 mb-4">空き事業所を検索</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="label">希望日 <span className="text-red-500">*</span></label>
-              <div className="flex gap-2">
-                <input type="date" className="input-base flex-1" value={date} onChange={e => setDate(e.target.value)} min={today} />
-                <button
-                  type="button"
-                  onClick={() => setDate(today)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex-shrink-0 ${
-                    date === today ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-                  }`}
-                >今日</button>
-                <button
-                  type="button"
-                  onClick={() => setDate(jstDateOffsetStr(1))}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors flex-shrink-0 ${
-                    date === jstDateOffsetStr(1) ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-                  }`}
-                >明日</button>
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">空き事業所検索</h1>
+            <p className="text-sm text-slate-500 mt-1">日時と条件に合う介護タクシー事業所を探します</p>
+          </div>
+
+          <div className="card space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(today)}>
+                今日
+              </button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(jstDateOffsetStr(1))}>
+                明日
+              </button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(jstDateOffsetStr(7))}>
+                1週間後
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="label">日付</label>
+                <input type="date" className="input-base" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">開始時刻</label>
+                <input type="time" className="input-base" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">終了時刻</label>
+                <input type="time" className="input-base" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
               </div>
             </div>
+
             <div>
-              <label className="label">希望時間帯</label>
-              <div className="flex gap-2 mb-2 flex-wrap">
-                {[
-                  { label: '午前中', start: '09:00', end: '12:00' },
-                  { label: '午後', start: '13:00', end: '17:00' },
-                  { label: '終日', start: '09:00', end: '18:00' },
-                ].map(({ label, start, end }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => { setStartTime(start); setEndTime(end) }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                      startTime === start && endTime === end
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-                    }`}
-                  >{label}</button>
+              <label className="label">対応エリア</label>
+              <select className="input-base" value={area} onChange={(e) => setArea(e.target.value)}>
+                <option value="">選択してください</option>
+                {SERVICE_AREAS.map((serviceArea) => (
+                  <option key={serviceArea} value={serviceArea}>
+                    {serviceArea}
+                  </option>
                 ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">開始時間</label>
-                  <input type="time" className="input-base" value={startTime} onChange={e => {
-                    const t = e.target.value
-                    setStartTime(t)
-                    if (t >= endTime) setEndTime(addHour(t))
-                  }} />
-                </div>
-                <div>
-                  <label className="label">終了時間</label>
-                  <input type="time" className="input-base" value={endTime} onChange={e => setEndTime(e.target.value)} min={addHour(startTime, 0)} />
-                </div>
-              </div>
+              </select>
             </div>
+
             <div>
-              <label className="label">対応エリア <span className="text-red-500">*</span></label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {SERVICE_AREAS.map(a => (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => setArea(a === area ? '' : a)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      area === a
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-                    }`}
-                  >{a}</button>
-                ))}
-              </div>
-              {!area && <p className="text-xs text-slate-400 mt-1">エリアを選択してください</p>}
-            </div>
-            <div>
-              <label className="label">必要条件（任意）</label>
-              <div className="grid grid-cols-2 gap-2">
+              <label className="label">条件</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-slate-700">
                 {[
-                  { label: '車椅子対応', state: needWheelchair, set: setNeedWheelchair },
-                  { label: 'リクライニング対応', state: needReclining, set: setNeedReclining },
-                  { label: 'ストレッチャー対応', state: needStretcher, set: setNeedStretcher },
-                  { label: '女性介護者在籍', state: needFemale, set: setNeedFemale },
-                  { label: '長距離対応', state: needLongDistance, set: setNeedLongDistance },
-                  { label: '当日対応', state: needSameDay, set: setNeedSameDay },
-                ].map(({ label, state, set }) => (
-                  <label key={label} className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className="w-4 h-4 rounded" />
-                    <span className="text-sm text-slate-700">{label}</span>
+                  { label: '車椅子', checked: needWheelchair, onChange: setNeedWheelchair },
+                  { label: 'リクライニング', checked: needReclining, onChange: setNeedReclining },
+                  { label: 'ストレッチャー', checked: needStretcher, onChange: setNeedStretcher },
+                  { label: '女性介助者', checked: needFemale, onChange: setNeedFemale },
+                  { label: '長距離対応', checked: needLongDistance, onChange: setNeedLongDistance },
+                  { label: '当日対応', checked: needSameDay, onChange: setNeedSameDay },
+                ].map((item) => (
+                  <label key={item.label} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      onChange={(e) => item.onChange(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-teal-600"
+                    />
+                    <span>{item.label}</span>
                   </label>
                 ))}
               </div>
             </div>
-            {searchError && <p className="text-sm text-red-600">{searchError}</p>}
-            <button onClick={handleSearch} className="btn-primary w-full" disabled={searching}>
-              {searching ? '検索中...' : '空きを検索する'}
+
+            {searchError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{searchError}</p>}
+
+            <button type="button" className="btn-primary w-full py-3" onClick={handleSearch} disabled={searching}>
+              {searching ? '検索中...' : '空き事業所を検索する'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Results */}
       {step === 2 && (
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <button onClick={() => setStep(1)} className="text-teal-600 text-sm hover:underline">← 検索に戻る</button>
-            <span className="text-sm text-slate-500">
-              {fmtDate(date)} {startTime}〜{endTime} / {area}
-            </span>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <button type="button" onClick={() => setStep(1)} className="text-teal-600 text-sm hover:underline">
+                ← 条件入力に戻る
+              </button>
+              <h2 className="text-lg font-semibold text-slate-800 mt-1">検索結果</h2>
+              <p className="text-sm text-slate-500">
+                {fmtDate(date)} {startTime.slice(0, 5)}〜{endTime.slice(0, 5)} / {area}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFavOnlyResults((prev) => !prev)}
+              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                favOnlyResults
+                  ? 'bg-amber-50 border-amber-200 text-amber-700'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {favOnlyResults ? 'お気に入りのみ表示中' : 'お気に入りのみ'}
+            </button>
           </div>
 
-          {results.length === 0 ? (
-            <div className="card py-6 text-center space-y-3">
-              <p className="text-2xl">🔍</p>
-              <p className="text-slate-700 text-sm font-medium">空き枠が見つかりませんでした</p>
-              <p className="text-slate-400 text-xs">
-                {fmtDate(date)} {startTime}〜{endTime} ／ {area}
-              </p>
-              <div className="flex flex-col gap-2 pt-2">
-                <button onClick={() => setStep(1)} className="btn-primary text-sm">
-                  ← 検索条件を変更する
-                </button>
-                <button
-                  onClick={() => navigate('/msw/businesses')}
-                  className="btn-secondary text-sm"
-                >
-                  事業所一覧で直接電話する
-                </button>
-              </div>
-              <p className="text-xs text-slate-400">
-                空き枠のない事業所でも電話での相談を受け付けている場合があります
-              </p>
+          {filteredResults.length === 0 ? (
+            <div className="card text-center py-10">
+              <div className="text-4xl mb-3">🔍</div>
+              <p className="text-slate-700 font-medium">条件に合う事業所は見つかりませんでした</p>
+              <p className="text-sm text-slate-500 mt-1">時間帯や条件を変更して再検索してください</p>
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-sm text-slate-600">
-                  {favOnlyResults
-                    ? `⭐ ${results.filter(r => favorites.has(r.id)).length}件（お気に入りのみ）`
-                    : `${results.length}件の事業所が見つかりました`
-                  }
-                </p>
-                {results.some(r => favorites.has(r.id)) && results.some(r => !favorites.has(r.id)) && (
-                  <button
-                    onClick={() => setFavOnlyResults(v => !v)}
-                    className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
-                      favOnlyResults
-                        ? 'bg-amber-500 text-white border-amber-500'
-                        : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
-                    }`}
-                  >
-                    ⭐ お気に入りのみ
-                  </button>
-                )}
-              </div>
-              {results.filter(biz => !favOnlyResults || favorites.has(biz.id)).map(biz => (
-                <div key={biz.id} className="card hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-3 mb-2">
-                    {biz.profile_image_url ? (
-                      <img src={biz.profile_image_url} alt={biz.name}
-                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-slate-100 mt-0.5" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-lg mt-0.5">
-                        🚐
+              {filteredResults.map((business) => (
+                <div key={business.id} className="card space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavorite(business.id)}
+                          className="text-lg leading-none"
+                          title={favorites.has(business.id) ? 'お気に入り解除' : 'お気に入り登録'}
+                        >
+                          {favorites.has(business.id) ? '★' : '☆'}
+                        </button>
+                        <h3 className="font-bold text-slate-800">{business.name}</h3>
                       </div>
-                    )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setPreviewBusiness(biz)}
-                        title="詳細を見る"
-                        className="font-semibold text-teal-700 hover:underline transition-colors text-left leading-snug inline-flex items-center gap-1"
-                      >
-                        <span>{biz.name}</span>
-                        <span className="text-teal-500" aria-hidden="true">›</span>
-                      </button>
-                      <button
-                        onClick={() => toggleFavorite(biz.id)}
-                        className="text-lg flex-shrink-0 leading-none"
-                        title={favorites.has(biz.id) ? 'お気に入り解除' : 'お気に入り登録'}
-                      >
-                        {favorites.has(biz.id) ? '⭐' : '☆'}
-                      </button>
+                      {business.address && (
+                        <a
+                          href={mapsUrl(business.address)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-teal-700 hover:underline mt-0.5 inline-block"
+                        >
+                          地図 {business.address}
+                        </a>
+                      )}
+                      {formatHours(business.business_hours_start, business.business_hours_end) && (
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          営業 {formatHours(business.business_hours_start, business.business_hours_end)}
+                        </p>
+                      )}
                     </div>
-                    {biz.address ? (
-                      <a
-                        href={mapsUrl(biz.address)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-teal-700 hover:underline mt-0.5 inline-block"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        📍 {biz.address}
-                      </a>
-                    ) : null}
-                    {formatHours(biz.business_hours_start, biz.business_hours_end) && (
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
-                      </p>
-                    )}
+                    <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0">
+                      空き車両 {business.availableVehicles.length} 台
+                    </span>
                   </div>
+
+                  <div className="flex flex-wrap gap-1">
+                    {business.has_wheelchair && <span className="badge-blue">車椅子</span>}
+                    {business.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
+                    {business.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
+                    {business.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
+                    {business.rental_reclining_wheelchair && <span className="badge-green">リクライニング貸出</span>}
+                    {business.rental_stretcher && <span className="badge-green">ストレッチャー貸出</span>}
+                    {business.has_female_caregiver && <span className="badge-green">女性介助者</span>}
+                    {business.long_distance && <span className="badge-gray">長距離対応</span>}
+                    {business.same_day && <span className="badge-gray">当日対応</span>}
                   </div>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {biz.has_wheelchair && <span className="badge-blue">車椅子</span>}
-                    {biz.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
-                    {biz.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
-                    {biz.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
-                    {biz.rental_reclining_wheelchair && <span className="badge-green">リクライニング貸出</span>}
-                    {biz.rental_stretcher && <span className="badge-green">ストレッチャー貸出</span>}
-                    {biz.has_female_caregiver && <span className="badge-green">女性介護者</span>}
-                    {biz.long_distance && <span className="badge-gray">長距離対応</span>}
-                    {biz.same_day && <span className="badge-gray">当日対応</span>}
-                  </div>
-                  {biz.pricing && (
-                    <p className="text-xs text-slate-600 border-t pt-2 mt-2 whitespace-pre-wrap">
-                      <span className="font-medium">料金: </span>{biz.pricing}
+
+                  {business.pricing && (
+                    <p className="text-xs text-slate-600 whitespace-pre-wrap border-t pt-3">
+                      <span className="font-medium">料金:</span> {business.pricing}
                     </p>
                   )}
-                  {biz.qualifications && (
-                    <p className="text-xs text-slate-600 mt-1">
-                      <span className="font-medium">特徴: </span>{biz.qualifications}
-                    </p>
+
+                  {!business.pricing && business.pr_text && (
+                    <p className="text-xs text-slate-500 border-t pt-3 line-clamp-2">{business.pr_text}</p>
                   )}
-                  {!biz.pricing && !biz.qualifications && biz.pr_text && (
-                    <p className="text-xs text-slate-500 mt-2 border-t pt-2 line-clamp-2">{biz.pr_text}</p>
-                  )}
-                  <div className="mt-2 pt-2 border-t space-y-2">
-                    {/* 電話確認ボタン（電話で先に確認したい場合） */}
-                    {biz.cancel_phone && (
-                      <a
-                        href={`tel:${biz.cancel_phone}`}
-                        className="flex items-center justify-center gap-2 w-full py-2 bg-teal-50 border border-teal-200 rounded-lg text-sm font-semibold text-teal-800 hover:bg-teal-100 transition-colors"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        📞 {biz.cancel_phone}　で電話確認
-                      </a>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2 flex-1">
-                        {(biz.matchedSlot.capacity ?? 1) > 1 && (
-                          <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                            空き{(biz.matchedSlot.capacity ?? 1) - (biz.matchedSlot.confirmed_count ?? 0)}台
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleSelectBusiness(biz)}
-                        className="btn-primary text-xs px-4 py-1.5 flex-shrink-0"
-                      >
-                        オンライン申請 →
-                      </button>
-                    </div>
+
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setPreviewBusiness(business)} className="btn-secondary flex-1">
+                      詳細を見る
+                    </button>
+                    <button type="button" onClick={() => handleSelectBusiness(business)} className="btn-primary flex-1">
+                      この事業所に申請
+                    </button>
                   </div>
                 </div>
               ))}
@@ -702,239 +672,238 @@ export default function MswSearch() {
         </div>
       )}
 
-      {/* Step 3: Request form */}
       {step === 3 && selectedBusiness && (
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <button onClick={() => setStep(2)} className="text-teal-600 text-sm hover:underline">← 事業所選択に戻る</button>
-          </div>
+        <div className="space-y-4">
+          <button type="button" onClick={() => setStep(2)} className="text-teal-600 text-sm hover:underline">
+            ← 事業所一覧に戻る
+          </button>
 
-          {/* Summary + phone option */}
-          <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 mb-4">
-            <p className="font-semibold text-teal-800 text-sm">{selectedBusiness.name}</p>
-            <p className="text-teal-600 text-xs mt-0.5">{fmtDate(date)} {startTime}〜{endTime}</p>
-            {selectedBusiness.cancel_phone && (
-              <a
-                href={`tel:${selectedBusiness.cancel_phone}`}
-                className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-teal-200 text-base font-bold text-teal-900 hover:text-teal-700 transition-colors"
-              >
-                📞 {selectedBusiness.cancel_phone}
-                <span className="text-xs font-normal text-teal-600">（電話で直接確認する）</span>
-              </a>
-            )}
-          </div>
-
-          {prefill && (
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs text-blue-700 font-medium">
-              📋 前回の申請内容を引き継ぎました。内容を確認のうえ申請してください。
-            </div>
-          )}
-
-          <div className="card space-y-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-800">仮予約の申請内容</h2>
-              <p className="text-xs text-slate-500 mt-1">事業所が確認後、承認・却下の通知が来ます</p>
-            </div>
-
-            {/* Contact name */}
-            <div>
-              <label className="label">担当者名 <span className="text-red-500">*</span></label>
-              {contacts.length > 0 && !isNewContact ? (
-                <div className="flex gap-2">
-                  <select className="input-base flex-1" value={form.contactName}
-                    onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}>
-                    {form.contactName === '' && <option value="" disabled>選択してください</option>}
-                    {contacts.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </select>
-                  <button type="button" onClick={() => setIsNewContact(true)}
-                    className="btn-secondary text-sm px-3 whitespace-nowrap">新規入力</button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input type="text" className="input-base flex-1" value={newContactName}
-                    onChange={e => setNewContactName(e.target.value)} maxLength={50} placeholder="担当者名を入力" />
-                  {contacts.length > 0 && (
-                    <button type="button" onClick={() => setIsNewContact(false)}
-                      className="btn-secondary text-sm px-3 whitespace-nowrap">一覧から選択</button>
-                  )}
-                </div>
-              )}
-              {contacts.length === 0 && (
-                <p className="text-xs text-slate-400 mt-1">
-                  <Link to="/msw/contacts" className="text-teal-600 hover:underline">担当者管理</Link>
-                  でよく使う担当者を登録しておくと次回から選択できます
+          <div className="card">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-800">{selectedBusiness.name} に申請</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  {fmtDate(date)} {startTime.slice(0, 5)}〜{endTime.slice(0, 5)}
                 </p>
-              )}
-            </div>
-
-            <div>
-              <label className="label">患者氏名 <span className="text-red-500">*</span></label>
-              <input type="text" className="input-base" value={form.patientName}
-                onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} maxLength={50} placeholder="山田 太郎" />
-            </div>
-            <div>
-              <label className="label">乗車地（患者住所） <span className="text-red-500">*</span></label>
-              <input type="text" className="input-base" value={form.patientAddress}
-                onChange={e => setForm(f => ({ ...f, patientAddress: e.target.value }))}
-                maxLength={300} placeholder="香川県丸亀市〇〇町1-2-3" />
-              {form.patientAddress.trim() && (
-                <a href={mapsUrl(form.patientAddress)} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-teal-600 hover:underline mt-0.5 inline-block">
-                  📍 地図で確認する
-                </a>
-              )}
-            </div>
-            <div>
-              <label className="label">目的地 <span className="text-red-500">*</span></label>
-              <input type="text" className="input-base" value={form.destination}
-                onChange={e => setForm(f => ({ ...f, destination: e.target.value }))}
-                maxLength={300} placeholder="〇〇病院・〇〇クリニック など" />
-              {form.destination.trim() && (
-                <a href={mapsUrl(form.destination)} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-teal-600 hover:underline mt-0.5 inline-block">
-                  📍 地図で確認する
-                </a>
-              )}
-            </div>
-            <div>
-              <label className="label">使用機材 <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-3 gap-2">
-                {EQUIPMENT_OPTIONS.map(opt => (
-                  <button key={opt.value} type="button"
-                    onClick={() => setForm(f => ({ ...f, equipment: opt.value }))}
-                    className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
-                      form.equipment === opt.value
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
-                    }`}>
-                    {opt.label}
-                  </button>
-                ))}
+                <p className="text-xs text-slate-500 mt-1">空き車両 {selectedBusiness.availableVehicles.length} 台</p>
               </div>
+              <button type="button" onClick={() => setPreviewBusiness(selectedBusiness)} className="btn-secondary text-sm">
+                事業所詳細
+              </button>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.equipmentRental}
-                onChange={e => setForm(f => ({ ...f, equipmentRental: e.target.checked }))}
-                className="w-4 h-4 rounded" />
-              <span className="text-sm text-slate-700">
-                {form.equipment === 'wheelchair' ? '普通型車椅子' : form.equipment === 'reclining_wheelchair' ? 'リクライニング車椅子' : 'ストレッチャー'}の貸出が必要
-              </span>
-            </label>
-            {form.equipmentRental && selectedBusiness && (() => {
-              const rentalKey = form.equipment === 'wheelchair' ? 'rental_wheelchair'
-                : form.equipment === 'reclining_wheelchair' ? 'rental_reclining_wheelchair'
-                : 'rental_stretcher'
-              if (!selectedBusiness[rentalKey as keyof typeof selectedBusiness]) {
-                return (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
-                    ⚠️ この事業所は該当機材の貸出を登録していません。事前に直接ご確認ください。
+
+            {prefill && (
+              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs text-blue-700 font-medium">
+                依頼内容を引き継いでいます。必要に応じて修正して送信してください。
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="label">連絡担当者 <span className="text-red-500">*</span></label>
+                {contacts.length > 0 && !isNewContact ? (
+                  <div className="flex gap-2">
+                    <select
+                      className="input-base flex-1"
+                      value={form.contactName}
+                      onChange={(e) => setForm((current) => ({ ...current, contactName: e.target.value }))}
+                    >
+                      {form.contactName === '' && <option value="">選択してください</option>}
+                      {contacts.map((contact) => (
+                        <option key={contact.id} value={contact.name}>
+                          {contact.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => setIsNewContact(true)} className="btn-secondary text-sm px-3 whitespace-nowrap">
+                      新規入力
+                    </button>
                   </div>
-                )
-              }
-              return null
-            })()}
-            <div>
-              <label className="label">備考（任意）</label>
-              <textarea className="input-base resize-none" rows={3} maxLength={1000} value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="酸素吸入が必要 / エレベーターなし など" />
-              {form.notes.length > 0 && (
-                <p className="text-xs text-slate-400 mt-1 text-right">{form.notes.length} 文字</p>
-              )}
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="input-base flex-1"
+                      value={newContactName}
+                      onChange={(e) => setNewContactName(e.target.value)}
+                      maxLength={50}
+                      placeholder="連絡担当者名を入力"
+                    />
+                    {contacts.length > 0 && (
+                      <button type="button" onClick={() => setIsNewContact(false)} className="btn-secondary text-sm px-3 whitespace-nowrap">
+                        一覧から選ぶ
+                      </button>
+                    )}
+                  </div>
+                )}
+                {contacts.length === 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    <Link to="/msw/contacts" className="text-teal-600 hover:underline">
+                      連絡先管理
+                    </Link>
+                    でよく使う担当者を登録できます
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="label">患者名 <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  className="input-base"
+                  value={form.patientName}
+                  onChange={(e) => setForm((current) => ({ ...current, patientName: e.target.value }))}
+                  maxLength={50}
+                />
+              </div>
+
+              <div>
+                <label className="label">患者住所 <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  className="input-base"
+                  value={form.patientAddress}
+                  onChange={(e) => setForm((current) => ({ ...current, patientAddress: e.target.value }))}
+                  maxLength={300}
+                />
+                {form.patientAddress.trim() && (
+                  <a href={mapsUrl(form.patientAddress)} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline mt-1 inline-block">
+                    地図で確認する
+                  </a>
+                )}
+              </div>
+
+              <div>
+                <label className="label">行き先 <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  className="input-base"
+                  value={form.destination}
+                  onChange={(e) => setForm((current) => ({ ...current, destination: e.target.value }))}
+                  maxLength={300}
+                />
+                {form.destination.trim() && (
+                  <a href={mapsUrl(form.destination)} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline mt-1 inline-block">
+                    地図で確認する
+                  </a>
+                )}
+              </div>
+
+              <div>
+                <label className="label">使用機材 <span className="text-red-500">*</span></label>
+                <div className="grid grid-cols-3 gap-2">
+                  {EQUIPMENT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setForm((current) => ({ ...current, equipment: option.value }))}
+                      className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
+                        form.equipment === option.value
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.equipmentRental}
+                  onChange={(e) => setForm((current) => ({ ...current, equipmentRental: e.target.checked }))}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm text-slate-700">貸出が必要</span>
+              </label>
+
+              <div>
+                <label className="label">備考</label>
+                <textarea
+                  className="input-base resize-none"
+                  rows={3}
+                  maxLength={1000}
+                  value={form.notes}
+                  onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
+                />
+              </div>
+
+              {submitError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{submitError}</p>}
+
+              <button type="button" onClick={handleSubmitRequest} className="btn-primary w-full text-base py-3" disabled={submitting}>
+                {submitting ? '申請中...' : '予約申請を送信する'}
+              </button>
+              <p className="text-xs text-slate-500 text-center">事業所が内容を確認後、対応可否を連絡します</p>
             </div>
-
-            {submitError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{submitError}</p>}
-
-            <button onClick={handleSubmitRequest} className="btn-primary w-full text-base py-3" disabled={submitting}>
-              {submitting ? '申請中...' : '仮予約を申請する'}
-            </button>
-            <p className="text-xs text-slate-500 text-center">事業所が承認すると予約が確定されます</p>
           </div>
         </div>
       )}
 
-      {/* Business detail preview modal */}
       {previewBusiness && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPreviewBusiness(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-800">事業所詳細</h3>
-              <button onClick={() => setPreviewBusiness(null)} aria-label="閉じる" className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
+              <button type="button" onClick={() => setPreviewBusiness(null)} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">
+                ×
+              </button>
             </div>
 
-            <div className="flex items-start gap-3 mb-3">
-              {previewBusiness.profile_image_url ? (
-                <img src={previewBusiness.profile_image_url} alt="事業所" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-100" />
-              ) : (
-                <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
-              )}
+            <div className="space-y-3">
               <div>
                 <p className="font-bold text-slate-800">{previewBusiness.name}</p>
                 {previewBusiness.address && (
-                  <a
-                    href={mapsUrl(previewBusiness.address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-teal-700 hover:underline block mt-0.5"
-                  >
-                    📍 {previewBusiness.address}
+                  <a href={mapsUrl(previewBusiness.address)} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-700 hover:underline block mt-1">
+                    地図 {previewBusiness.address}
                   </a>
                 )}
                 {previewBusiness.cancel_phone && (
-                  <a href={`tel:${previewBusiness.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">
-                    📞 {previewBusiness.cancel_phone}
+                  <a href={`tel:${previewBusiness.cancel_phone}`} className="text-xs text-teal-700 block mt-1">
+                    TEL {previewBusiness.cancel_phone}
                   </a>
                 )}
                 {previewBusiness.website_url && (
-                  <a href={previewBusiness.website_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-teal-700 underline block mt-0.5">🔗 ホームページ</a>
+                  <a href={previewBusiness.website_url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-700 underline block mt-1">
+                    ホームページ
+                  </a>
                 )}
               </div>
-            </div>
 
-            <div className="flex flex-wrap gap-1 mb-3">
-              {previewBusiness.has_wheelchair && <span className="badge-blue">車椅子</span>}
-              {previewBusiness.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
-              {previewBusiness.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
-              {previewBusiness.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
-              {previewBusiness.rental_reclining_wheelchair && <span className="badge-green">リクライニング貸出</span>}
-              {previewBusiness.rental_stretcher && <span className="badge-green">ストレッチャー貸出</span>}
-              {previewBusiness.has_female_caregiver && <span className="badge-green">女性介護者</span>}
-              {previewBusiness.long_distance && <span className="badge-gray">長距離対応</span>}
-              {previewBusiness.same_day && <span className="badge-gray">当日対応</span>}
-            </div>
-
-            {previewBusiness.pr_text && (
-              <p className="text-sm text-slate-700 whitespace-pre-line mb-3 border-t pt-3">{previewBusiness.pr_text}</p>
-            )}
-
-            {previewBusiness.vehicle_image_urls?.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 mb-3 border-t pt-3">
-                {previewBusiness.vehicle_image_urls.map(url => (
-                  <img key={url} src={url} alt="車両" className="w-full aspect-video object-cover rounded-lg border border-slate-100" />
-                ))}
+              <div className="flex flex-wrap gap-1">
+                {previewBusiness.has_wheelchair && <span className="badge-blue">車椅子</span>}
+                {previewBusiness.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
+                {previewBusiness.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
+                {previewBusiness.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
+                {previewBusiness.rental_reclining_wheelchair && <span className="badge-green">リクライニング貸出</span>}
+                {previewBusiness.rental_stretcher && <span className="badge-green">ストレッチャー貸出</span>}
+                {previewBusiness.has_female_caregiver && <span className="badge-green">女性介助者</span>}
+                {previewBusiness.long_distance && <span className="badge-gray">長距離対応</span>}
+                {previewBusiness.same_day && <span className="badge-gray">当日対応</span>}
               </div>
-            )}
 
-            {previewBusiness.pricing && (
-              <div className="border-t pt-3 text-sm whitespace-pre-wrap">
-                <span className="text-slate-500 text-xs">料金: </span>{previewBusiness.pricing}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700">
+                空き車両: {previewBusiness.availableVehicles.length} 台
               </div>
-            )}
-            {previewBusiness.qualifications && (
-              <div className="border-t mt-2 pt-2 text-sm">
-                <span className="text-slate-500 text-xs">資格・特徴: </span>{previewBusiness.qualifications}
-              </div>
-            )}
 
-            <div className="flex gap-2 mt-4">
-              <button onClick={() => setPreviewBusiness(null)} className="btn-secondary flex-1">閉じる</button>
-              <button
-                onClick={() => { handleSelectBusiness(previewBusiness); setPreviewBusiness(null) }}
-                className="btn-primary flex-1"
-              >
-                この事業所に申請
-              </button>
+              {previewBusiness.pr_text && <p className="text-sm text-slate-700 whitespace-pre-line">{previewBusiness.pr_text}</p>}
+              {previewBusiness.pricing && <p className="text-sm text-slate-700 whitespace-pre-wrap"><span className="text-slate-500 text-xs">料金: </span>{previewBusiness.pricing}</p>}
+              {previewBusiness.qualifications && (
+                <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                  <span className="text-slate-500 text-xs">資格・特徴: </span>
+                  {previewBusiness.qualifications}
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setPreviewBusiness(null)} className="btn-secondary flex-1">
+                  閉じる
+                </button>
+                <button type="button" onClick={() => { handleSelectBusiness(previewBusiness); setPreviewBusiness(null) }} className="btn-primary flex-1">
+                  この事業所に申請
+                </button>
+              </div>
             </div>
           </div>
         </div>
