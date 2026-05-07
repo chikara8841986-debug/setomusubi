@@ -612,7 +612,14 @@ export default function MswSearch() {
                         >
                           {favorites.has(business.id) ? '★' : '☆'}
                         </button>
-                        <h3 className="font-bold text-slate-800">{business.name}</h3>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewBusiness(business)}
+                          className="font-bold text-teal-700 hover:underline transition-colors"
+                          title="詳細を見る"
+                        >
+                          {business.name} ›
+                        </button>
                       </div>
                       {business.address && (
                         <a
