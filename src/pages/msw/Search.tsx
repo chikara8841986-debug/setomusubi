@@ -58,7 +58,7 @@ type SearchPrefillState = {
   date?: string
   startTime?: string
   endTime?: string
-  area?: string
+  areas?: string[]
 }
 
 type VehicleWithBusiness = Vehicle & {
@@ -141,7 +141,10 @@ export default function MswSearch() {
   const [startMinute, setStartMinute] = useState(initStartMinute)
   const [endHour, setEndHour] = useState(initEndHour)
   const [endMinute, setEndMinute] = useState(initEndMinute)
-  const [area, setArea] = useState(searchPrefill?.area ?? sessionStorage.getItem(lsKey('area')) ?? '')
+  const [areas, setAreas] = useState<string[]>(() => {
+    if (searchPrefill?.areas) return searchPrefill.areas
+    try { return JSON.parse(sessionStorage.getItem(lsKey('areas')) ?? '[]') } catch { return [] }
+  })
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
   const [needStretcher, setNeedStretcher] = useState(false)
@@ -277,10 +280,6 @@ export default function MswSearch() {
   }
 
   const handleSearch = async () => {
-    if (!area) {
-      setSearchError('対応エリアを選択してください')
-      return
-    }
     if (startTime >= endTime) {
       setSearchError('終了時刻は開始時刻より後にしてください')
       return
@@ -288,7 +287,7 @@ export default function MswSearch() {
 
     setSearchError('')
     setSearching(true)
-    sessionStorage.setItem(lsKey('area'), area)
+    sessionStorage.setItem(lsKey('areas'), JSON.stringify(areas))
     sessionStorage.setItem(lsKey('start_time'), startTime)
     sessionStorage.setItem(lsKey('end_time'), endTime)
 
@@ -326,7 +325,7 @@ export default function MswSearch() {
     for (const vehicle of ((rawVehicles as unknown as VehicleWithBusiness[] | null) ?? [])) {
       const business = vehicle.businesses
       if (!business || !business.approved) continue
-      if (!business.service_areas?.includes(area)) continue
+      if (areas.length > 0 && !areas.some(a => business.service_areas?.includes(a))) continue
       if (needWheelchair && !vehicle.has_wheelchair) continue
       if (needReclining && !vehicle.has_reclining_wheelchair) continue
       if (needStretcher && !vehicle.has_stretcher) continue
@@ -584,7 +583,7 @@ export default function MswSearch() {
 
           <div className="card space-y-3">
             {/* カレンダー */}
-            <div className="rounded-xl border border-slate-200 bg-white p-2 max-w-xs mx-auto w-full">
+            <div className="rounded-xl border border-slate-200 bg-white p-2">
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <button
                   type="button"
@@ -624,7 +623,7 @@ export default function MswSearch() {
                 ))}
 
                 {calendarPadding.map((_, index) => (
-                  <div key={`pad-${index}`} className="h-8" />
+                  <div key={`pad-${index}`} className="h-10" />
                 ))}
 
                 {calendarDays.map((day) => {
@@ -640,7 +639,7 @@ export default function MswSearch() {
                       type="button"
                       onClick={() => setDate(dayKey)}
                       disabled={isPastDate}
-                      className={`h-8 w-full rounded-lg text-xs font-medium transition-colors ${
+                      className={`h-10 w-full rounded-lg text-sm font-medium transition-colors ${
                         isSelected
                           ? 'bg-teal-600 text-white'
                           : isPastDate
@@ -718,26 +717,41 @@ export default function MswSearch() {
             </div>
 
             <div>
-              <label className="label">対応エリア</label>
-              <div className="grid grid-cols-3 gap-1.5 mt-1">
-                {SERVICE_AREAS.map((serviceArea) => (
-                  <button
-                    key={serviceArea}
-                    type="button"
-                    onClick={() => setArea(a => a === serviceArea ? '' : serviceArea)}
-                    className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                      area === serviceArea
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300 hover:text-teal-700'
-                    }`}
-                  >
-                    {serviceArea}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-1">
+                <label className="label">対応エリア</label>
+                <div className="flex items-center gap-2">
+                  {areas.length > 0 && (
+                    <button type="button" onClick={() => setAreas([])}
+                      className="text-xs text-slate-400 hover:text-slate-600">
+                      クリア
+                    </button>
+                  )}
+                  <span className="text-xs text-slate-400">
+                    {areas.length === 0 ? '未選択（全エリア）' : `${areas.length}件選択中`}
+                  </span>
+                </div>
               </div>
-              {!area && (
-                <p className="text-xs text-slate-400 mt-1">エリアをタップして選択（もう一度タップで解除）</p>
-              )}
+              <div className="grid grid-cols-3 gap-1.5">
+                {SERVICE_AREAS.map((serviceArea) => {
+                  const selected = areas.includes(serviceArea)
+                  return (
+                    <button
+                      key={serviceArea}
+                      type="button"
+                      onClick={() => setAreas(prev =>
+                        selected ? prev.filter(a => a !== serviceArea) : [...prev, serviceArea]
+                      )}
+                      className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        selected
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300 hover:text-teal-700'
+                      }`}
+                    >
+                      {serviceArea}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div>
@@ -782,7 +796,7 @@ export default function MswSearch() {
               </button>
               <h2 className="text-lg font-semibold text-slate-800 mt-1">検索結果</h2>
               <p className="text-sm text-slate-500">
-                {fmtDate(date)} {startTime.slice(0, 5)}〜{endTime.slice(0, 5)} / {area}
+                {fmtDate(date)} {startTime.slice(0, 5)}〜{endTime.slice(0, 5)}{areas.length > 0 ? ` / ${areas.join('・')}` : ''}
               </p>
             </div>
             <button
