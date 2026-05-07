@@ -639,7 +639,7 @@ export default function MswSearch() {
                       type="button"
                       onClick={() => setDate(dayKey)}
                       disabled={isPastDate}
-                      className={`h-16 w-full rounded-lg text-base font-medium transition-colors ${
+                      className={`h-16 w-full rounded-lg text-3xl font-medium transition-colors ${
                         isSelected
                           ? 'bg-teal-600 text-white'
                           : isPastDate
