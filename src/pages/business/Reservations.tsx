@@ -625,6 +625,10 @@ export default function BusinessReservations() {
               </div>
               <Row label="使用機材" value={EQUIPMENT_LABELS[selected.equipment] ?? selected.equipment} />
               <Row label="機材貸出" value={selected.equipment_rental ? 'あり' : 'なし'} />
+              {(selected.ward || selected.room_number) && (
+                <Row label="病棟・病室" value={[selected.ward, selected.room_number].filter(Boolean).join(' ')} />
+              )}
+              <Row label="同乗者" value={selected.has_companion ? 'あり' : 'なし'} />
               {selected.notes && <Row label="備考" value={selected.notes} />}
             </dl>
 

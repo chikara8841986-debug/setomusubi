@@ -28,6 +28,9 @@ type BookingForm = {
   equipment: 'wheelchair' | 'reclining_wheelchair' | 'stretcher'
   equipmentRental: boolean
   notes: string
+  ward: string
+  roomNumber: string
+  hasCompanion: boolean
 }
 
 type PrefillState = {
@@ -140,6 +143,9 @@ export default function MswSearch() {
       'wheelchair',
     equipmentRental: prefill?.equipmentRental ?? false,
     notes: prefill?.notes ?? '',
+    ward: '',
+    roomNumber: '',
+    hasCompanion: false,
   })
   const [isNewContact, setIsNewContact] = useState(false)
   const [newContactName, setNewContactName] = useState('')
@@ -359,6 +365,9 @@ export default function MswSearch() {
         equipment: form.equipment,
         equipment_rental: form.equipmentRental,
         notes: form.notes.trim() || null,
+        ward: form.ward.trim() || null,
+        room_number: form.roomNumber.trim() || null,
+        has_companion: form.hasCompanion,
         reservation_date: date,
         start_time: startTime,
         end_time: endTime,
@@ -483,6 +492,9 @@ export default function MswSearch() {
                   equipment: lastEquipment,
                   equipmentRental: false,
                   notes: '',
+                  ward: '',
+                  roomNumber: '',
+                  hasCompanion: false,
                 })
                 setNewContactName('')
                 setIsNewContact(false)
@@ -876,6 +888,54 @@ export default function MswSearch() {
                 />
                 <span className="text-sm text-slate-700">貸出が必要</span>
               </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">病棟</label>
+                  <input
+                    type="text"
+                    className="input-base"
+                    value={form.ward}
+                    onChange={(e) => setForm((current) => ({ ...current, ward: e.target.value }))}
+                    maxLength={50}
+                    placeholder="例：3病棟"
+                  />
+                </div>
+                <div>
+                  <label className="label">病室</label>
+                  <input
+                    type="text"
+                    className="input-base"
+                    value={form.roomNumber}
+                    onChange={(e) => setForm((current) => ({ ...current, roomNumber: e.target.value }))}
+                    maxLength={20}
+                    placeholder="例：305号室"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="label">同乗者</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: false, label: 'なし' },
+                    { value: true, label: 'あり' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setForm((current) => ({ ...current, hasCompanion: value }))}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                        form.hasCompanion === value
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div>
                 <label className="label">備考</label>

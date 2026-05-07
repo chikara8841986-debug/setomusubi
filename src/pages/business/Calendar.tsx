@@ -872,6 +872,16 @@ export default function BusinessCalendar() {
                       {selectedSlot.reservation.destination}
                     </a>
                   </div>
+                  {(selectedSlot.reservation.ward || selectedSlot.reservation.room_number) && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-0.5">病棟・病室</p>
+                      <p className="text-slate-700">{[selectedSlot.reservation.ward, selectedSlot.reservation.room_number].filter(Boolean).join(' ')}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-slate-400 mb-0.5">同乗者</p>
+                    <p className="text-slate-700">{selectedSlot.reservation.has_companion ? 'あり' : 'なし'}</p>
+                  </div>
                   {selectedSlot.reservation.notes && (
                     <div>
                       <p className="text-xs text-slate-400 mb-0.5">備考</p>

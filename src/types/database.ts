@@ -309,6 +309,9 @@ export type Database = {
           end_time: string
           status: ReservationStatus
           reminder_sent: boolean
+          ward: string | null
+          room_number: string | null
+          has_companion: boolean
           created_at: string
         }
         Insert: {
@@ -332,6 +335,9 @@ export type Database = {
           end_time: string
           status?: ReservationStatus
           reminder_sent?: boolean
+          ward?: string | null
+          room_number?: string | null
+          has_companion?: boolean
         }
         Update: {
           id?: string
@@ -354,6 +360,9 @@ export type Database = {
           end_time?: string
           status?: ReservationStatus
           reminder_sent?: boolean
+          ward?: string | null
+          room_number?: string | null
+          has_companion?: boolean
         }
         Relationships: []
       }
