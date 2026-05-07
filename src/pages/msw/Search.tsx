@@ -666,12 +666,20 @@ export default function MswSearch() {
                     </div>
                   </div>
                   {business.vehicle_image_urls && business.vehicle_image_urls.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                      {business.vehicle_image_urls.map((url, i) => (
-                        <img key={i} src={url} alt={`車両${i + 1}`}
-                          className="w-20 h-14 rounded-lg object-cover flex-shrink-0 border border-slate-100" />
-                      ))}
-                    </div>
+                    business.vehicle_image_urls.length === 1 ? (
+                      <div className="bg-slate-50 rounded-lg border border-slate-100 overflow-hidden flex items-center justify-center h-20">
+                        <img src={business.vehicle_image_urls[0]} alt="車両"
+                          className="max-h-full max-w-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                        {business.vehicle_image_urls.map((url, i) => (
+                          <div key={i} className="flex-shrink-0 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden flex items-center justify-center" style={{ width: 80, height: 56 }}>
+                            <img src={url} alt={`車両${i + 1}`} className="max-h-full max-w-full object-contain" />
+                          </div>
+                        ))}
+                      </div>
+                    )
                   )}
 
                   <div className="flex flex-wrap gap-1">
@@ -901,13 +909,20 @@ export default function MswSearch() {
                 </div>
               )}
               {previewBusiness.vehicle_image_urls && previewBusiness.vehicle_image_urls.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                  {previewBusiness.vehicle_image_urls.map((url, i) => (
-                    <div key={i} className="flex-shrink-0 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden flex items-center justify-center" style={{ width: 140, height: 96 }}>
-                      <img src={url} alt={`車両${i + 1}`} className="max-h-full max-w-full object-contain" />
-                    </div>
-                  ))}
-                </div>
+                previewBusiness.vehicle_image_urls.length === 1 ? (
+                  <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden flex items-center justify-center">
+                    <img src={previewBusiness.vehicle_image_urls[0]} alt="車両"
+                      className="max-h-48 w-full object-contain" />
+                  </div>
+                ) : (
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                    {previewBusiness.vehicle_image_urls.map((url, i) => (
+                      <div key={i} className="flex-shrink-0 bg-slate-50 rounded-lg border border-slate-100 overflow-hidden flex items-center justify-center" style={{ width: 140, height: 96 }}>
+                        <img src={url} alt={`車両${i + 1}`} className="max-h-full max-w-full object-contain" />
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
               <div>
                 <p className="font-bold text-slate-800">{previewBusiness.name}</p>
