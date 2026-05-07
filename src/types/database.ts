@@ -175,6 +175,66 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicles: {
+        Row: {
+          id: string
+          business_id: string
+          name: string
+          notes: string | null
+          active: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          name: string
+          notes?: string | null
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          name?: string
+          notes?: string | null
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      occupied_slots: {
+        Row: {
+          id: string
+          vehicle_id: string
+          date: string
+          start_time: string
+          end_time: string
+          reservation_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          vehicle_id: string
+          date: string
+          start_time: string
+          end_time: string
+          reservation_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          vehicle_id?: string
+          date?: string
+          start_time?: string
+          end_time?: string
+          reservation_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       availability_slots: {
         Row: {
           id: string
@@ -215,6 +275,7 @@ export type Database = {
           business_id: string
           hospital_id: string | null
           slot_id: string | null
+          vehicle_id: string | null
           source: string
           caller_name: string | null
           caller_phone: string | null
@@ -237,6 +298,7 @@ export type Database = {
           business_id: string
           hospital_id?: string | null
           slot_id?: string | null
+          vehicle_id?: string | null
           source?: string
           caller_name?: string | null
           caller_phone?: string | null
@@ -258,6 +320,7 @@ export type Database = {
           business_id?: string
           hospital_id?: string | null
           slot_id?: string | null
+          vehicle_id?: string | null
           source?: string
           caller_name?: string | null
           caller_phone?: string | null
@@ -325,3 +388,5 @@ export type AvailabilitySlot = Database['public']['Tables']['availability_slots'
 export type Reservation = Database['public']['Tables']['reservations']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Favorite = Database['public']['Tables']['favorites']['Row']
+export type Vehicle = Database['public']['Tables']['vehicles']['Row']
+export type OccupiedSlot = Database['public']['Tables']['occupied_slots']['Row']
