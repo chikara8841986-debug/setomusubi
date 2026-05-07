@@ -9,6 +9,39 @@ import { SERVICE_AREAS } from '../../lib/constants'
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 
+type VehicleEquipmentField =
+  | 'has_wheelchair'
+  | 'has_reclining_wheelchair'
+  | 'has_stretcher'
+  | 'rental_wheelchair'
+  | 'rental_reclining_wheelchair'
+  | 'rental_stretcher'
+
+type VehicleEditForm = Pick<Vehicle, 'name' | VehicleEquipmentField>
+
+const VEHICLE_EQUIPMENT_FIELDS: Array<{
+  field: VehicleEquipmentField
+  label: string
+  requires?: 'has_wheelchair' | 'has_reclining_wheelchair' | 'has_stretcher'
+}> = [
+  { field: 'has_wheelchair', label: '車椅子対応' },
+  { field: 'has_reclining_wheelchair', label: 'リクライニング対応' },
+  { field: 'has_stretcher', label: 'ストレッチャー対応' },
+  { field: 'rental_wheelchair', label: '車椅子貸出', requires: 'has_wheelchair' },
+  { field: 'rental_reclining_wheelchair', label: 'リクライニング貸出', requires: 'has_reclining_wheelchair' },
+  { field: 'rental_stretcher', label: 'ストレッチャー貸出', requires: 'has_stretcher' },
+]
+
+const createEmptyVehicleForm = (): VehicleEditForm => ({
+  name: '',
+  has_wheelchair: false,
+  has_reclining_wheelchair: false,
+  has_stretcher: false,
+  rental_wheelchair: false,
+  rental_reclining_wheelchair: false,
+  rental_stretcher: false,
+})
+
 export default function BusinessProfile() {
   const { user, businessId } = useAuth()
   const { showToast } = useToast()
@@ -22,6 +55,9 @@ export default function BusinessProfile() {
   const [newVehicleName, setNewVehicleName] = useState('')
   const [addingVehicle, setAddingVehicle] = useState(false)
   const [deletingVehicleId, setDeletingVehicleId] = useState<string | null>(null)
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null)
+  const [savingVehicleId, setSavingVehicleId] = useState<string | null>(null)
+  const [vehicleForm, setVehicleForm] = useState<VehicleEditForm>(createEmptyVehicleForm)
 
   const [form, setForm] = useState<Partial<Business>>({
     name: '',
@@ -231,6 +267,69 @@ export default function BusinessProfile() {
     }
 
     showToast('車両を削除しました')
+    fetchVehicles()
+  }
+
+  const startVehicleEdit = (vehicle: Vehicle) => {
+    setEditingVehicleId(vehicle.id)
+    setVehicleForm({
+      name: vehicle.name,
+      has_wheelchair: vehicle.has_wheelchair,
+      has_reclining_wheelchair: vehicle.has_reclining_wheelchair,
+      has_stretcher: vehicle.has_stretcher,
+      rental_wheelchair: vehicle.rental_wheelchair,
+      rental_reclining_wheelchair: vehicle.rental_reclining_wheelchair,
+      rental_stretcher: vehicle.rental_stretcher,
+    })
+  }
+
+  const cancelVehicleEdit = () => {
+    setEditingVehicleId(null)
+    setVehicleForm(createEmptyVehicleForm())
+  }
+
+  const toggleVehicleField = (field: VehicleEquipmentField) => {
+    setVehicleForm((current) => {
+      const next = !current[field]
+      const updates: Partial<VehicleEditForm> = { [field]: next }
+      if (!next) {
+        if (field === 'has_wheelchair') updates.rental_wheelchair = false
+        if (field === 'has_reclining_wheelchair') updates.rental_reclining_wheelchair = false
+        if (field === 'has_stretcher') updates.rental_stretcher = false
+      }
+      return { ...current, ...updates }
+    })
+  }
+
+  const handleSaveVehicle = async (vehicleId: string) => {
+    const name = vehicleForm.name.trim()
+    if (!name) {
+      showToast('Please enter a vehicle name', 'error')
+      return
+    }
+
+    setSavingVehicleId(vehicleId)
+    const { error } = await supabase
+      .from('vehicles')
+      .update({
+        name,
+        has_wheelchair: vehicleForm.has_wheelchair,
+        has_reclining_wheelchair: vehicleForm.has_reclining_wheelchair,
+        has_stretcher: vehicleForm.has_stretcher,
+        rental_wheelchair: vehicleForm.rental_wheelchair,
+        rental_reclining_wheelchair: vehicleForm.rental_reclining_wheelchair,
+        rental_stretcher: vehicleForm.rental_stretcher,
+      })
+      .eq('id', vehicleId)
+    setSavingVehicleId(null)
+
+    if (error) {
+      showToast('Failed to update vehicle', 'error')
+      return
+    }
+
+    showToast('車両情報を更新しました')
+    cancelVehicleEdit()
     fetchVehicles()
   }
 
@@ -480,16 +579,26 @@ export default function BusinessProfile() {
             vehicles.map((vehicle) => {
               const occupiedCount = vehicleCounts[vehicle.id] ?? 0
               const canDelete = occupiedCount === 0
+              const isSaving = savingVehicleId === vehicle.id
               return (
                 <div key={vehicle.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2">
                   <div>
                     <p className="text-sm font-medium text-slate-800">{vehicle.name}</p>
                     <p className="text-xs text-slate-400">occupied slot: {occupiedCount}件</p>
                   </div>
-                  <button
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startVehicleEdit(vehicle)}
+                      disabled={isSaving}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      編集
+                    </button>
+                    <button
                     type="button"
                     onClick={() => handleDeleteVehicle(vehicle.id)}
-                    disabled={!canDelete || deletingVehicleId === vehicle.id}
+                    disabled={!canDelete || deletingVehicleId === vehicle.id || savingVehicleId === vehicle.id}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       canDelete
                         ? 'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100'
@@ -498,11 +607,67 @@ export default function BusinessProfile() {
                   >
                     {deletingVehicleId === vehicle.id ? '削除中...' : '削除'}
                   </button>
+                  </div>
                 </div>
               )
             })
           )}
         </div>
+
+        {editingVehicleId && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 space-y-3">
+            <input
+              className="input-base"
+              value={vehicleForm.name}
+              onChange={(e) => setVehicleForm((current) => ({ ...current, name: e.target.value }))}
+              maxLength={100}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {VEHICLE_EQUIPMENT_FIELDS.map((item) => {
+                const disabled = Boolean(item.requires && !vehicleForm[item.requires])
+                return (
+                  <label
+                    key={item.field}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+                      disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    } ${
+                      vehicleForm[item.field]
+                        ? 'border-teal-200 bg-teal-50 text-teal-700'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={vehicleForm[item.field]}
+                      disabled={disabled || savingVehicleId === editingVehicleId}
+                      onChange={() => toggleVehicleField(item.field)}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                )
+              })}
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={cancelVehicleEdit}
+                disabled={savingVehicleId === editingVehicleId}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveVehicle(editingVehicleId)}
+                disabled={savingVehicleId === editingVehicleId}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+              >
+                {savingVehicleId === editingVehicleId ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="border-t pt-4">
           <label className="label">車両名</label>

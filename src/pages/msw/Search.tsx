@@ -67,6 +67,19 @@ function formatHours(start: string | null, end: string | null) {
   return `${start.slice(0, 5)}〜${end.slice(0, 5)}`
 }
 
+function hasVehicleCapability(
+  vehicles: Vehicle[],
+  field:
+    | 'has_wheelchair'
+    | 'has_reclining_wheelchair'
+    | 'has_stretcher'
+    | 'rental_wheelchair'
+    | 'rental_reclining_wheelchair'
+    | 'rental_stretcher',
+) {
+  return vehicles.some((vehicle) => vehicle[field])
+}
+
 function defaultStartTime() {
   const hour = jstHour()
   const next = hour < 9 ? 9 : hour >= 17 ? 10 : hour + 1
@@ -256,9 +269,9 @@ export default function MswSearch() {
       const business = vehicle.businesses
       if (!business || !business.approved) continue
       if (!business.service_areas?.includes(area)) continue
-      if (needWheelchair && !business.has_wheelchair) continue
-      if (needReclining && !business.has_reclining_wheelchair) continue
-      if (needStretcher && !business.has_stretcher) continue
+      if (needWheelchair && !vehicle.has_wheelchair) continue
+      if (needReclining && !vehicle.has_reclining_wheelchair) continue
+      if (needStretcher && !vehicle.has_stretcher) continue
       if (needFemale && !business.has_female_caregiver) continue
       if (needLongDistance && !business.long_distance) continue
       if (needSameDay && !business.same_day) continue
@@ -660,12 +673,12 @@ export default function MswSearch() {
                   )}
 
                   <div className="flex flex-wrap gap-1">
-                    {business.has_wheelchair && <span className="badge-blue">車椅子</span>}
-                    {business.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
-                    {business.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
-                    {business.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
-                    {business.rental_reclining_wheelchair && <span className="badge-green">リクライニング貸出</span>}
-                    {business.rental_stretcher && <span className="badge-green">ストレッチャー貸出</span>}
+                    {hasVehicleCapability(business.availableVehicles, 'has_wheelchair') && <span className="badge-blue">車椅子</span>}
+                    {hasVehicleCapability(business.availableVehicles, 'has_reclining_wheelchair') && <span className="badge-blue">リクライニング</span>}
+                    {hasVehicleCapability(business.availableVehicles, 'has_stretcher') && <span className="badge-blue">ストレッチャー</span>}
+                    {hasVehicleCapability(business.availableVehicles, 'rental_wheelchair') && <span className="badge-green">車椅子貸出</span>}
+                    {hasVehicleCapability(business.availableVehicles, 'rental_reclining_wheelchair') && <span className="badge-green">リクライニング貸出</span>}
+                    {hasVehicleCapability(business.availableVehicles, 'rental_stretcher') && <span className="badge-green">ストレッチャー貸出</span>}
                     {business.has_female_caregiver && <span className="badge-green">女性介助者</span>}
                     {business.long_distance && <span className="badge-gray">長距離対応</span>}
                     {business.same_day && <span className="badge-gray">当日対応</span>}
@@ -908,12 +921,12 @@ export default function MswSearch() {
               </div>
 
               <div className="flex flex-wrap gap-1">
-                {previewBusiness.has_wheelchair && <span className="badge-blue">車椅子</span>}
-                {previewBusiness.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
-                {previewBusiness.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
-                {previewBusiness.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
-                {previewBusiness.rental_reclining_wheelchair && <span className="badge-green">リクライニング貸出</span>}
-                {previewBusiness.rental_stretcher && <span className="badge-green">ストレッチャー貸出</span>}
+                {hasVehicleCapability(previewBusiness.availableVehicles, 'has_wheelchair') && <span className="badge-blue">車椅子</span>}
+                {hasVehicleCapability(previewBusiness.availableVehicles, 'has_reclining_wheelchair') && <span className="badge-blue">リクライニング</span>}
+                {hasVehicleCapability(previewBusiness.availableVehicles, 'has_stretcher') && <span className="badge-blue">ストレッチャー</span>}
+                {hasVehicleCapability(previewBusiness.availableVehicles, 'rental_wheelchair') && <span className="badge-green">車椅子貸出</span>}
+                {hasVehicleCapability(previewBusiness.availableVehicles, 'rental_reclining_wheelchair') && <span className="badge-green">リクライニング貸出</span>}
+                {hasVehicleCapability(previewBusiness.availableVehicles, 'rental_stretcher') && <span className="badge-green">ストレッチャー貸出</span>}
                 {previewBusiness.has_female_caregiver && <span className="badge-green">女性介助者</span>}
                 {previewBusiness.long_distance && <span className="badge-gray">長距離対応</span>}
                 {previewBusiness.same_day && <span className="badge-gray">当日対応</span>}
