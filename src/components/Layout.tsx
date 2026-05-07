@@ -196,7 +196,7 @@ function MswPendingBadge({ hospitalId }: { hospitalId: string }) {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, role, businessId, hospitalId, loading, signOut } = useAuth()
+  const { user, role, businessId, businessName, hospitalId, hospitalName, loading, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -270,7 +270,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-sm font-black text-white shadow-sm">
               結
             </div>
-            <span className="text-lg font-black tracking-tight text-teal-700">せとむすび</span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-lg font-black tracking-tight text-teal-700 leading-none">せとむすび</span>
+              {(businessName || hospitalName) && (
+                <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5 truncate max-w-[140px]">
+                  {businessName ?? hospitalName}
+                </span>
+              )}
+            </div>
             {roleLabel && (
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${roleBgClass}`}>
                 {roleLabel}

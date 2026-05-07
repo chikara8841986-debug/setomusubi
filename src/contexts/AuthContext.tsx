@@ -9,7 +9,9 @@ type AuthContextType = {
   session: Session | null
   role: UserRole | null
   businessId: string | null
+  businessName: string | null
   hospitalId: string | null
+  hospitalName: string | null
   businessApproved: boolean
   loading: boolean
   signOut: () => Promise<void>
@@ -20,7 +22,9 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   role: null,
   businessId: null,
+  businessName: null,
   hospitalId: null,
+  hospitalName: null,
   businessApproved: false,
   loading: true,
   signOut: async () => {},
@@ -31,7 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [businessId, setBusinessId] = useState<string | null>(null)
+  const [businessName, setBusinessName] = useState<string | null>(null)
   const [hospitalId, setHospitalId] = useState<string | null>(null)
+  const [hospitalName, setHospitalName] = useState<string | null>(null)
   const [businessApproved, setBusinessApproved] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -49,18 +55,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profile.role === 'business') {
       const { data } = await supabase
         .from('businesses')
-        .select('id, approved')
+        .select('id, approved, name')
         .eq('user_id', userId)
         .single()
       setBusinessId(data?.id ?? null)
+      setBusinessName(data?.name ?? null)
       setBusinessApproved(data?.approved ?? false)
     } else if (profile.role === 'msw') {
       const { data } = await supabase
         .from('hospitals')
-        .select('id')
+        .select('id, name')
         .eq('user_id', userId)
         .single()
       setHospitalId(data?.id ?? null)
+      setHospitalName(data?.name ?? null)
     }
   }
 
@@ -88,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // SIGNED_OUT のみログイン画面へリダイレクト
         // TOKEN_REFRESHED はトークン更新成功を示すためリダイレクト不要
         if (event === 'SIGNED_OUT' && !session) {
+          setBusinessName(null)
+          setHospitalName(null)
           window.location.href = '/login'
         }
       }
@@ -101,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, role, businessId, hospitalId, businessApproved, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, businessId, businessName, hospitalId, hospitalName, businessApproved, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   )

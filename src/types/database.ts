@@ -183,6 +183,12 @@ export type Database = {
           notes: string | null
           active: boolean
           sort_order: number
+          has_wheelchair: boolean
+          has_reclining_wheelchair: boolean
+          has_stretcher: boolean
+          rental_wheelchair: boolean
+          rental_reclining_wheelchair: boolean
+          rental_stretcher: boolean
           created_at: string
         }
         Insert: {
@@ -192,6 +198,12 @@ export type Database = {
           notes?: string | null
           active?: boolean
           sort_order?: number
+          has_wheelchair?: boolean
+          has_reclining_wheelchair?: boolean
+          has_stretcher?: boolean
+          rental_wheelchair?: boolean
+          rental_reclining_wheelchair?: boolean
+          rental_stretcher?: boolean
           created_at?: string
         }
         Update: {
@@ -201,6 +213,12 @@ export type Database = {
           notes?: string | null
           active?: boolean
           sort_order?: number
+          has_wheelchair?: boolean
+          has_reclining_wheelchair?: boolean
+          has_stretcher?: boolean
+          rental_wheelchair?: boolean
+          rental_reclining_wheelchair?: boolean
+          rental_stretcher?: boolean
           created_at?: string
         }
         Relationships: []

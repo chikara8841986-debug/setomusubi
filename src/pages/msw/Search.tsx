@@ -602,7 +602,7 @@ export default function MswSearch() {
               {filteredResults.map((business) => (
                 <div key={business.id} className="card space-y-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -630,10 +630,27 @@ export default function MswSearch() {
                         </p>
                       )}
                     </div>
-                    <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0">
-                      空き車両 {business.availableVehicles.length} 台
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                        空き車両 {business.availableVehicles.length} 台
+                      </span>
+                      {business.profile_image_url && (
+                        <img
+                          src={business.profile_image_url}
+                          alt={business.name}
+                          className="w-14 h-14 rounded-xl object-cover border border-slate-100 shadow-sm"
+                        />
+                      )}
+                    </div>
                   </div>
+                  {business.vehicle_image_urls && business.vehicle_image_urls.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                      {business.vehicle_image_urls.map((url, i) => (
+                        <img key={i} src={url} alt={`車両${i + 1}`}
+                          className="w-20 h-14 rounded-lg object-cover flex-shrink-0 border border-slate-100" />
+                      ))}
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-1">
                     {business.has_wheelchair && <span className="badge-blue">車椅子</span>}
@@ -852,6 +869,18 @@ export default function MswSearch() {
             </div>
 
             <div className="space-y-3">
+              {previewBusiness.profile_image_url && (
+                <img src={previewBusiness.profile_image_url} alt={previewBusiness.name}
+                  className="w-full h-40 object-cover rounded-xl border border-slate-100" />
+              )}
+              {previewBusiness.vehicle_image_urls && previewBusiness.vehicle_image_urls.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {previewBusiness.vehicle_image_urls.map((url, i) => (
+                    <img key={i} src={url} alt={`車両${i + 1}`}
+                      className="w-28 h-20 rounded-lg object-cover flex-shrink-0 border border-slate-100" />
+                  ))}
+                </div>
+              )}
               <div>
                 <p className="font-bold text-slate-800">{previewBusiness.name}</p>
                 {previewBusiness.address && (
