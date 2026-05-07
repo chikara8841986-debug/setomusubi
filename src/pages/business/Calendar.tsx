@@ -616,7 +616,7 @@ export default function BusinessCalendar() {
                 onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
                 className="px-3 h-8 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
               >
-                莉企ｱ
+                今週
               </button>
               <button onClick={() => setWeekStart((current) => addDays(current, 7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">
                 ▶
