@@ -26,7 +26,7 @@ const STATUS_MAP: Record<string, { cls: string; label: string }> = {
   confirmed: { cls: 'badge-blue', label: '確定' },
   completed: { cls: 'badge-green',label: '完了' },
   cancelled: { cls: 'badge-gray', label: 'キャンセル' },
-  rejected:  { cls: 'badge-gray', label: 'お断り' },
+  rejected:  { cls: 'badge-gray', label: '非承認' },
 }
 
 type Tab = 'active' | 'past'
@@ -81,7 +81,7 @@ export default function MswReservations() {
         if (payload.new?.status === 'confirmed') {
           showToast('予約が確定されました', 'info')
         } else if (payload.new?.status === 'rejected') {
-          showToast('申請がお断りされました', 'error')
+          showToast('申請が承認されませんでした', 'error')
         }
         fetchReservations()
       })
@@ -167,7 +167,7 @@ export default function MswReservations() {
   return (
     <div>
       <h1 className="text-xl font-bold text-slate-800 mb-1">予約履歴</h1>
-      <p className="text-xs text-slate-400 mb-4">「進行中」は申請中・確定済みの予約、「過去の予約」は完了・キャンセル・お断りされた予約を確認できます。</p>
+      <p className="text-xs text-slate-400 mb-4">「進行中」は申請中・確定済みの予約、「過去の予約」は完了・キャンセル・非承認の予約を確認できます。</p>
 
       <div className="flex gap-2 mb-4">
         <button onClick={() => switchTab('active')}
@@ -199,7 +199,7 @@ export default function MswReservations() {
             { value: '' as const, label: 'すべて', count: past.length },
             { value: 'completed' as const, label: '完了', count: past.filter(r => r.status === 'completed').length },
             { value: 'cancelled' as const, label: 'キャンセル', count: past.filter(r => r.status === 'cancelled').length },
-            { value: 'rejected' as const, label: 'お断り', count: past.filter(r => r.status === 'rejected').length },
+            { value: 'rejected' as const, label: '非承認', count: past.filter(r => r.status === 'rejected').length },
           ].filter(o => o.value === '' || o.count > 0)).map(opt => (
             <button
               key={opt.value}
@@ -231,7 +231,7 @@ export default function MswReservations() {
             <p className="font-medium">申請中の仮予約が{pendingList.length}件あります</p>
             <p className="mt-0.5">
               最も古い申請: {elapsed}
-              {isLong ? ' — 事業所に直接確認することをお勧めします' : ' — 事業所が確認次第、承認またはお断りの通知が来ます'}
+              {isLong ? ' — 事業所に直接確認することをお勧めします' : ' — 事業所が確認次第、承認または非承認の通知が来ます'}
             </p>
           </div>
         )
@@ -366,13 +366,13 @@ export default function MswReservations() {
               return (
                 <div className={`rounded-lg px-3 py-2 mb-4 text-xs border ${isLong ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
                   <p className="font-medium">申請から {elapsed}</p>
-                  <p className="mt-0.5">{isLong ? '事業所への直接連絡をお勧めします。' : '事業所が確認後に承認またはお断りを行います。'}</p>
+                  <p className="mt-0.5">{isLong ? '事業所への直接連絡をお勧めします。' : '事業所が確認後に承認または非承認を行います。'}</p>
                 </div>
               )
             })()}
             {selected.status === 'rejected' && (
               <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-4 text-xs text-slate-600 space-y-2">
-                <p>この申請は事業所によりお断りされました。別の事業所をお探しください。</p>
+                <p>この申請は承認されませんでした。別の事業所をお探しください。</p>
                 <button
                   onClick={() => navigate('/msw/search', {
                     state: {
