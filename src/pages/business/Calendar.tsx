@@ -361,7 +361,7 @@ export default function BusinessCalendar() {
       .from('reservations')
       .select('*')
       .eq('business_id', businessId)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'confirmed'])
       .gte('reservation_date', from)
       .lte('reservation_date', to)
     setPendingReservations((data ?? []) as Reservation[])
@@ -375,7 +375,7 @@ export default function BusinessCalendar() {
       .from('reservations')
       .select('*')
       .eq('business_id', businessId)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'confirmed'])
       .gte('reservation_date', from)
       .lte('reservation_date', to)
     setMonthPendingReservations((data ?? []) as Reservation[])
@@ -790,11 +790,17 @@ export default function BusinessCalendar() {
                                 {slot.start_time.slice(0, 5)}〜{slot.end_time.slice(0, 5)} {slot.reservation_id ? slot.reservation?.patient_name ?? '' : 'ブロック'}
                               </button>
                             ))}
-                            {dayPending.map((res) => (
-                              <div key={`p-${res.id}`} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-amber-100 text-amber-700 border border-dashed border-amber-400">
-                                仮 {res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)} {res.patient_name}
-                              </div>
-                            ))}
+                            {dayPending.map((res) =>
+                              res.status === 'confirmed' ? (
+                                <div key={`p-${res.id}`} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-teal-100 text-teal-800 border border-teal-300">
+                                  確定 {res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)} {res.patient_name}
+                                </div>
+                              ) : (
+                                <div key={`p-${res.id}`} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-amber-100 text-amber-700 border border-dashed border-amber-400">
+                                  仮 {res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)} {res.patient_name}
+                                </div>
+                              )
+                            )}
                             {overflowCount > 0 && (
                               <div className="px-1 text-xs text-slate-400">+{overflowCount}件</div>
                             )}
@@ -979,7 +985,20 @@ export default function BusinessCalendar() {
                             const endSlot = timeToSlot(res.end_time)
                             const top = startSlot * CELL_H + 1
                             const height = Math.max((endSlot - startSlot) * CELL_H - 2, 6)
-                            return (
+                            const isConfirmed = res.status === 'confirmed'
+                            return isConfirmed ? (
+                              <div
+                                key={`pending-${res.id}`}
+                                style={{ top, height, left: 3, right: 3 }}
+                                className="absolute bg-teal-400 border border-teal-500 rounded overflow-hidden pointer-events-none z-15"
+                              >
+                                <div className="px-1 py-0.5 text-[9px] font-bold leading-tight whitespace-nowrap overflow-hidden text-white">
+                                  <span className="mr-0.5">確定</span>
+                                  <span>{res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)}</span>
+                                  <span className="ml-1 font-normal opacity-90">{res.patient_name}</span>
+                                </div>
+                              </div>
+                            ) : (
                               <div
                                 key={`pending-${res.id}`}
                                 style={{ top, height, left: 3, right: 3 }}
