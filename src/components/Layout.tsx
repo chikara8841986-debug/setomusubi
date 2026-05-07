@@ -191,10 +191,12 @@ function MswPendingBadge({
   hospitalId,
   onStatusChange,
   onMount,
+  confirmedSince,
 }: {
   hospitalId: string
   onStatusChange?: (status: 'confirmed' | 'rejected', name: string) => void
   onMount?: (pendingCount: number, confirmedCount: number) => void
+  confirmedSince: string
 }) {
   const [count, setCount] = useState(0)
   const [confirmedCount, setConfirmedCount] = useState(0)
@@ -205,7 +207,8 @@ function MswPendingBadge({
   useEffect(() => {
     let mounted = true
     const load = async () => {
-      const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      // confirmedSince が空なら全件（初回）、セット済みならその後の承認のみ
+      const since = confirmedSince || '1970-01-01T00:00:00.000Z'
       const [{ count: pending }, { count: confirmed }] = await Promise.all([
         supabase
           .from('reservations')
@@ -217,7 +220,7 @@ function MswPendingBadge({
           .select('*', { count: 'exact', head: true })
           .eq('hospital_id', hospitalId)
           .eq('status', 'confirmed')
-          .gte('updated_at', since24h),
+          .gt('updated_at', since),
       ])
       if (mounted) {
         setCount(pending ?? 0)
@@ -261,7 +264,7 @@ function MswPendingBadge({
       mounted = false
       supabase.removeChannel(channel)
     }
-  }, [hospitalId, onStatusChange])
+  }, [hospitalId, onStatusChange, confirmedSince])
 
   if (count === 0 && confirmedCount === 0) return null
   return (
@@ -293,17 +296,41 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [notif, setNotif] = useState<AppNotif | null>(null)
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const notifTypeRef = useRef<string | null>(null)
+
+  // MSW承認通知の「既読」管理: localStorage に最終確認時刻を保存
+  const [mswConfirmedSince, setMswConfirmedSince] = useState('')
+  useEffect(() => {
+    if (!hospitalId) return
+    const key = `setomusubi:msw:confirmed_seen:${hospitalId}`
+    setMswConfirmedSince(localStorage.getItem(key) ?? '')
+  }, [hospitalId])
+
+  const markApprovedSeen = useCallback(() => {
+    if (!hospitalId) return
+    const key = `setomusubi:msw:confirmed_seen:${hospitalId}`
+    const now = new Date().toISOString()
+    localStorage.setItem(key, now)
+    setMswConfirmedSince(now)
+  }, [hospitalId])
 
   const showNotif = useCallback((n: AppNotif) => {
     if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
+    notifTypeRef.current = n.type
     setNotif(n)
-    notifTimerRef.current = setTimeout(() => setNotif(null), 6000)
-  }, [])
+    notifTimerRef.current = setTimeout(() => {
+      if (notifTypeRef.current === 'approved') markApprovedSeen()
+      notifTypeRef.current = null
+      setNotif(null)
+    }, 6000)
+  }, [markApprovedSeen])
 
   const closeNotif = useCallback(() => {
     if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
+    if (notifTypeRef.current === 'approved') markApprovedSeen()
+    notifTypeRef.current = null
     setNotif(null)
-  }, [])
+  }, [markApprovedSeen])
 
   const navItems = role === 'business' ? NAV_BUSINESS
     : role === 'msw' ? NAV_MSW
@@ -464,6 +491,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {to === '/msw/reservations' && hospitalId && (
                     <MswPendingBadge
                       hospitalId={hospitalId}
+                      confirmedSince={mswConfirmedSince}
                       onStatusChange={(status, name) =>
                         showNotif({
                           title: status === 'confirmed' ? '予約が承認されました' : '予約が却下されました',
