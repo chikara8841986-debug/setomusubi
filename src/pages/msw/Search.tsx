@@ -582,159 +582,138 @@ export default function MswSearch() {
             <p className="text-sm text-slate-500 mt-1">日時と条件に合う介護タクシー事業所を探します</p>
           </div>
 
-          <div className="card space-y-4">
-            <div className="space-y-3">
-              <label className="label">日付</label>
-              <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCalendarMonth((current) => subMonths(current, 1))}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-teal-300 hover:text-teal-700"
-                    aria-label="前の月"
+          <div className="card space-y-3">
+            {/* カレンダー */}
+            <div className="rounded-xl border border-slate-200 bg-white p-2 max-w-xs mx-auto w-full">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((current) => subMonths(current, 1))}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-xs text-slate-500 transition-colors hover:border-teal-300 hover:text-teal-700"
+                  aria-label="前の月"
+                >
+                  ◀
+                </button>
+                <div className="text-sm font-semibold text-slate-700">
+                  {format(calendarMonth, 'yyyy年M月', { locale: ja })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-xs text-slate-500 transition-colors hover:border-teal-300 hover:text-teal-700"
+                  aria-label="次の月"
+                >
+                  ▶
+                </button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-0.5 text-center text-xs font-medium">
+                {WEEKDAY_LABELS.map((weekday, index) => (
+                  <div
+                    key={weekday}
+                    className={
+                      index === 0
+                        ? 'py-1 text-red-400'
+                        : index === 6
+                          ? 'py-1 text-blue-400'
+                          : 'py-1 text-slate-400'
+                    }
                   >
-                    ◀
-                  </button>
-                  <div className="text-sm font-semibold text-slate-800 sm:text-base">
-                    {format(calendarMonth, 'yyyy年M月', { locale: ja })}
+                    {weekday}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-teal-300 hover:text-teal-700"
-                    aria-label="次の月"
-                  >
-                    ▶
-                  </button>
-                </div>
+                ))}
 
-                <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
-                  {WEEKDAY_LABELS.map((weekday, index) => (
-                    <div
-                      key={weekday}
-                      className={
-                        index === 0
-                          ? 'py-2 text-red-400'
-                          : index === 6
-                            ? 'py-2 text-blue-400'
-                            : 'py-2 text-slate-500'
-                      }
+                {calendarPadding.map((_, index) => (
+                  <div key={`pad-${index}`} className="h-8" />
+                ))}
+
+                {calendarDays.map((day) => {
+                  const dayKey = format(day, 'yyyy-MM-dd')
+                  const isPastDate = isBefore(day, todayDate)
+                  const isToday = dayKey === today
+                  const isSelected = dayKey === date
+                  const weekday = getDay(day)
+
+                  return (
+                    <button
+                      key={dayKey}
+                      type="button"
+                      onClick={() => setDate(dayKey)}
+                      disabled={isPastDate}
+                      className={`h-8 w-full rounded-lg text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-teal-600 text-white'
+                          : isPastDate
+                            ? 'pointer-events-none text-slate-300'
+                            : isToday
+                              ? 'border border-teal-400 text-slate-800 font-bold'
+                              : weekday === 0
+                                ? 'text-red-400 hover:bg-red-50'
+                                : weekday === 6
+                                  ? 'text-blue-400 hover:bg-blue-50'
+                                  : 'text-slate-700 hover:bg-teal-50'
+                      }`}
                     >
-                      {weekday}
-                    </div>
-                  ))}
-
-                  {calendarPadding.map((_, index) => (
-                    <div key={`pad-${index}`} className="aspect-square rounded-xl bg-transparent" />
-                  ))}
-
-                  {calendarDays.map((day) => {
-                    const dayKey = format(day, 'yyyy-MM-dd')
-                    const isPastDate = isBefore(day, todayDate)
-                    const isToday = dayKey === today
-                    const isSelected = dayKey === date
-                    const weekday = getDay(day)
-
-                    return (
-                      <button
-                        key={dayKey}
-                        type="button"
-                        onClick={() => setDate(dayKey)}
-                        disabled={isPastDate}
-                        className={`aspect-square rounded-xl border text-sm font-medium transition-colors ${
-                          isSelected
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : isPastDate
-                              ? 'pointer-events-none border-slate-100 bg-slate-50 text-slate-300'
-                              : isToday
-                                ? 'border-teal-300 text-slate-800 ring-2 ring-teal-200'
-                                : weekday === 0
-                                  ? 'border-slate-200 text-red-400 hover:border-teal-300 hover:text-teal-700'
-                                  : weekday === 6
-                                    ? 'border-slate-200 text-blue-400 hover:border-teal-300 hover:text-teal-700'
-                                    : 'border-slate-200 text-slate-700 hover:border-teal-300 hover:text-teal-700'
-                        }`}
-                      >
-                        {format(day, 'd')}
-                      </button>
-                    )
-                  })}
-                </div>
+                      {format(day, 'd')}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="space-y-2">
+            {/* 時刻 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <label className="label">開始時刻</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center gap-2">
-                      <select
-                        className="input-base"
-                        value={startHour}
-                        onChange={(e) => syncStartTime(e.target.value, startMinute)}
-                      >
-                        {HOUR_OPTIONS.map((hour) => (
-                          <option key={hour} value={hour}>
-                            {hour}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-sm text-slate-700">時</span>
-                    </div>
-                    <div className="inline-flex items-center gap-2">
-                      <select
-                        className="input-base"
-                        value={startMinute}
-                        onChange={(e) => syncStartTime(startHour, e.target.value)}
-                      >
-                        {MINUTE_OPTIONS.map((minute) => (
-                          <option key={minute} value={minute}>
-                            {minute}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-sm text-slate-700">分</span>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    className="input-base w-20"
+                    value={startHour}
+                    onChange={(e) => syncStartTime(e.target.value, startMinute)}
+                  >
+                    {HOUR_OPTIONS.map((hour) => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-slate-500">時</span>
+                  <select
+                    className="input-base w-20"
+                    value={startMinute}
+                    onChange={(e) => syncStartTime(startHour, e.target.value)}
+                  >
+                    {MINUTE_OPTIONS.map((minute) => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-slate-500">分</span>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="label">終了時刻</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center gap-2">
-                      <select
-                        className="input-base"
-                        value={endHour}
-                        onChange={(e) => syncEndTime(e.target.value, endMinute)}
-                      >
-                        {HOUR_OPTIONS.map((hour) => (
-                          <option key={hour} value={hour}>
-                            {hour}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-sm text-slate-700">時</span>
-                    </div>
-                    <div className="inline-flex items-center gap-2">
-                      <select
-                        className="input-base"
-                        value={endMinute}
-                        onChange={(e) => syncEndTime(endHour, e.target.value)}
-                      >
-                        {MINUTE_OPTIONS.map((minute) => (
-                          <option key={minute} value={minute}>
-                            {minute}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-sm text-slate-700">分</span>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    className="input-base w-20"
+                    value={endHour}
+                    onChange={(e) => syncEndTime(e.target.value, endMinute)}
+                  >
+                    {HOUR_OPTIONS.map((hour) => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-slate-500">時</span>
+                  <select
+                    className="input-base w-20"
+                    value={endMinute}
+                    onChange={(e) => syncEndTime(endHour, e.target.value)}
+                  >
+                    {MINUTE_OPTIONS.map((minute) => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-slate-500">分</span>
                 </div>
-                {hasEndTimeError && <p className="text-sm text-red-600">終了時刻は開始時刻より後にしてください</p>}
+                {hasEndTimeError && <p className="text-xs text-red-500 mt-1">終了時刻は開始時刻より後にしてください</p>}
               </div>
             </div>
 
