@@ -623,7 +623,7 @@ export default function MswSearch() {
                 ))}
 
                 {calendarPadding.map((_, index) => (
-                  <div key={`pad-${index}`} className="h-10" />
+                  <div key={`pad-${index}`} className="h-12" />
                 ))}
 
                 {calendarDays.map((day) => {
@@ -639,7 +639,7 @@ export default function MswSearch() {
                       type="button"
                       onClick={() => setDate(dayKey)}
                       disabled={isPastDate}
-                      className={`h-10 w-full rounded-lg text-sm font-medium transition-colors ${
+                      className={`h-12 w-full rounded-lg text-base font-medium transition-colors ${
                         isSelected
                           ? 'bg-teal-600 text-white'
                           : isPastDate
