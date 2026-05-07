@@ -23,6 +23,10 @@ type SlotWithReservation = OccupiedSlot & {
   reservation: (Reservation & { hospitals: { name: string; phone: string | null } | null }) | null
 }
 
+type ReservationWithHospital = Reservation & {
+  hospitals: { name: string; phone: string | null } | null
+}
+
 type DragState = {
   dayIdx: number
   dateStr: string
@@ -72,12 +76,15 @@ export default function BusinessCalendar() {
   const [monthStats, setMonthStats] = useState({ confirmed: 0, completed: 0, pending: 0 })
 
   const [selectedSlot, setSelectedSlot] = useState<SlotWithReservation | null>(null)
+  const [selectedPendingRes, setSelectedPendingRes] = useState<ReservationWithHospital | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null)
+  const [cancelPendingConfirmId, setCancelPendingConfirmId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
-  const [pendingReservations, setPendingReservations] = useState<Reservation[]>([])
-  const [monthPendingReservations, setMonthPendingReservations] = useState<Reservation[]>([])
+  const [pendingReservations, setPendingReservations] = useState<ReservationWithHospital[]>([])
+  const [monthPendingReservations, setMonthPendingReservations] = useState<ReservationWithHospital[]>([])
 
   const dragRef = useRef<DragState | null>(null)
   const isDraggingRef = useRef(false)
@@ -359,12 +366,12 @@ export default function BusinessCalendar() {
     const to = format(addDays(weekStart, 6), 'yyyy-MM-dd')
     const { data } = await supabase
       .from('reservations')
-      .select('*')
+      .select('*, hospitals(name, phone)')
       .eq('business_id', businessId)
       .in('status', ['pending', 'confirmed'])
       .gte('reservation_date', from)
       .lte('reservation_date', to)
-    setPendingReservations((data ?? []) as Reservation[])
+    setPendingReservations((data ?? []) as unknown as ReservationWithHospital[])
   }, [businessId, weekStart])
 
   const fetchMonthPendingReservations = useCallback(async () => {
@@ -373,12 +380,12 @@ export default function BusinessCalendar() {
     const to = format(endOfMonth(monthStart), 'yyyy-MM-dd')
     const { data } = await supabase
       .from('reservations')
-      .select('*')
+      .select('*, hospitals(name, phone)')
       .eq('business_id', businessId)
       .in('status', ['pending', 'confirmed'])
       .gte('reservation_date', from)
       .lte('reservation_date', to)
-    setMonthPendingReservations((data ?? []) as Reservation[])
+    setMonthPendingReservations((data ?? []) as unknown as ReservationWithHospital[])
   }, [businessId, monthStart])
 
   useEffect(() => {
@@ -403,21 +410,29 @@ export default function BusinessCalendar() {
   }, [monthSlots, selectedSlot, slots])
 
   useEffect(() => {
+    if (!selectedPendingRes) return
+    const updated = [...pendingReservations, ...monthPendingReservations].find((res) => res.id === selectedPendingRes.id)
+    setSelectedPendingRes(updated ?? null)
+  }, [monthPendingReservations, pendingReservations, selectedPendingRes])
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSelectedSlot(null)
+        setSelectedPendingRes(null)
         setDeleteConfirmId(null)
         setCompleteConfirmId(null)
+        setCancelPendingConfirmId(null)
       }
       const tag = (e.target as HTMLElement).tagName
-      if (selectedSlot) return
+      if (selectedSlot || selectedPendingRes) return
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.key === 'ArrowLeft') setWeekStart((current) => addDays(current, -7))
       if (e.key === 'ArrowRight') setWeekStart((current) => addDays(current, 7))
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [selectedSlot])
+  }, [selectedPendingRes, selectedSlot])
 
   useEffect(() => {
     if (!businessId) return
@@ -582,6 +597,57 @@ export default function BusinessCalendar() {
     showToast('予約を完了にしました')
     setSelectedSlot(null)
     fetchSlots()
+    fetchMonthStats()
+  }
+
+  const handleCancelReservation = async (reservationId: string, slotId?: string) => {
+    setDeleteConfirmId(null)
+    setCancelPendingConfirmId(null)
+    setCancellingId(reservationId)
+
+    const { error: reservationError } = await supabase
+      .from('reservations')
+      .update({ status: 'cancelled' })
+      .eq('id', reservationId)
+
+    if (reservationError) {
+      setCancellingId(null)
+      showToast('予約をキャンセルできませんでした', 'error')
+      return
+    }
+
+    const { error: deleteByReservationError } = await supabase
+      .from('occupied_slots')
+      .delete()
+      .eq('reservation_id', reservationId)
+
+    if (deleteByReservationError) {
+      setCancellingId(null)
+      showToast('予約をキャンセルできませんでした', 'error')
+      return
+    }
+
+    if (slotId) {
+      const { error: deleteByIdError } = await supabase
+        .from('occupied_slots')
+        .delete()
+        .eq('id', slotId)
+
+      if (deleteByIdError) {
+        setCancellingId(null)
+        showToast('予約をキャンセルできませんでした', 'error')
+        return
+      }
+    }
+
+    setCancellingId(null)
+    setSelectedPendingRes(null)
+    setSelectedSlot(null)
+    showToast('予約をキャンセルしました', 'error')
+    fetchSlots()
+    fetchMonthSlots()
+    fetchPendingReservations()
+    fetchMonthPendingReservations()
     fetchMonthStats()
   }
 
@@ -792,11 +858,11 @@ export default function BusinessCalendar() {
                             ))}
                             {dayPending.map((res) =>
                               res.status === 'confirmed' ? (
-                                <div key={`p-${res.id}`} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-teal-100 text-teal-800 border border-teal-300">
+                                <div key={`p-${res.id}`} onClick={() => setSelectedPendingRes(res)} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-teal-100 text-teal-800 border border-teal-300 cursor-pointer">
                                   確定 {res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)} {res.patient_name}
                                 </div>
                               ) : (
-                                <div key={`p-${res.id}`} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-amber-100 text-amber-700 border border-dashed border-amber-400">
+                                <div key={`p-${res.id}`} onClick={() => setSelectedPendingRes(res)} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-amber-100 text-amber-700 border border-dashed border-amber-400 cursor-pointer">
                                   仮 {res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)} {res.patient_name}
                                 </div>
                               )
@@ -990,7 +1056,9 @@ export default function BusinessCalendar() {
                               <div
                                 key={`pending-${res.id}`}
                                 style={{ top, height, left: 3, right: 3 }}
-                                className="absolute bg-teal-400 border border-teal-500 rounded overflow-hidden pointer-events-none z-15"
+                                className="absolute bg-teal-400 border border-teal-500 rounded overflow-hidden cursor-pointer z-15"
+                                onMouseDown={(e) => { e.stopPropagation(); setSelectedPendingRes(res) }}
+                                onTouchStart={(e) => { e.stopPropagation(); setSelectedPendingRes(res) }}
                               >
                                 <div className="px-1 py-0.5 text-[9px] font-bold leading-tight whitespace-nowrap overflow-hidden text-white">
                                   <span className="mr-0.5">確定</span>
@@ -1002,7 +1070,9 @@ export default function BusinessCalendar() {
                               <div
                                 key={`pending-${res.id}`}
                                 style={{ top, height, left: 3, right: 3 }}
-                                className="absolute border-2 border-dashed border-amber-500 bg-amber-50 rounded overflow-hidden pointer-events-none z-15"
+                                className="absolute border-2 border-dashed border-amber-500 bg-amber-50 rounded overflow-hidden cursor-pointer z-15"
+                                onMouseDown={(e) => { e.stopPropagation(); setSelectedPendingRes(res) }}
+                                onTouchStart={(e) => { e.stopPropagation(); setSelectedPendingRes(res) }}
                               >
                                 <div className="px-1 py-0.5 text-[9px] font-bold leading-tight whitespace-nowrap overflow-hidden text-amber-700">
                                   <span className="mr-0.5">仮</span>
@@ -1125,6 +1195,26 @@ export default function BusinessCalendar() {
                   )}
                 </div>
 
+                {selectedSlot.reservation.status === 'confirmed' && (
+                  deleteConfirmId === `cancel-${selectedSlot.reservation.id}` ? (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                      <p className="text-sm text-red-800 font-medium text-center">この予約をキャンセルしますか？</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary">
+                          戻る
+                        </button>
+                        <button onClick={() => handleCancelReservation(selectedSlot.reservation!.id, selectedSlot.id)} disabled={cancellingId === selectedSlot.reservation.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
+                          {cancellingId === selectedSlot.reservation.id ? '処理中...' : 'キャンセルする'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDeleteConfirmId(`cancel-${selectedSlot.reservation!.id}`)} disabled={cancellingId === selectedSlot.reservation.id} className="w-full bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 disabled:opacity-50">
+                      予約をキャンセル
+                    </button>
+                  )
+                )}
+
                 {completeConfirmId === selectedSlot.reservation.id ? (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
                     <p className="text-sm text-orange-800 font-medium text-center">この予約を完了にしますか？</p>
@@ -1146,6 +1236,94 @@ export default function BusinessCalendar() {
             ) : (
               <p className="text-sm text-slate-500">予約詳細を取得できませんでした</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {selectedPendingRes && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => { setSelectedPendingRes(null); setCancelPendingConfirmId(null) }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-5 pb-8 sm:pb-5 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${selectedPendingRes.status === 'confirmed' ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {selectedPendingRes.status === 'confirmed' ? '確定' : '仮申請'}
+                  </span>
+                  <p className="font-bold text-slate-800 text-base">
+                    {selectedPendingRes.start_time.slice(0, 5)}〜{selectedPendingRes.end_time.slice(0, 5)}
+                  </p>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {format(parseISO(selectedPendingRes.reservation_date), 'M月d日(E)', { locale: ja })}
+                </p>
+              </div>
+              <button onClick={() => { setSelectedPendingRes(null); setCancelPendingConfirmId(null) }} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm text-slate-700">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <p>
+                  <span className="text-slate-500">病院名/担当者:</span>{' '}
+                  {selectedPendingRes.source === 'phone'
+                    ? `電話${selectedPendingRes.caller_name ? ` / ${selectedPendingRes.caller_name}` : ''}`
+                    : `${selectedPendingRes.hospitals?.name ?? '病院未設定'} / ${selectedPendingRes.contact_name}`}
+                </p>
+                <p><span className="text-slate-500">患者名:</span> {selectedPendingRes.patient_name}</p>
+                <p>
+                  <span className="text-slate-500">機材:</span>{' '}
+                  {EQUIPMENT_LABELS[selectedPendingRes.equipment] ?? selectedPendingRes.equipment}
+                  {selectedPendingRes.equipment_rental ? ' / 貸出あり' : ''}
+                </p>
+                <p><span className="text-slate-500">同乗者数:</span> {selectedPendingRes.companion_count === 0 ? 'なし' : `${selectedPendingRes.companion_count}人`}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">患者住所</p>
+                  <a href={mapsUrl(selectedPendingRes.patient_address)} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline">
+                    {selectedPendingRes.patient_address}
+                  </a>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">行き先</p>
+                  <a href={mapsUrl(selectedPendingRes.destination)} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline">
+                    {selectedPendingRes.destination}
+                  </a>
+                </div>
+                {(selectedPendingRes.ward || selectedPendingRes.room_number) && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-0.5">病棟・病室</p>
+                    <p className="text-slate-700">{[selectedPendingRes.ward, selectedPendingRes.room_number].filter(Boolean).join(' ')}</p>
+                  </div>
+                )}
+                {selectedPendingRes.notes && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-0.5">備考</p>
+                    <p className="text-slate-700 whitespace-pre-wrap">{selectedPendingRes.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {cancelPendingConfirmId === selectedPendingRes.id ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                  <p className="text-sm text-red-800 font-medium text-center">この予約をキャンセルしますか？</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setCancelPendingConfirmId(null)} className="flex-1 btn-secondary">
+                      戻る
+                    </button>
+                    <button onClick={() => handleCancelReservation(selectedPendingRes.id)} disabled={cancellingId === selectedPendingRes.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
+                      {cancellingId === selectedPendingRes.id ? '処理中...' : 'キャンセルする'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setCancelPendingConfirmId(selectedPendingRes.id)} disabled={cancellingId === selectedPendingRes.id} className="w-full bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 disabled:opacity-50">
+                  予約をキャンセル
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
