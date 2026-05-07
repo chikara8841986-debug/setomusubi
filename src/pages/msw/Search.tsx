@@ -145,9 +145,11 @@ export default function MswSearch() {
     if (searchPrefill?.areas) return searchPrefill.areas
     try { return JSON.parse(sessionStorage.getItem(lsKey('areas')) ?? '[]') } catch { return [] }
   })
-  const [needWheelchair, setNeedWheelchair] = useState(false)
-  const [needReclining, setNeedReclining] = useState(false)
-  const [needStretcher, setNeedStretcher] = useState(false)
+  const [searchEquipment, setSearchEquipment] = useState<'wheelchair' | 'reclining_wheelchair' | 'stretcher'>(
+    (prefill?.equipment) ??
+    (sessionStorage.getItem(lsKey('equipment')) as 'wheelchair' | 'reclining_wheelchair' | 'stretcher' | null) ??
+    'wheelchair'
+  )
   const [needFemale, setNeedFemale] = useState(false)
   const [needLongDistance, setNeedLongDistance] = useState(false)
   const [needSameDay, setNeedSameDay] = useState(false)
@@ -327,9 +329,11 @@ export default function MswSearch() {
       const business = vehicle.businesses
       if (!business || !business.approved) continue
       if (areas.length > 0 && !areas.some(a => business.service_areas?.includes(a))) continue
-      if (needWheelchair && !vehicle.has_wheelchair) continue
-      if (needReclining && !vehicle.has_reclining_wheelchair) continue
-      if (needStretcher && !vehicle.has_stretcher) continue
+      // 使用機材に対応した車両のみを空き候補とする
+      const equipField = searchEquipment === 'wheelchair' ? 'has_wheelchair'
+        : searchEquipment === 'reclining_wheelchair' ? 'has_reclining_wheelchair'
+        : 'has_stretcher'
+      if (!vehicle[equipField]) continue
       if (needFemale && !business.has_female_caregiver) continue
       if (needLongDistance && !business.long_distance) continue
       if (needSameDay && !business.same_day) continue
@@ -373,6 +377,7 @@ export default function MswSearch() {
 
   const handleSelectBusiness = (business: SearchResult) => {
     setSelectedBusiness(business)
+    setForm((prev) => ({ ...prev, equipment: searchEquipment }))
     setStep(3)
   }
 
@@ -397,7 +402,12 @@ export default function MswSearch() {
     setSubmitError('')
     sessionStorage.setItem(lsKey('equipment'), form.equipment)
 
-    const vehicleId = selectedBusiness.availableVehicles.find((vehicle) => vehicle.business_id === selectedBusiness.id)?.id ?? null
+    // 最終的な機材選択に対応した車両を割り当てる
+    const finalEquipField = form.equipment === 'wheelchair' ? 'has_wheelchair'
+      : form.equipment === 'reclining_wheelchair' ? 'has_reclining_wheelchair'
+      : 'has_stretcher'
+    const vehicleId = selectedBusiness.availableVehicles
+      .find((v) => v.business_id === selectedBusiness.id && v[finalEquipField])?.id ?? null
 
     // ── 申請直前に最新の空き状況を再確認（検索後に別の予約が入った場合のダブルブッキング防止）──
     // occupied_slots（車両単位）の重複チェック
@@ -581,6 +591,7 @@ export default function MswSearch() {
                 setSelectedBusiness(null)
                 const lastEquipment =
                   (sessionStorage.getItem(lsKey('equipment')) as BookingForm['equipment'] | null) ?? 'wheelchair'
+                setSearchEquipment(lastEquipment)
                 setForm({
                   contactName: form.contactName,
                   patientName: '',
@@ -789,12 +800,30 @@ export default function MswSearch() {
             </div>
 
             <div>
-              <label className="label">条件</label>
+              <label className="label">使用機材 <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-3 gap-2">
+                {EQUIPMENT_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSearchEquipment(option.value)}
+                    className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
+                      searchEquipment === option.value
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">選択した機材に対応している車両が空いている事業所のみ表示されます</p>
+            </div>
+
+            <div>
+              <label className="label">その他のオプション</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-slate-700">
                 {[
-                  { label: '車椅子', checked: needWheelchair, onChange: setNeedWheelchair },
-                  { label: 'リクライニング', checked: needReclining, onChange: setNeedReclining },
-                  { label: 'ストレッチャー', checked: needStretcher, onChange: setNeedStretcher },
                   { label: '女性介助者', checked: needFemale, onChange: setNeedFemale },
                   { label: '長距離対応', checked: needLongDistance, onChange: setNeedLongDistance },
                   { label: '当日対応', checked: needSameDay, onChange: setNeedSameDay },
@@ -830,7 +859,8 @@ export default function MswSearch() {
               </button>
               <h2 className="text-lg font-semibold text-slate-800 mt-1">検索結果</h2>
               <p className="text-sm text-slate-500">
-                {fmtDate(date)} {startTime.slice(0, 5)}〜{endTime.slice(0, 5)}{areas.length > 0 ? ` / ${areas.join('・')}` : ''}
+                {fmtDate(date)} {startTime.slice(0, 5)}〜{endTime.slice(0, 5)} / {EQUIPMENT_OPTIONS.find(o => o.value === searchEquipment)?.label}
+                {areas.length > 0 ? ` / ${areas.join('・')}` : ''}
               </p>
             </div>
             <button
@@ -894,7 +924,7 @@ export default function MswSearch() {
                     </div>
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                       <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                        空き車両 {business.availableVehicles.length} 台
+                        {EQUIPMENT_OPTIONS.find(o => o.value === searchEquipment)?.label}対応 {business.availableVehicles.length}台空き
                       </span>
                       {business.profile_image_url && (
                         <div className="w-14 h-14 rounded-xl border border-slate-100 shadow-sm bg-slate-50 overflow-hidden flex items-center justify-center flex-shrink-0">
@@ -974,7 +1004,7 @@ export default function MswSearch() {
                 <p className="text-xs text-slate-500 mt-1">
                   {fmtDate(date)} {startTime.slice(0, 5)}〜{endTime.slice(0, 5)}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">空き車両 {selectedBusiness.availableVehicles.length} 台</p>
+                <p className="text-xs text-slate-500 mt-1">{EQUIPMENT_OPTIONS.find(o => o.value === searchEquipment)?.label}対応車 {selectedBusiness.availableVehicles.length}台空き</p>
               </div>
               <button type="button" onClick={() => setPreviewBusiness(selectedBusiness)} className="btn-secondary text-sm">
                 事業所詳細
@@ -1096,6 +1126,7 @@ export default function MswSearch() {
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-slate-400 mt-1">検索条件から自動入力されています</p>
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer">
