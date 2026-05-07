@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import OnboardingModal from './OnboardingModal'
 
 type NavItem = { to: string; label: string; icon: string }
+type AppNotif = { title: string; body: string; type: 'new_reservation' | 'approved' | 'rejected' }
 
 const NAV_BUSINESS: NavItem[] = [
   { to: '/business/calendar', label: 'カレンダー', icon: '📅' },
@@ -53,8 +54,11 @@ function AdminPendingBadge() {
 
   if (count === 0) return null
   return (
-    <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-      {count > 9 ? '9+' : count}
+    <span className="relative ml-1 inline-flex items-center justify-center">
+      <span className="absolute h-5 w-5 rounded-full bg-red-400 animate-ping opacity-60" />
+      <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+        {count > 9 ? '9+' : count}
+      </span>
     </span>
   )
 }
@@ -94,8 +98,11 @@ function PendingBadge({ businessId }: { businessId: string }) {
 
   if (count === 0) return null
   return (
-    <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-      {count > 9 ? '9+' : count}
+    <span className="relative ml-1 inline-flex items-center justify-center">
+      <span className="absolute h-5 w-5 rounded-full bg-red-400 animate-ping opacity-60" />
+      <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+        {count > 9 ? '9+' : count}
+      </span>
     </span>
   )
 }
@@ -148,8 +155,11 @@ function AdminReservationsBadge() {
 
   if (count === 0) return null
   return (
-    <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-      {count > 9 ? '9+' : count}
+    <span className="relative ml-1 inline-flex items-center justify-center">
+      <span className="absolute h-5 w-5 rounded-full bg-red-400 animate-ping opacity-60" />
+      <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+        {count > 9 ? '9+' : count}
+      </span>
     </span>
   )
 }
@@ -189,8 +199,11 @@ function MswPendingBadge({ hospitalId }: { hospitalId: string }) {
 
   if (count === 0) return null
   return (
-    <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white animate-pulse">
-      {count > 9 ? '9+' : count}
+    <span className="relative ml-1 inline-flex items-center justify-center">
+      <span className="absolute h-5 w-5 rounded-full bg-amber-400 animate-ping opacity-60" />
+      <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+        {count > 9 ? '9+' : count}
+      </span>
     </span>
   )
 }
@@ -200,6 +213,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [notif, setNotif] = useState<AppNotif | null>(null)
+  const [notifVisible, setNotifVisible] = useState(false)
+  const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showNotif = useCallback((n: AppNotif) => {
+    if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
+    setNotif(n)
+    setNotifVisible(false)
+    requestAnimationFrame(() => requestAnimationFrame(() => setNotifVisible(true)))
+    notifTimerRef.current = setTimeout(() => {
+      setNotifVisible(false)
+      setTimeout(() => setNotif(null), 350)
+    }, 6000)
+  }, [])
+
+  const closeNotif = useCallback(() => {
+    if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
+    setNotifVisible(false)
+    setTimeout(() => setNotif(null), 350)
+  }, [])
 
   const navItems = role === 'business' ? NAV_BUSINESS
     : role === 'msw' ? NAV_MSW
@@ -236,6 +269,75 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setShowOnboarding(!dismissed)
   }, [loading, onboardingRole, onboardingStorageKey, user])
 
+  useEffect(() => {
+    return () => {
+      if (notifTimerRef.current) clearTimeout(notifTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!businessId || role !== 'business') return
+    let isInitialLoad = true
+    const timer = setTimeout(() => { isInitialLoad = false }, 1500)
+    const channel = supabase
+      .channel('notif-business-' + businessId)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'reservations',
+          filter: 'business_id=eq.' + businessId,
+        },
+        (payload: Record<string, unknown>) => {
+          if (isInitialLoad) return
+          const row = payload.new as Record<string, unknown>
+          showNotif({
+            title: '新しい予約申請が届きました',
+            body: String(row.patient_name ?? '患者') + '様からの予約申請',
+            type: 'new_reservation',
+          })
+        },
+      )
+      .subscribe()
+    return () => {
+      clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
+  }, [businessId, role, showNotif])
+
+  useEffect(() => {
+    if (!hospitalId || role !== 'msw') return
+    let isInitialLoad = true
+    const timer = setTimeout(() => { isInitialLoad = false }, 1500)
+    const channel = supabase
+      .channel('notif-msw-' + hospitalId)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'reservations',
+          filter: 'hospital_id=eq.' + hospitalId,
+        },
+        (payload: Record<string, unknown>) => {
+          if (isInitialLoad) return
+          const row = payload.new as Record<string, unknown>
+          const name = String(row.patient_name ?? '患者')
+          if (row.status === 'confirmed') {
+            showNotif({ title: '予約が承認されました', body: name + '様の予約が確定しました', type: 'approved' })
+          } else if (row.status === 'rejected') {
+            showNotif({ title: '予約が却下されました', body: name + '様の予約申請が却下されました', type: 'rejected' })
+          }
+        },
+      )
+      .subscribe()
+    return () => {
+      clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
+  }, [hospitalId, role, showNotif])
+
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
@@ -253,6 +355,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       className="min-h-screen flex flex-col"
       style={{ background: 'linear-gradient(135deg, #f0f9f8 0%, #e8f5f3 50%, #f0f4ff 100%)' }}
     >
+      {notif && (
+        <div
+          className={'fixed top-4 left-1/2 z-[100] w-80 max-w-[calc(100vw-2rem)] transition-all duration-300 ' + (notifVisible ? 'opacity-100 -translate-x-1/2 translate-y-0' : 'opacity-0 -translate-x-1/2 -translate-y-3 pointer-events-none')}
+          style={{ left: '50%' }}
+        >
+          <div className={'overflow-hidden rounded-2xl border shadow-xl ' + (notif.type === 'new_reservation' ? 'border-teal-200 bg-teal-50' : notif.type === 'approved' ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
+            <div className={'h-1 w-full ' + (notif.type === 'new_reservation' ? 'bg-teal-500' : notif.type === 'approved' ? 'bg-emerald-500' : 'bg-amber-500')} />
+            <div className="flex items-start gap-3 p-4">
+              <span className="mt-0.5 text-2xl leading-none">{notif.type === 'new_reservation' ? '🔔' : notif.type === 'approved' ? '✅' : '⚠️'}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold leading-snug text-slate-800">{notif.title}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{notif.body}</p>
+              </div>
+              <button type="button" onClick={closeNotif} className="-mt-0.5 text-xl leading-none text-slate-400 hover:text-slate-600">×</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <OfflineBanner />
 
       <header
