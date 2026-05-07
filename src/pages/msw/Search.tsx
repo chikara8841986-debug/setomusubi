@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { format, parseISO } from 'date-fns'
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  format,
+  getDay,
+  isBefore,
+  parseISO,
+  startOfDay,
+  startOfMonth,
+  subMonths,
+} from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { jstDateOffsetStr, jstHour, jstTodayStr } from '../../lib/jst'
+import { jstHour, jstTodayStr } from '../../lib/jst'
 import type { AvailabilitySlot, Business, MswContact, Vehicle } from '../../types/database'
 import { SERVICE_AREAS } from '../../lib/constants'
 
@@ -94,6 +105,15 @@ function addHour(time: string, hours = 1) {
   return `${String(Math.min(h + hours, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const
+
+const TIME_SLOTS = Array.from({ length: 29 }, (_, index) => {
+  const totalMinutes = 7 * 60 + index * 30
+  const hour = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
+  const minute = String(totalMinutes % 60).padStart(2, '0')
+  return `${hour}:${minute}`
+})
+
 export default function MswSearch() {
   const { hospitalId } = useAuth()
   const { showToast } = useToast()
@@ -109,6 +129,10 @@ export default function MswSearch() {
   const today = jstTodayStr()
 
   const [date, setDate] = useState(searchPrefill?.date ?? today)
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date(date)
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
   const [startTime, setStartTime] = useState(
     searchPrefill?.startTime ?? sessionStorage.getItem(lsKey('start_time')) ?? defaultStartTime(),
   )
@@ -170,6 +194,13 @@ export default function MswSearch() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
+
+  useEffect(() => {
+    const selected = parseISO(date)
+    if (!Number.isNaN(selected.getTime())) {
+      setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1))
+    }
+  }, [date])
 
   useEffect(() => {
     if (!hospitalId) return
@@ -416,6 +447,17 @@ export default function MswSearch() {
     [favOnlyResults, favorites, results],
   )
 
+  const todayDate = useMemo(() => startOfDay(parseISO(today)), [today])
+  const calendarDays = useMemo(
+    () =>
+      eachDayOfInterval({
+        start: startOfMonth(calendarMonth),
+        end: endOfMonth(calendarMonth),
+      }),
+    [calendarMonth],
+  )
+  const calendarPadding = useMemo(() => Array.from({ length: getDay(startOfMonth(calendarMonth)) }), [calendarMonth])
+
   if (confirmed) {
     return (
       <div className="max-w-md mx-auto">
@@ -520,30 +562,135 @@ export default function MswSearch() {
           </div>
 
           <div className="card space-y-4">
-            <div className="grid grid-cols-3 gap-2">
-              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(today)}>
-                今日
-              </button>
-              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(jstDateOffsetStr(1))}>
-                明日
-              </button>
-              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(jstDateOffsetStr(2))}>
-                明後日
-              </button>
+            <div className="space-y-3">
+              <label className="label">日付</label>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCalendarMonth((current) => subMonths(current, 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-teal-300 hover:text-teal-700"
+                    aria-label="前の月"
+                  >
+                    ◀
+                  </button>
+                  <div className="text-sm font-semibold text-slate-800 sm:text-base">
+                    {format(calendarMonth, 'yyyy年M月', { locale: ja })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarMonth((current) => addMonths(current, 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-teal-300 hover:text-teal-700"
+                    aria-label="次の月"
+                  >
+                    ▶
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
+                  {WEEKDAY_LABELS.map((weekday, index) => (
+                    <div
+                      key={weekday}
+                      className={
+                        index === 0
+                          ? 'py-2 text-red-400'
+                          : index === 6
+                            ? 'py-2 text-blue-400'
+                            : 'py-2 text-slate-500'
+                      }
+                    >
+                      {weekday}
+                    </div>
+                  ))}
+
+                  {calendarPadding.map((_, index) => (
+                    <div key={`pad-${index}`} className="aspect-square rounded-xl bg-transparent" />
+                  ))}
+
+                  {calendarDays.map((day) => {
+                    const dayKey = format(day, 'yyyy-MM-dd')
+                    const isPastDate = isBefore(day, todayDate)
+                    const isToday = dayKey === today
+                    const isSelected = dayKey === date
+                    const weekday = getDay(day)
+
+                    return (
+                      <button
+                        key={dayKey}
+                        type="button"
+                        onClick={() => setDate(dayKey)}
+                        disabled={isPastDate}
+                        className={`aspect-square rounded-xl border text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'border-teal-600 bg-teal-600 text-white'
+                            : isPastDate
+                              ? 'pointer-events-none border-slate-100 bg-slate-50 text-slate-300'
+                              : isToday
+                                ? 'border-teal-300 text-slate-800 ring-2 ring-teal-200'
+                                : weekday === 0
+                                  ? 'border-slate-200 text-red-400 hover:border-teal-300 hover:text-teal-700'
+                                  : weekday === 6
+                                    ? 'border-slate-200 text-blue-400 hover:border-teal-300 hover:text-teal-700'
+                                    : 'border-slate-200 text-slate-700 hover:border-teal-300 hover:text-teal-700'
+                        }`}
+                      >
+                        {format(day, 'd')}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="label">日付</label>
-                <input type="date" className="input-base" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              <div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="space-y-2">
                 <label className="label">開始時刻</label>
-                <input type="time" className="input-base" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <div className="grid grid-cols-4 gap-2">
+                  {TIME_SLOTS.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => {
+                        setStartTime(slot)
+                        const nextSlot = TIME_SLOTS[TIME_SLOTS.indexOf(slot) + 2]
+                        if (nextSlot) setEndTime(nextSlot)
+                      }}
+                      className={`rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
+                        startTime === slot
+                          ? 'border-teal-600 bg-teal-600 text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-700'
+                      }`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div>
+
+              <div className="space-y-2">
                 <label className="label">終了時刻</label>
-                <input type="time" className="input-base" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <div className="grid grid-cols-4 gap-2">
+                  {TIME_SLOTS.map((slot) => {
+                    const disabled = slot <= startTime
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setEndTime(slot)}
+                        disabled={disabled}
+                        className={`rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
+                          endTime === slot
+                            ? 'border-teal-600 bg-teal-600 text-white'
+                            : disabled
+                              ? 'pointer-events-none border-slate-100 bg-slate-50 text-slate-300'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-700'
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
