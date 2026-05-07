@@ -593,7 +593,7 @@ export default function MswSearch() {
                 >
                   ◀
                 </button>
-                <div className="text-sm font-semibold text-slate-700">
+                <div className="text-3xl font-semibold text-slate-700">
                   {format(calendarMonth, 'yyyy年M月', { locale: ja })}
                 </div>
                 <button
