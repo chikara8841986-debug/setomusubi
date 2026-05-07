@@ -9,7 +9,7 @@ const CONTENT: Record<OnboardingRole, { steps: { icon: string; text: string }[] 
   business: {
     steps: [
       { icon: '📝', text: '「紹介・PR」ページでプロフィールと料金を入力しましょう' },
-      { icon: '📅', text: '「カレンダー」で空き枠をドラッグして登録しましょう' },
+      { icon: '📅', text: '「カレンダー」はデフォルト全時間が空きです。稼働できない時間帯だけドラッグしてブロックしましょう' },
       { icon: '✅', text: 'MSWから申請が届いたら「予約管理」で承認してください' },
     ],
   },
