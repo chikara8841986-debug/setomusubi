@@ -514,8 +514,8 @@ export default function MswSearch() {
               <button type="button" className="btn-secondary text-sm" onClick={() => setDate(jstDateOffsetStr(1))}>
                 明日
               </button>
-              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(jstDateOffsetStr(7))}>
-                1週間後
+              <button type="button" className="btn-secondary text-sm" onClick={() => setDate(jstDateOffsetStr(2))}>
+                明後日
               </button>
             </div>
 
