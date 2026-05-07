@@ -347,6 +347,129 @@ create trigger guard_reservation_columns before update on reservations
   for each row execute function public.guard_reservation_columns();
 
 -- =====================================================
+-- vehicles（事業所の車両）
+-- =====================================================
+create table if not exists vehicles (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references businesses(id) on delete cascade,
+  name text not null,
+  notes text,
+  active boolean not null default true,
+  sort_order integer not null default 0,
+  has_wheelchair boolean not null default false,
+  has_reclining_wheelchair boolean not null default false,
+  has_stretcher boolean not null default false,
+  rental_wheelchair boolean not null default false,
+  rental_reclining_wheelchair boolean not null default false,
+  rental_stretcher boolean not null default false,
+  created_at timestamptz default now() not null
+);
+
+alter table vehicles enable row level security;
+
+drop policy if exists "vehicles: business owner all" on vehicles;
+drop policy if exists "vehicles: msw read approved" on vehicles;
+create policy "vehicles: business owner all" on vehicles
+  for all using (
+    exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
+  );
+create policy "vehicles: msw read approved" on vehicles
+  for select using (
+    exists (select 1 from businesses b where b.id = business_id and b.approved = true)
+    and exists (select 1 from hospitals h where h.user_id = auth.uid())
+  );
+
+-- =====================================================
+-- occupied_slots（車両の稼働ブロック）
+-- ダブルブッキング防止: btree_gist + EXCLUDE 制約で重複時間帯を DB レベルで弾く
+-- =====================================================
+create extension if not exists "btree_gist" with schema extensions;
+
+create table if not exists occupied_slots (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid not null references vehicles(id) on delete cascade,
+  date date not null,
+  start_time time not null,
+  end_time time not null,
+  reservation_id uuid references reservations(id) on delete set null,
+  created_at timestamptz default now() not null,
+  -- 同車両・同日に重複する時間帯のスロットを DB レベルで禁止
+  constraint occupied_slots_no_overlap
+    exclude using gist (
+      vehicle_id with =,
+      date with =,
+      make_tsrange(
+        (date::text || ' ' || start_time::text)::timestamptz,
+        (date::text || ' ' || end_time::text)::timestamptz
+      ) with &&
+    )
+);
+
+-- IMMUTABLE ラッパー（EXCLUDE 制約で使うために必要）
+create or replace function make_tsrange(a timestamptz, b timestamptz)
+returns tstzrange language sql immutable as $$
+  select tstzrange(a, b, '[)')
+$$;
+
+alter table occupied_slots enable row level security;
+
+drop policy if exists "occupied_slots_owner_all" on occupied_slots;
+drop policy if exists "occupied_slots_msw_read" on occupied_slots;
+-- 事業所オーナーのみ直接操作可。MSW からの INSERT は trg_auto_create_occupied_slot で行う。
+create policy "occupied_slots_owner_all" on occupied_slots
+  for all using (
+    exists (
+      select 1 from vehicles v
+      join businesses b on b.id = v.business_id
+      where v.id = vehicle_id and b.user_id = auth.uid()
+    )
+  );
+-- MSW は参照のみ（空き検索で利用）
+create policy "occupied_slots_msw_read" on occupied_slots
+  for select using (
+    exists (select 1 from hospitals h where h.user_id = auth.uid())
+  );
+
+-- =====================================================
+-- occupied_slots 自動管理トリガー（SECURITY DEFINER で RLS を迂回）
+-- MSW が reservations に INSERT しても RLS で occupied_slots を直接触れないため、
+-- DB トリガーで自動作成・削除する。
+-- =====================================================
+
+-- 予約作成時: pending/confirmed かつ vehicle_id あり → occupied_slot を自動作成
+create or replace function auto_create_occupied_slot()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.vehicle_id is not null and new.status in ('pending', 'confirmed') then
+    insert into occupied_slots (vehicle_id, date, start_time, end_time, reservation_id)
+    values (new.vehicle_id, new.reservation_date, new.start_time, new.end_time, new.id)
+    on conflict do nothing;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_auto_create_occupied_slot on reservations;
+create trigger trg_auto_create_occupied_slot
+  after insert on reservations
+  for each row execute function auto_create_occupied_slot();
+
+-- 予約キャンセル/却下時: occupied_slot を自動削除して仮押さえを解放
+create or replace function auto_delete_occupied_slot()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.status in ('rejected', 'cancelled')
+     and old.status not in ('rejected', 'cancelled') then
+    delete from occupied_slots where reservation_id = new.id;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_auto_delete_occupied_slot on reservations;
+create trigger trg_auto_delete_occupied_slot
+  after update on reservations
+  for each row execute function auto_delete_occupied_slot();
+
+-- =====================================================
 -- Realtime
 -- =====================================================
 alter publication supabase_realtime add table availability_slots;

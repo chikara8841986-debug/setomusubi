@@ -478,17 +478,6 @@ export default function MswSearch() {
       }).catch(() => {})
     }
 
-    // 申請時点で occupied_slot を作成して仮押さえ（ダブルブッキング防止）
-    if (vehicleId && newReservation?.id) {
-      await supabase.from('occupied_slots').insert({
-        vehicle_id: vehicleId,
-        date: date,
-        start_time: startTime,
-        end_time: endTime,
-        reservation_id: newReservation.id,
-      })
-    }
-
     setConfirmed({
       cancelPhone: selectedBusiness.cancel_phone,
       businessName: selectedBusiness.name,

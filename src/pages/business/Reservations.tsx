@@ -210,8 +210,6 @@ export default function BusinessReservations() {
       setProcessing(false)
       return
     }
-    // 却下時は occupied_slot も削除（仮押さえを解放）
-    await supabase.from('occupied_slots').delete().eq('reservation_id', r.id)
     supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
     closeModal()
     setProcessing(false)
