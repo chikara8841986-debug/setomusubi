@@ -251,7 +251,10 @@ function MswPendingBadge({
           if (p.eventType === 'UPDATE') {
             const ns = String(p.new?.status ?? '')
             const os = String(p.old?.status ?? '')
-            if (os === 'pending' && (ns === 'confirmed' || ns === 'rejected')) {
+            // REPLICA IDENTITY FULL により old.status が取れる。
+            // 万一 old が空でも ns === 'confirmed'/'rejected' なら通知する
+            const wasStatusChange = os === 'pending' || os === ''
+            if (wasStatusChange && (ns === 'confirmed' || ns === 'rejected')) {
               onStatusChange?.(ns as 'confirmed' | 'rejected', String(p.new?.patient_name ?? '患者'))
               if (ns === 'confirmed') setConfirmedCount((prev) => prev + 1)
             }

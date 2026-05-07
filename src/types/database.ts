@@ -314,6 +314,7 @@ export type Database = {
           has_companion: boolean
           companion_count: number
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string

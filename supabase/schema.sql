@@ -268,8 +268,25 @@ create table if not exists reservations (
   status text not null default 'pending'
     check (status in ('pending', 'confirmed', 'completed', 'cancelled', 'rejected')),
   reminder_sent boolean not null default false,
-  created_at timestamptz default now() not null
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
 );
+
+-- Realtime の old レコードに全カラムを含める（承認通知に必要）
+alter table reservations replica identity full;
+
+-- updated_at 自動更新トリガー
+create or replace function set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+drop trigger if exists reservations_set_updated_at on reservations;
+create trigger reservations_set_updated_at
+  before update on reservations
+  for each row execute function set_updated_at();
 
 alter table reservations enable row level security;
 
