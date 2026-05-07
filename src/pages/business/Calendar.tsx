@@ -880,7 +880,7 @@ export default function BusinessCalendar() {
                   )}
                   <div>
                     <p className="text-xs text-slate-400 mb-0.5">同乗者</p>
-                    <p className="text-slate-700">{selectedSlot.reservation.has_companion ? 'あり' : 'なし'}</p>
+                    <p className="text-slate-700">{selectedSlot.reservation.companion_count === 0 ? 'なし' : `${selectedSlot.reservation.companion_count}人`}</p>
                   </div>
                   {selectedSlot.reservation.notes && (
                     <div>

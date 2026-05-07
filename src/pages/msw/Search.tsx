@@ -30,7 +30,7 @@ type BookingForm = {
   notes: string
   ward: string
   roomNumber: string
-  hasCompanion: boolean
+  companionCount: 0 | 1 | 2 | 3 | 4
 }
 
 type PrefillState = {
@@ -145,7 +145,7 @@ export default function MswSearch() {
     notes: prefill?.notes ?? '',
     ward: '',
     roomNumber: '',
-    hasCompanion: false,
+    companionCount: 0,
   })
   const [isNewContact, setIsNewContact] = useState(false)
   const [newContactName, setNewContactName] = useState('')
@@ -367,7 +367,8 @@ export default function MswSearch() {
         notes: form.notes.trim() || null,
         ward: form.ward.trim() || null,
         room_number: form.roomNumber.trim() || null,
-        has_companion: form.hasCompanion,
+        has_companion: form.companionCount > 0,
+        companion_count: form.companionCount,
         reservation_date: date,
         start_time: startTime,
         end_time: endTime,
@@ -494,7 +495,7 @@ export default function MswSearch() {
                   notes: '',
                   ward: '',
                   roomNumber: '',
-                  hasCompanion: false,
+                  companionCount: 0,
                 })
                 setNewContactName('')
                 setIsNewContact(false)
@@ -918,15 +919,20 @@ export default function MswSearch() {
                 <label className="label">同乗者</label>
                 <div className="flex gap-2">
                   {[
-                    { value: false, label: 'なし' },
-                    { value: true, label: 'あり' },
+                    { value: 0, label: 'なし' },
+                    { value: 1, label: '1人' },
+                    { value: 2, label: '2人' },
+                    { value: 3, label: '3人' },
+                    { value: 4, label: '4人' },
                   ].map(({ value, label }) => (
                     <button
                       key={label}
                       type="button"
-                      onClick={() => setForm((current) => ({ ...current, hasCompanion: value }))}
+                      onClick={() =>
+                        setForm((current) => ({ ...current, companionCount: value as BookingForm['companionCount'] }))
+                      }
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
-                        form.hasCompanion === value
+                        form.companionCount === value
                           ? 'bg-teal-600 text-white border-teal-600'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
                       }`}

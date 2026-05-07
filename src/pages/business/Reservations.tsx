@@ -628,7 +628,7 @@ export default function BusinessReservations() {
               {(selected.ward || selected.room_number) && (
                 <Row label="病棟・病室" value={[selected.ward, selected.room_number].filter(Boolean).join(' ')} />
               )}
-              <Row label="同乗者" value={selected.has_companion ? 'あり' : 'なし'} />
+              <Row label="同乗者" value={selected.companion_count === 0 ? 'なし' : `${selected.companion_count}人`} />
               {selected.notes && <Row label="備考" value={selected.notes} />}
             </dl>
 

@@ -312,6 +312,7 @@ export type Database = {
           ward: string | null
           room_number: string | null
           has_companion: boolean
+          companion_count: number
           created_at: string
         }
         Insert: {
@@ -338,6 +339,7 @@ export type Database = {
           ward?: string | null
           room_number?: string | null
           has_companion?: boolean
+          companion_count?: number
         }
         Update: {
           id?: string
@@ -363,6 +365,7 @@ export type Database = {
           ward?: string | null
           room_number?: string | null
           has_companion?: boolean
+          companion_count?: number
         }
         Relationships: []
       }
