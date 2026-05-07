@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { addDays, addWeeks, format, isBefore, parseISO, startOfDay, startOfWeek } from 'date-fns'
+import { addDays, addMonths, addWeeks, eachDayOfInterval, endOfMonth, format, getDay, isBefore, parseISO, startOfDay, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -60,11 +60,15 @@ export default function BusinessCalendar() {
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart])
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
+  const [monthStart, setMonthStart] = useState(() => startOfMonth(new Date()))
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
   const [slots, setSlots] = useState<SlotWithReservation[]>([])
+  const [monthSlots, setMonthSlots] = useState<SlotWithReservation[]>([])
   const [loading, setLoading] = useState(true)
+  const [monthLoading, setMonthLoading] = useState(false)
   const [fetchError, setFetchError] = useState(false)
   const [addingSlot, setAddingSlot] = useState(false)
 
@@ -115,6 +119,27 @@ export default function BusinessCalendar() {
 
   const slotsForDay = useCallback((date: Date) => slotsByDate.get(format(date, 'yyyy-MM-dd')) ?? [], [slotsByDate])
   const isPastDay = useCallback((date: Date) => isBefore(date, startOfDay(new Date())), [])
+  const monthSlotsByDate = useMemo(() => {
+    const grouped = new Map<string, SlotWithReservation[]>()
+    for (const slot of monthSlots) {
+      const entry = grouped.get(slot.date)
+      if (entry) {
+        entry.push(slot)
+      } else {
+        grouped.set(slot.date, [slot])
+      }
+    }
+    return grouped
+  }, [monthSlots])
+  const monthDays = useMemo(
+    () => eachDayOfInterval({ start: monthStart, end: endOfMonth(monthStart) }),
+    [monthStart],
+  )
+  const monthLeadingEmptyDays = useMemo(() => getDay(monthStart), [monthStart])
+  const monthSlotsForDay = useCallback(
+    (date: Date) => monthSlotsByDate.get(format(date, 'yyyy-MM-dd')) ?? [],
+    [monthSlotsByDate],
+  )
 
   useEffect(() => {
     if (!user) return
@@ -259,6 +284,84 @@ export default function BusinessCalendar() {
     setLoading(false)
   }, [selectedVehicleId, weekStart])
 
+  const fetchMonthSlots = useCallback(async () => {
+    if (!selectedVehicleId) {
+      setMonthSlots([])
+      setMonthLoading(false)
+      return
+    }
+
+    setMonthLoading(true)
+    setFetchError(false)
+    const from = format(monthStart, 'yyyy-MM-dd')
+    const to = format(endOfMonth(monthStart), 'yyyy-MM-dd')
+    const { data, error } = await supabase
+      .from('occupied_slots')
+      .select('*')
+      .eq('vehicle_id', selectedVehicleId)
+      .gte('date', from)
+      .lte('date', to)
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true })
+
+    if (error) {
+      setFetchError(true)
+      setMonthLoading(false)
+      return
+    }
+
+    const baseSlots = (data ?? []) as OccupiedSlot[]
+    const reservationIds = Array.from(
+      new Set(baseSlots.map((slot) => slot.reservation_id).filter(Boolean)),
+    ) as string[]
+
+    let reservationMap = new Map<string, SlotWithReservation['reservation']>()
+    if (reservationIds.length > 0) {
+      const { data: reservationRows } = await supabase
+        .from('reservations')
+        .select('*')
+        .in('id', reservationIds)
+
+      const reservations = (reservationRows ?? []) as Reservation[]
+      const hospitalIds = Array.from(
+        new Set(reservations.map((reservation) => reservation.hospital_id).filter(Boolean)),
+      ) as string[]
+
+      let hospitalMap = new Map<string, { name: string; phone: string | null }>()
+      if (hospitalIds.length > 0) {
+        const { data: hospitalRows } = await supabase
+          .from('hospitals')
+          .select('id, name, phone')
+          .in('id', hospitalIds)
+
+        hospitalMap = new Map(
+          ((hospitalRows ?? []) as Array<{ id: string; name: string; phone: string | null }>).map((hospital) => [
+            hospital.id,
+            { name: hospital.name, phone: hospital.phone },
+          ]),
+        )
+      }
+
+      reservationMap = new Map(
+        reservations.map((reservation) => [
+          reservation.id,
+          {
+            ...reservation,
+            hospitals: reservation.hospital_id ? hospitalMap.get(reservation.hospital_id) ?? null : null,
+          },
+        ]),
+      )
+    }
+
+    setMonthSlots(
+      baseSlots.map((slot) => ({
+        ...slot,
+        reservation: slot.reservation_id ? reservationMap.get(slot.reservation_id) ?? null : null,
+      })),
+    )
+    setMonthLoading(false)
+  }, [monthStart, selectedVehicleId])
+
   useEffect(() => {
     fetchVehicles()
     fetchMonthStats()
@@ -266,13 +369,18 @@ export default function BusinessCalendar() {
 
   useEffect(() => {
     fetchSlots()
+    fetchMonthSlots()
   }, [fetchSlots])
 
   useEffect(() => {
+    fetchMonthSlots()
+  }, [fetchMonthSlots])
+
+  useEffect(() => {
     if (!selectedSlot) return
-    const updated = slots.find((slot) => slot.id === selectedSlot.id)
+    const updated = [...slots, ...monthSlots].find((slot) => slot.id === selectedSlot.id)
     setSelectedSlot(updated ?? null)
-  }, [selectedSlot, slots])
+  }, [monthSlots, selectedSlot, slots])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -312,18 +420,29 @@ export default function BusinessCalendar() {
         {
           event: '*',
           schema: 'public',
+          table: 'occupied_slots',
+          filter: selectedVehicleId ? `vehicle_id=eq.${selectedVehicleId}` : undefined,
+        },
+        () => { fetchMonthSlots() },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'reservations',
           filter: `business_id=eq.${businessId}`,
         },
         () => {
           fetchSlots()
+          fetchMonthSlots()
           fetchMonthStats()
         },
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [businessId, fetchMonthStats, fetchSlots, selectedVehicleId])
+  }, [businessId, fetchMonthSlots, fetchMonthStats, fetchSlots, selectedVehicleId])
 
   const handleCellMouseDown = useCallback((dayIdx: number, slotIdx: number) => {
     if (!selectedVehicleId) return
@@ -425,6 +544,7 @@ export default function BusinessCalendar() {
     setSelectedSlot(null)
     showToast('ブロックを削除しました')
     fetchSlots()
+    fetchMonthSlots()
   }
 
   const handleComplete = async (reservationId: string) => {
@@ -526,7 +646,16 @@ export default function BusinessCalendar() {
           <p className="text-xs text-slate-400 mt-0.5">車両ごとの稼働ブロックを管理します</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button
+          {/* ビュー切り替え */}
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">
+            {(['month', 'week'] as const).map((mode) => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                className={`px-3 h-8 transition-colors ${viewMode === mode ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                {mode === 'month' ? '月' : '週'}
+              </button>
+            ))}
+          </div>
+          {viewMode === 'week' && <button
             onClick={() => {
               const defaults = [true, true, true, true, true, false, false]
               const preset = defaults.map((value, index) => {
@@ -544,19 +673,12 @@ export default function BusinessCalendar() {
             className="px-3 h-8 rounded-lg border border-teal-200 bg-teal-50 text-xs text-teal-600 hover:bg-teal-100 font-medium disabled:opacity-50"
           >
             週次設定
-          </button>
-          <button onClick={() => setWeekStart((current) => addDays(current, -7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">
-            ‹
-          </button>
-          <button
-            onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-            className="px-3 h-8 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            今週
-          </button>
-          <button onClick={() => setWeekStart((current) => addDays(current, 7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">
-            ›
-          </button>
+          </button>}
+          {viewMode === 'week' && <>
+            <button onClick={() => setWeekStart((current) => addDays(current, -7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">‹</button>
+            <button onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} className="px-3 h-8 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50">今週</button>
+            <button onClick={() => setWeekStart((current) => addDays(current, 7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">›</button>
+          </>}
         </div>
       </div>
 
@@ -619,6 +741,68 @@ export default function BusinessCalendar() {
 
       {vehicles.length > 0 && selectedVehicle && (
         <>
+          {/* ── 月ビュー ── */}
+          {viewMode === 'month' && (
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-3">
+              {/* 月ナビ */}
+              <div className="flex items-center justify-between mb-2">
+                <button onClick={() => setMonthStart(prev => subMonths(prev, 1))}
+                  className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-teal-300 hover:text-teal-700 text-xs">◀</button>
+                <span className="text-base font-bold text-slate-700">
+                  {format(monthStart, 'yyyy年M月', { locale: ja })}
+                </span>
+                <button onClick={() => setMonthStart(prev => addMonths(prev, 1))}
+                  className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-teal-300 hover:text-teal-700 text-xs">▶</button>
+              </div>
+              {/* 曜日ヘッダー */}
+              <div className="grid grid-cols-7 gap-0.5 text-center text-xs font-medium mb-0.5">
+                {['日','月','火','水','木','金','土'].map((w, i) => (
+                  <div key={w} className={`py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-slate-400'}`}>{w}</div>
+                ))}
+              </div>
+              {/* 日グリッド */}
+              <div className="grid grid-cols-7 gap-0.5">
+                {Array.from({ length: monthLeadingEmptyDays }).map((_, i) => (
+                  <div key={`pad-${i}`} className="min-h-[70px]" />
+                ))}
+                {monthDays.map((day) => {
+                  const dateStr = format(day, 'yyyy-MM-dd')
+                  const todayFlag = isTodayJST(dateStr)
+                  const past = isBefore(day, startOfDay(new Date()))
+                  const dow = day.getDay()
+                  const dayEntries = monthSlotsForDay(day)
+                  return (
+                    <div key={dateStr}
+                      className={`min-h-[70px] rounded-lg p-1 border text-xs ${todayFlag ? 'border-teal-300 bg-teal-50' : past ? 'border-slate-100 bg-slate-50' : 'border-slate-100 bg-white'}`}>
+                      <p className={`text-right font-bold mb-0.5 ${todayFlag ? 'text-teal-600' : past ? 'text-slate-300' : dow===0 ? 'text-red-400' : dow===6 ? 'text-blue-400' : 'text-slate-700'}`}>
+                        {format(day, 'd')}
+                      </p>
+                      {monthLoading ? (
+                        <div className="h-3 bg-slate-100 rounded animate-pulse mt-1" />
+                      ) : (
+                        <>
+                          {dayEntries.slice(0, 3).map((slot) => (
+                            <button key={slot.id} type="button"
+                              onClick={() => setSelectedSlot(slot)}
+                              className={`w-full text-left rounded px-1 py-0.5 mb-0.5 truncate leading-tight ${slot.reservation_id ? 'bg-teal-100 text-teal-800 hover:bg-teal-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                              {slot.start_time.slice(0,5)}
+                              {slot.reservation ? ` ${slot.reservation.patient_name}` : ' ブロック'}
+                            </button>
+                          ))}
+                          {dayEntries.length > 3 && (
+                            <p className="text-[10px] text-slate-400 text-right">+{dayEntries.length - 3}件</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── 週ビュー ── */}
+          {viewMode === 'week' && <>
           <p className="text-xs text-slate-400 mb-2 text-center">
             {selectedVehicle.name} / {format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 {format(addDays(weekStart, 6), 'M月d日', { locale: ja })}
           </p>
@@ -798,6 +982,7 @@ export default function BusinessCalendar() {
               </div>
             </div>
           )}
+          </>} {/* end viewMode === 'week' */}
         </>
       )}
 
