@@ -354,9 +354,11 @@ export default function MswBusinesses() {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <button
                           onClick={() => setPreview(biz)}
-                          className="font-semibold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
+                          title="詳細を見る"
+                          className="font-semibold text-teal-700 hover:underline transition-colors text-left leading-snug inline-flex items-center gap-1"
                         >
-                          {biz.name}
+                          <span>{biz.name}</span>
+                          <span className="text-teal-500" aria-hidden="true">›</span>
                         </button>
                         {availCheck && !checkingAvail && (
                           availMap[biz.id]
