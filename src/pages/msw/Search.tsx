@@ -107,12 +107,8 @@ function addHour(time: string, hours = 1) {
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const
 
-const TIME_SLOTS = Array.from({ length: 29 }, (_, index) => {
-  const totalMinutes = 7 * 60 + index * 30
-  const hour = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
-  const minute = String(totalMinutes % 60).padStart(2, '0')
-  return `${hour}:${minute}`
-})
+const HOUR_OPTIONS = Array.from({ length: 15 }, (_, index) => String(index + 7).padStart(2, '0'))
+const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'))
 
 export default function MswSearch() {
   const { hospitalId } = useAuth()
@@ -139,6 +135,12 @@ export default function MswSearch() {
   const [endTime, setEndTime] = useState(
     searchPrefill?.endTime ?? sessionStorage.getItem(lsKey('end_time')) ?? addHour(defaultStartTime()),
   )
+  const [initStartHour, initStartMinute] = startTime.split(':')
+  const [initEndHour, initEndMinute] = endTime.split(':')
+  const [startHour, setStartHour] = useState(initStartHour)
+  const [startMinute, setStartMinute] = useState(initStartMinute)
+  const [endHour, setEndHour] = useState(initEndHour)
+  const [endMinute, setEndMinute] = useState(initEndMinute)
   const [area, setArea] = useState(searchPrefill?.area ?? sessionStorage.getItem(lsKey('area')) ?? '')
   const [needWheelchair, setNeedWheelchair] = useState(false)
   const [needReclining, setNeedReclining] = useState(false)
@@ -186,6 +188,25 @@ export default function MswSearch() {
     equipment: string
     contactName: string
   } | null>(null)
+  const hasEndTimeError = endTime <= startTime
+
+  const syncEndTime = (hour: string, minute: string) => {
+    setEndHour(hour)
+    setEndMinute(minute)
+    setEndTime(`${hour}:${minute}`)
+  }
+
+  const syncStartTime = (hour: string, minute: string) => {
+    const newStartTime = `${hour}:${minute}`
+    setStartHour(hour)
+    setStartMinute(minute)
+    setStartTime(newStartTime)
+
+    if (endTime <= newStartTime) {
+      const nextHour = String(Math.min(parseInt(hour, 10) + 1, 21)).padStart(2, '0')
+      syncEndTime(nextHour, minute)
+    }
+  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -645,52 +666,75 @@ export default function MswSearch() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="space-y-2">
                 <label className="label">開始時刻</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {TIME_SLOTS.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => {
-                        setStartTime(slot)
-                        const nextSlot = TIME_SLOTS[TIME_SLOTS.indexOf(slot) + 2]
-                        if (nextSlot) setEndTime(nextSlot)
-                      }}
-                      className={`rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
-                        startTime === slot
-                          ? 'border-teal-600 bg-teal-600 text-white'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-700'
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex items-center gap-2">
+                      <select
+                        className="input-base"
+                        value={startHour}
+                        onChange={(e) => syncStartTime(e.target.value, startMinute)}
+                      >
+                        {HOUR_OPTIONS.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {hour}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-slate-700">時</span>
+                    </div>
+                    <div className="inline-flex items-center gap-2">
+                      <select
+                        className="input-base"
+                        value={startMinute}
+                        onChange={(e) => syncStartTime(startHour, e.target.value)}
+                      >
+                        {MINUTE_OPTIONS.map((minute) => (
+                          <option key={minute} value={minute}>
+                            {minute}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-slate-700">分</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <label className="label">終了時刻</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {TIME_SLOTS.map((slot) => {
-                    const disabled = slot <= startTime
-                    return (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setEndTime(slot)}
-                        disabled={disabled}
-                        className={`rounded-lg border px-2 py-2 text-sm font-medium transition-colors ${
-                          endTime === slot
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : disabled
-                              ? 'pointer-events-none border-slate-100 bg-slate-50 text-slate-300'
-                              : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-700'
-                        }`}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex items-center gap-2">
+                      <select
+                        className="input-base"
+                        value={endHour}
+                        onChange={(e) => syncEndTime(e.target.value, endMinute)}
                       >
-                        {slot}
-                      </button>
-                    )
-                  })}
+                        {HOUR_OPTIONS.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {hour}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-slate-700">時</span>
+                    </div>
+                    <div className="inline-flex items-center gap-2">
+                      <select
+                        className="input-base"
+                        value={endMinute}
+                        onChange={(e) => syncEndTime(endHour, e.target.value)}
+                      >
+                        {MINUTE_OPTIONS.map((minute) => (
+                          <option key={minute} value={minute}>
+                            {minute}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-slate-700">分</span>
+                    </div>
+                  </div>
                 </div>
+                {hasEndTimeError && <p className="text-sm text-red-600">終了時刻は開始時刻より後にしてください</p>}
               </div>
             </div>
 
