@@ -536,14 +536,25 @@ export default function MswSearch() {
 
             <div>
               <label className="label">対応エリア</label>
-              <select className="input-base" value={area} onChange={(e) => setArea(e.target.value)}>
-                <option value="">選択してください</option>
+              <div className="grid grid-cols-3 gap-1.5 mt-1">
                 {SERVICE_AREAS.map((serviceArea) => (
-                  <option key={serviceArea} value={serviceArea}>
+                  <button
+                    key={serviceArea}
+                    type="button"
+                    onClick={() => setArea(a => a === serviceArea ? '' : serviceArea)}
+                    className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      area === serviceArea
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300 hover:text-teal-700'
+                    }`}
+                  >
                     {serviceArea}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
+              {!area && (
+                <p className="text-xs text-slate-400 mt-1">エリアをタップして選択（もう一度タップで解除）</p>
+              )}
             </div>
 
             <div>
