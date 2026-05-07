@@ -251,19 +251,19 @@ export default function MswBusinesses() {
         </div>
         <div>
           <label className="label">エリア</label>
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+          <div className="grid grid-cols-3 gap-1.5 mt-1">
             <button
               onClick={() => setAreaFilter('')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors flex-shrink-0 ${
-                areaFilter === '' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+              className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                areaFilter === '' ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300 hover:text-teal-700'
               }`}
             >すべて</button>
             {SERVICE_AREAS.map(a => (
               <button
                 key={a}
                 onClick={() => setAreaFilter(a === areaFilter ? '' : a)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors flex-shrink-0 ${
-                  areaFilter === a ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  areaFilter === a ? 'bg-teal-600 text-white border-teal-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300 hover:text-teal-700'
                 }`}
               >{a}</button>
             ))}
