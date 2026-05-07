@@ -1,24 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { addDays, addMonths, addWeeks, eachDayOfInterval, endOfMonth, format, getDay, isBefore, parseISO, startOfDay, startOfMonth, startOfWeek, subMonths } from 'date-fns'
+import { addDays, addMonths, eachDayOfInterval, endOfMonth, format, getDay, isBefore, parseISO, startOfDay, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { isTodayJST, jstMonthLabel, jstMonthRange, jstTodayStr } from '../../lib/jst'
+import { isTodayJST, jstMonthLabel, jstMonthRange } from '../../lib/jst'
 import type { Business, OccupiedSlot, Reservation, Vehicle } from '../../types/database'
 
 const GRID_START = 6
 const GRID_END = 22
 const TOTAL_SLOTS = (GRID_END - GRID_START) * 2
 const CELL_H = 28
-
-const DAY_LABELS = ['月', '火', '水', '木', '金', '土', '日']
-const QUICK_TIMES = [
-  { label: '午前', start: '09:00', end: '12:00' },
-  { label: '午後', start: '13:00', end: '17:00' },
-  { label: '終日', start: '09:00', end: '18:00' },
-]
 
 const EQUIPMENT_LABELS: Record<string, string> = {
   wheelchair: '車椅子',
@@ -60,7 +53,7 @@ export default function BusinessCalendar() {
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart])
-  const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('week')
   const [monthStart, setMonthStart] = useState(() => startOfMonth(new Date()))
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -83,14 +76,8 @@ export default function BusinessCalendar() {
   const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
 
-  const [showRecurModal, setShowRecurModal] = useState(false)
-  const [recurDays, setRecurDays] = useState<boolean[]>([true, true, true, true, true, false, false])
-  const [recurStart, setRecurStart] = useState('09:00')
-  const [recurEnd, setRecurEnd] = useState('18:00')
-  const [recurWeeks, setRecurWeeks] = useState(4)
-  const [recurSaving, setRecurSaving] = useState(false)
-  const [recurResult, setRecurResult] = useState<{ added: number; skipped: number } | null>(null)
-  const [recurError, setRecurError] = useState('')
+  const [pendingReservations, setPendingReservations] = useState<Reservation[]>([])
+  const [monthPendingReservations, setMonthPendingReservations] = useState<Reservation[]>([])
 
   const dragRef = useRef<DragState | null>(null)
   const isDraggingRef = useRef(false)
@@ -136,6 +123,10 @@ export default function BusinessCalendar() {
     [monthStart],
   )
   const monthLeadingEmptyDays = useMemo(() => getDay(monthStart), [monthStart])
+  const monthTrailingEmptyDays = useMemo(
+    () => (7 - ((monthLeadingEmptyDays + monthDays.length) % 7)) % 7,
+    [monthDays.length, monthLeadingEmptyDays],
+  )
   const monthSlotsForDay = useCallback(
     (date: Date) => monthSlotsByDate.get(format(date, 'yyyy-MM-dd')) ?? [],
     [monthSlotsByDate],
@@ -362,6 +353,34 @@ export default function BusinessCalendar() {
     setMonthLoading(false)
   }, [monthStart, selectedVehicleId])
 
+  const fetchPendingReservations = useCallback(async () => {
+    if (!businessId) return
+    const from = format(weekStart, 'yyyy-MM-dd')
+    const to = format(addDays(weekStart, 6), 'yyyy-MM-dd')
+    const { data } = await supabase
+      .from('reservations')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('status', 'pending')
+      .gte('reservation_date', from)
+      .lte('reservation_date', to)
+    setPendingReservations((data ?? []) as Reservation[])
+  }, [businessId, weekStart])
+
+  const fetchMonthPendingReservations = useCallback(async () => {
+    if (!businessId) return
+    const from = format(monthStart, 'yyyy-MM-dd')
+    const to = format(endOfMonth(monthStart), 'yyyy-MM-dd')
+    const { data } = await supabase
+      .from('reservations')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('status', 'pending')
+      .gte('reservation_date', from)
+      .lte('reservation_date', to)
+    setMonthPendingReservations((data ?? []) as Reservation[])
+  }, [businessId, monthStart])
+
   useEffect(() => {
     fetchVehicles()
     fetchMonthStats()
@@ -369,12 +388,13 @@ export default function BusinessCalendar() {
 
   useEffect(() => {
     fetchSlots()
-    fetchMonthSlots()
-  }, [fetchSlots])
+    fetchPendingReservations()
+  }, [fetchSlots, fetchPendingReservations])
 
   useEffect(() => {
     fetchMonthSlots()
-  }, [fetchMonthSlots])
+    fetchMonthPendingReservations()
+  }, [fetchMonthSlots, fetchMonthPendingReservations])
 
   useEffect(() => {
     if (!selectedSlot) return
@@ -388,17 +408,16 @@ export default function BusinessCalendar() {
         setSelectedSlot(null)
         setDeleteConfirmId(null)
         setCompleteConfirmId(null)
-        setShowRecurModal(false)
       }
       const tag = (e.target as HTMLElement).tagName
-      if (showRecurModal || selectedSlot) return
+      if (selectedSlot) return
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.key === 'ArrowLeft') setWeekStart((current) => addDays(current, -7))
       if (e.key === 'ArrowRight') setWeekStart((current) => addDays(current, 7))
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [selectedSlot, showRecurModal])
+  }, [selectedSlot])
 
   useEffect(() => {
     if (!businessId) return
@@ -437,12 +456,14 @@ export default function BusinessCalendar() {
           fetchSlots()
           fetchMonthSlots()
           fetchMonthStats()
+          fetchPendingReservations()
+          fetchMonthPendingReservations()
         },
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [businessId, fetchMonthSlots, fetchMonthStats, fetchSlots, selectedVehicleId])
+  }, [businessId, fetchMonthSlots, fetchMonthStats, fetchSlots, fetchPendingReservations, fetchMonthPendingReservations, selectedVehicleId])
 
   const handleCellMouseDown = useCallback((dayIdx: number, slotIdx: number) => {
     if (!selectedVehicleId) return
@@ -564,80 +585,6 @@ export default function BusinessCalendar() {
     fetchMonthStats()
   }
 
-  const handleRecurAdd = async () => {
-    if (!selectedVehicleId) return
-    if (recurStart >= recurEnd) {
-      setRecurError('終了時刻は開始時刻より後にしてください')
-      return
-    }
-    if (!recurDays.some(Boolean)) {
-      setRecurError('曜日を1つ以上選択してください')
-      return
-    }
-
-    setRecurSaving(true)
-    setRecurError('')
-    setRecurResult(null)
-
-    const today = parseISO(jstTodayStr())
-    const datesToAdd: string[] = []
-    for (let week = 0; week < recurWeeks; week += 1) {
-      for (let dayIdx = 0; dayIdx < 7; dayIdx += 1) {
-        if (!recurDays[dayIdx]) continue
-        const monday = startOfWeek(addWeeks(today, week), { weekStartsOn: 1 })
-        const date = addDays(monday, dayIdx)
-        if (isBefore(date, today)) continue
-        datesToAdd.push(format(date, 'yyyy-MM-dd'))
-      }
-    }
-
-    if (datesToAdd.length === 0) {
-      setRecurSaving(false)
-      setRecurError('追加対象の日付がありません')
-      return
-    }
-
-    const { data: existingRows, error: existingError } = await supabase
-      .from('occupied_slots')
-      .select('date, start_time, end_time')
-      .eq('vehicle_id', selectedVehicleId)
-      .in('date', datesToAdd)
-      .eq('start_time', recurStart)
-      .eq('end_time', recurEnd)
-
-    if (existingError) {
-      setRecurSaving(false)
-      setRecurError('既存ブロックの確認に失敗しました')
-      return
-    }
-
-    const existingKeys = new Set(((existingRows ?? []) as Array<{ date: string }>).map((row) => row.date))
-    const newDates = datesToAdd.filter((date) => !existingKeys.has(date))
-    const skipped = datesToAdd.length - newDates.length
-
-    if (newDates.length > 0) {
-      const rows = newDates.map((date) => ({
-        vehicle_id: selectedVehicleId,
-        date,
-        start_time: recurStart,
-        end_time: recurEnd,
-        reservation_id: null,
-      }))
-
-      const { error } = await supabase.from('occupied_slots').insert(rows)
-      if (error) {
-        setRecurSaving(false)
-        setRecurError('一括追加に失敗しました')
-        return
-      }
-    }
-
-    setRecurSaving(false)
-    setRecurResult({ added: newDates.length, skipped })
-    if (newDates.length > 0) showToast(`${newDates.length}件のブロックを追加しました`)
-    fetchSlots()
-  }
-
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -646,42 +593,38 @@ export default function BusinessCalendar() {
           <p className="text-xs text-slate-400 mt-0.5">車両ごとの稼働ブロックを管理します</p>
         </div>
         <div className="flex items-center gap-1.5">
-          {/* ビュー切り替え */}
           <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">
             {(['month', 'week'] as const).map((mode) => (
-              <button key={mode} onClick={() => setViewMode(mode)}
-                className={`px-3 h-8 transition-colors ${viewMode === mode ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
-                {mode === 'month' ? '月' : '週'}
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                className={`px-3 h-8 transition-colors ${
+                  viewMode === mode ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {mode === 'month' ? '月表示' : '週表示'}
               </button>
             ))}
           </div>
-          {viewMode === 'week' && <button
-            onClick={() => {
-              const defaults = [true, true, true, true, true, false, false]
-              const preset = defaults.map((value, index) => {
-                const jsDay = index < 6 ? index + 1 : 0
-                return closedDays.includes(jsDay) ? false : value
-              })
-              setRecurDays(preset)
-              setRecurStart(bizHoursStart)
-              setRecurEnd(bizHoursEnd)
-              setShowRecurModal(true)
-              setRecurResult(null)
-              setRecurError('')
-            }}
-            disabled={!selectedVehicleId}
-            className="px-3 h-8 rounded-lg border border-teal-200 bg-teal-50 text-xs text-teal-600 hover:bg-teal-100 font-medium disabled:opacity-50"
-          >
-            週次設定
-          </button>}
-          {viewMode === 'week' && <>
-            <button onClick={() => setWeekStart((current) => addDays(current, -7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">‹</button>
-            <button onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} className="px-3 h-8 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50">今週</button>
-            <button onClick={() => setWeekStart((current) => addDays(current, 7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">›</button>
-          </>}
+          {viewMode === 'week' && (
+            <>
+              <button onClick={() => setWeekStart((current) => addDays(current, -7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">
+                ◀
+              </button>
+              <button
+                onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+                className="px-3 h-8 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                莉企ｱ
+              </button>
+              <button onClick={() => setWeekStart((current) => addDays(current, 7))} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-sm">
+                ▶
+              </button>
+            </>
+          )}
         </div>
       </div>
-
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
           { label: `${jstMonthLabel()}確定`, value: monthStats.confirmed, color: 'text-teal-600', href: monthStats.confirmed > 0 ? '/business/reservations' : null, activeClass: 'border-teal-200 hover:bg-teal-50' },
@@ -741,68 +684,133 @@ export default function BusinessCalendar() {
 
       {vehicles.length > 0 && selectedVehicle && (
         <>
-          {/* ── 月ビュー ── */}
-          {viewMode === 'month' && (
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-3">
-              {/* 月ナビ */}
-              <div className="flex items-center justify-between mb-2">
-                <button onClick={() => setMonthStart(prev => subMonths(prev, 1))}
-                  className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-teal-300 hover:text-teal-700 text-xs">◀</button>
-                <span className="text-base font-bold text-slate-700">
-                  {format(monthStart, 'yyyy年M月', { locale: ja })}
-                </span>
-                <button onClick={() => setMonthStart(prev => addMonths(prev, 1))}
-                  className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:border-teal-300 hover:text-teal-700 text-xs">▶</button>
+          {viewMode === 'month' ? (
+            <>
+              <div className="mb-3 flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setMonthStart((current) => subMonths(current, 1))}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                >
+                  ◀
+                </button>
+                <div className="text-center">
+                  <p className="text-xs text-slate-400">{selectedVehicle.name}</p>
+                  <h2 className="text-xl font-bold text-slate-800">{format(monthStart, 'yyyy年M月')}</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMonthStart((current) => addMonths(current, 1))}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                >
+                  ▶
+                </button>
               </div>
-              {/* 曜日ヘッダー */}
-              <div className="grid grid-cols-7 gap-0.5 text-center text-xs font-medium mb-0.5">
-                {['日','月','火','水','木','金','土'].map((w, i) => (
-                  <div key={w} className={`py-1 ${i===0?'text-red-400':i===6?'text-blue-400':'text-slate-400'}`}>{w}</div>
-                ))}
-              </div>
-              {/* 日グリッド */}
-              <div className="grid grid-cols-7 gap-0.5">
-                {Array.from({ length: monthLeadingEmptyDays }).map((_, i) => (
-                  <div key={`pad-${i}`} className="min-h-[70px]" />
-                ))}
-                {monthDays.map((day) => {
-                  const dateStr = format(day, 'yyyy-MM-dd')
-                  const todayFlag = isTodayJST(dateStr)
-                  const past = isBefore(day, startOfDay(new Date()))
-                  const dow = day.getDay()
-                  const dayEntries = monthSlotsForDay(day)
-                  return (
-                    <div key={dateStr}
-                      className={`min-h-[70px] rounded-lg p-1 border text-xs ${todayFlag ? 'border-teal-300 bg-teal-50' : past ? 'border-slate-100 bg-slate-50' : 'border-slate-100 bg-white'}`}>
-                      <p className={`text-right font-bold mb-0.5 ${todayFlag ? 'text-teal-600' : past ? 'text-slate-300' : dow===0 ? 'text-red-400' : dow===6 ? 'text-blue-400' : 'text-slate-700'}`}>
-                        {format(day, 'd')}
-                      </p>
-                      {monthLoading ? (
-                        <div className="h-3 bg-slate-100 rounded animate-pulse mt-1" />
-                      ) : (
-                        <>
-                          {dayEntries.slice(0, 3).map((slot) => (
-                            <button key={slot.id} type="button"
-                              onClick={() => setSelectedSlot(slot)}
-                              className={`w-full text-left rounded px-1 py-0.5 mb-0.5 truncate leading-tight ${slot.reservation_id ? 'bg-teal-100 text-teal-800 hover:bg-teal-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                              {slot.start_time.slice(0,5)}
-                              {slot.reservation ? ` ${slot.reservation.patient_name}` : ' ブロック'}
-                            </button>
-                          ))}
-                          {dayEntries.length > 3 && (
-                            <p className="text-[10px] text-slate-400 text-right">+{dayEntries.length - 3}件</p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
 
-          {/* ── 週ビュー ── */}
-          {viewMode === 'week' && <>
+              {monthLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <span className="spinner" />
+                  <p className="text-sm text-slate-400">読み込み中...</p>
+                </div>
+              ) : fetchError ? (
+                <div className="card text-center py-8">
+                  <div className="text-3xl mb-2">!</div>
+                  <p className="text-slate-500 text-sm mb-3">データの取得に失敗しました</p>
+                  <button onClick={fetchMonthSlots} className="btn-secondary text-sm">
+                    再読み込み
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
+                  <div className="grid grid-cols-7 border-b border-slate-200">
+                    {['日', '月', '火', '水', '木', '金', '土'].map((label, index) => (
+                      <div
+                        key={label}
+                        className={`border-r border-slate-100 py-2 text-center text-sm font-medium last:border-r-0 ${
+                          index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-slate-500'
+                        }`}
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7">
+                    {Array.from({ length: monthLeadingEmptyDays }).map((_, index) => (
+                      <div key={`empty-start-${index}`} className="min-h-[80px] border-r border-b border-slate-100 bg-slate-50/40 last:border-r-0" />
+                    ))}
+                    {monthDays.map((date) => {
+                      const dateStr = format(date, 'yyyy-MM-dd')
+                      const todayFlag = isTodayJST(dateStr)
+                      const past = isPastDay(date)
+                      const dow = date.getDay()
+                      const isSun = dow === 0
+                      const isSat = dow === 6
+                      const daySlots = monthSlotsForDay(date)
+                      const dayPending = monthPendingReservations.filter(
+                        (r) => r.reservation_date === dateStr && !daySlots.some((s) => s.reservation_id === r.id)
+                      )
+                      const visibleSlots = daySlots.slice(0, 3)
+                      const overflowCount = daySlots.length - visibleSlots.length
+                      return (
+                        <div
+                          key={dateStr}
+                          className={`min-h-[80px] border-r border-b border-slate-100 p-2 last:border-r-0 ${
+                            todayFlag
+                              ? 'bg-teal-50 border-teal-300'
+                              : past
+                                ? 'bg-slate-50'
+                                : 'bg-white'
+                          }`}
+                        >
+                          <div
+                            className={`mb-1 text-sm font-bold leading-none ${
+                              todayFlag
+                                ? 'text-teal-600'
+                                : isSun
+                                  ? 'text-red-500'
+                                  : isSat
+                                    ? 'text-blue-500'
+                                    : 'text-slate-700'
+                            }`}
+                          >
+                            {format(date, 'd')}
+                          </div>
+                          <div className="space-y-1">
+                            {visibleSlots.map((slot) => (
+                              <button
+                                key={slot.id}
+                                type="button"
+                                onClick={() => setSelectedSlot(slot)}
+                                className={`block w-full truncate rounded-full px-2 py-1 text-left text-xs ${
+                                  slot.reservation_id
+                                    ? 'bg-teal-100 text-teal-800 hover:bg-teal-200'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                }`}
+                              >
+                                {slot.start_time.slice(0, 5)}〜{slot.end_time.slice(0, 5)} {slot.reservation_id ? slot.reservation?.patient_name ?? '' : 'ブロック'}
+                              </button>
+                            ))}
+                            {dayPending.map((res) => (
+                              <div key={`p-${res.id}`} className="block w-full truncate rounded-full px-2 py-1 text-xs bg-amber-100 text-amber-700 border border-dashed border-amber-400">
+                                仮 {res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)} {res.patient_name}
+                              </div>
+                            ))}
+                            {overflowCount > 0 && (
+                              <div className="px-1 text-xs text-slate-400">+{overflowCount}件</div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {Array.from({ length: monthTrailingEmptyDays }).map((_, index) => (
+                      <div key={`empty-end-${index}`} className="min-h-[80px] border-r border-b border-slate-100 bg-slate-50/40 last:border-r-0" />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
           <p className="text-xs text-slate-400 mb-2 text-center">
             {selectedVehicle.name} / {format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 {format(addDays(weekStart, 6), 'M月d日', { locale: ja })}
           </p>
@@ -964,6 +972,28 @@ export default function BusinessCalendar() {
                           )
                         })}
 
+                        {pendingReservations
+                          .filter((res) => res.reservation_date === dateStr && !slots.some((s) => s.reservation_id === res.id))
+                          .map((res) => {
+                            const startSlot = timeToSlot(res.start_time)
+                            const endSlot = timeToSlot(res.end_time)
+                            const top = startSlot * CELL_H + 1
+                            const height = Math.max((endSlot - startSlot) * CELL_H - 2, 6)
+                            return (
+                              <div
+                                key={`pending-${res.id}`}
+                                style={{ top, height, left: 3, right: 3 }}
+                                className="absolute border-2 border-dashed border-amber-500 bg-amber-50 rounded overflow-hidden pointer-events-none z-15"
+                              >
+                                <div className="px-1 py-0.5 text-[9px] font-bold leading-tight whitespace-nowrap overflow-hidden text-amber-700">
+                                  <span className="mr-0.5">仮</span>
+                                  <span>{res.start_time.slice(0, 5)}〜{res.end_time.slice(0, 5)}</span>
+                                  <span className="ml-1 font-normal opacity-80">{res.patient_name}</span>
+                                </div>
+                              </div>
+                            )
+                          })}
+
                         {drag?.dayIdx === dayIdx && (() => {
                           const startSlot = Math.min(drag.startSlot, drag.endSlot)
                           const endSlot = Math.max(drag.startSlot, drag.endSlot) + 1
@@ -982,7 +1012,8 @@ export default function BusinessCalendar() {
               </div>
             </div>
           )}
-          </>} {/* end viewMode === 'week' */}
+            </>
+          )}
         </>
       )}
 
@@ -1100,116 +1131,6 @@ export default function BusinessCalendar() {
         </div>
       )}
 
-      {showRecurModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-5 pb-8 sm:pb-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-800">週次ブロック設定</h3>
-              <button onClick={() => setShowRecurModal(false)} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">
-                ×
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 mb-4">
-              {selectedVehicle?.name} に対して、曜日と時間帯をまとめて登録します。
-            </p>
-
-            <div className="mb-4">
-              <p className="label mb-2">対象曜日</p>
-              <div className="flex gap-1.5">
-                {DAY_LABELS.map((label, index) => {
-                  const jsDay = index < 6 ? index + 1 : 0
-                  const isClosed = closedDays.includes(jsDay)
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => setRecurDays((current) => current.map((value, currentIndex) => (currentIndex === index ? !value : value)))}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
-                        recurDays[index]
-                          ? 'bg-teal-600 text-white border-teal-600'
-                          : isClosed
-                            ? 'bg-red-50 text-red-300 border-red-200'
-                            : 'bg-slate-50 text-slate-400 border-slate-200'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <p className="label mb-1.5">クイック選択</p>
-              <div className="flex gap-2 mb-3 flex-wrap">
-                {[{ label: '営業時間', start: bizHoursStart, end: bizHoursEnd }, ...QUICK_TIMES]
-                  .filter((item, index, array) => index === 0 || !(item.start === array[0].start && item.end === array[0].end))
-                  .map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => { setRecurStart(item.start); setRecurEnd(item.end) }}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                        recurStart === item.start && recurEnd === item.end
-                          ? 'bg-teal-600 text-white border-teal-600'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">開始時刻</label>
-                  <input type="time" className="input-base" value={recurStart} onChange={(e) => setRecurStart(e.target.value)} />
-                </div>
-                <div>
-                  <label className="label">終了時刻</label>
-                  <input type="time" className="input-base" value={recurEnd} onChange={(e) => setRecurEnd(e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="label">追加する週数</label>
-              <div className="flex gap-2">
-                {[2, 4, 8, 12].map((weeks) => (
-                  <button
-                    key={weeks}
-                    type="button"
-                    onClick={() => setRecurWeeks(weeks)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                      recurWeeks === weeks
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
-                    }`}
-                  >
-                    {weeks}週
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {recurError && <p className="text-xs text-red-600 mb-2">{recurError}</p>}
-
-            {recurResult && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3 text-xs text-green-800">
-                追加 {recurResult.added} 件 / スキップ {recurResult.skipped} 件
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button className="btn-secondary flex-1" onClick={() => setShowRecurModal(false)}>
-                閉じる
-              </button>
-              <button className="btn-primary flex-1" onClick={handleRecurAdd} disabled={recurSaving}>
-                {recurSaving ? '追加中...' : '一括追加'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
