@@ -340,7 +340,7 @@ export default function BusinessIntroduction() {
         {data.pricing && (
           <div className="border-t mt-3 pt-3">
             <p className="text-xs text-slate-500 font-medium">料金</p>
-            <p className="text-sm text-slate-700">{data.pricing}</p>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap">{data.pricing}</p>
           </div>
         )}
         {data.qualifications && (

@@ -163,8 +163,12 @@ export default function MswSearch() {
       .order('created_at')
       .then(({ data }) => {
         setContacts(data ?? [])
-        if (data?.length === 1 && !prefill?.contactName) {
-          setForm(f => ({ ...f, contactName: data[0].name }))
+        if (data?.length && !prefill?.contactName) {
+          setForm(f => (
+            f.contactName
+              ? f
+              : { ...f, contactName: data[0].name }
+          ))
         }
       })
     supabase
@@ -650,7 +654,7 @@ export default function MswSearch() {
                     {biz.same_day && <span className="badge-gray">当日対応</span>}
                   </div>
                   {biz.pricing && (
-                    <p className="text-xs text-slate-600 border-t pt-2 mt-2">
+                    <p className="text-xs text-slate-600 border-t pt-2 mt-2 whitespace-pre-wrap">
                       <span className="font-medium">料金: </span>{biz.pricing}
                     </p>
                   )}
@@ -737,7 +741,7 @@ export default function MswSearch() {
                 <div className="flex gap-2">
                   <select className="input-base flex-1" value={form.contactName}
                     onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}>
-                    <option value="">選択してください</option>
+                    {form.contactName === '' && <option value="" disabled>選択してください</option>}
                     {contacts.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                   <button type="button" onClick={() => setIsNewContact(true)}
@@ -911,7 +915,7 @@ export default function MswSearch() {
             )}
 
             {previewBusiness.pricing && (
-              <div className="border-t pt-3 text-sm">
+              <div className="border-t pt-3 text-sm whitespace-pre-wrap">
                 <span className="text-slate-500 text-xs">料金: </span>{previewBusiness.pricing}
               </div>
             )}

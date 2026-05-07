@@ -519,7 +519,7 @@ export default function MswBusinesses() {
             )}
 
             {preview.pricing && (
-              <div className="border-t pt-3 text-sm">
+              <div className="border-t pt-3 text-sm whitespace-pre-wrap">
                 <span className="text-xs text-slate-500">料金: </span>{preview.pricing}
               </div>
             )}
