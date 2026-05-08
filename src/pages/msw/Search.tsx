@@ -328,6 +328,9 @@ export default function MswSearch() {
     for (const vehicle of ((rawVehicles as unknown as VehicleWithBusiness[] | null) ?? [])) {
       const business = vehicle.businesses
       if (!business || !business.approved) continue
+      // プランに未登録・解約済みの事業所は検索結果から除外
+      const subStatus = business.subscription_status ?? 'none'
+      if (subStatus !== 'active' && subStatus !== 'trialing') continue
       if (areas.length > 0 && !areas.some(a => business.service_areas?.includes(a))) continue
       // 使用機材に対応した車両のみを空き候補とする
       const equipField = searchEquipment === 'wheelchair' ? 'has_wheelchair'

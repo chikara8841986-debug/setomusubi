@@ -773,3 +773,82 @@ grant execute on function public.create_phone_reservation(date, time, time, text
 -- Supabase Auth > Users > Invite で管理者メールを招待した後:
 -- insert into profiles (id, role) values ('<admin-user-id>', 'admin');
 -- =====================================================
+
+-- =====================================================
+-- Billing: 課金システム（事業所向けサブスク＋従量課金）
+-- =====================================================
+
+-- businesses テーブルに課金フィールドを追加
+alter table businesses
+  add column if not exists stripe_customer_id       text,
+  add column if not exists subscription_status      text not null default 'none'
+    check (subscription_status in ('none','trialing','active','past_due','canceled')),
+  add column if not exists subscription_period_end  timestamptz,
+  add column if not exists trial_ends_at            timestamptz;
+
+-- オーナーが自分で課金ステータスを書き換えられないようガード更新
+-- （サービスロールキーで動く Stripe Webhook のみが更新できる）
+create or replace function public.guard_business_owner_immutable()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_is_owner boolean := (auth.uid() = old.user_id);
+begin
+  if v_is_owner then
+    if old.user_id              is distinct from new.user_id              then raise exception 'business_user_id_immutable'; end if;
+    if old.approved             is distinct from new.approved             then raise exception 'business_approved_owner_change_forbidden'; end if;
+    if old.subscription_status  is distinct from new.subscription_status  then raise exception 'business_subscription_status_owner_change_forbidden'; end if;
+    if old.stripe_customer_id   is distinct from new.stripe_customer_id   then raise exception 'business_stripe_customer_id_owner_change_forbidden'; end if;
+    if old.subscription_period_end is distinct from new.subscription_period_end then raise exception 'business_subscription_period_end_owner_change_forbidden'; end if;
+    if old.trial_ends_at        is distinct from new.trial_ends_at        then raise exception 'business_trial_ends_at_owner_change_forbidden'; end if;
+  end if;
+  return new;
+end $$;
+
+-- =====================================================
+-- billing_events（予約ごとの従量課金記録）
+-- =====================================================
+create table if not exists billing_events (
+  id                      uuid primary key default gen_random_uuid(),
+  business_id             uuid references businesses(id) on delete cascade not null,
+  reservation_id          uuid references reservations(id) on delete set null,
+  event_type              text not null check (event_type in ('reservation_fee','subscription')),
+  amount                  integer not null default 300, -- JPY（税込）
+  stripe_invoice_id       text,
+  stripe_payment_intent_id text,
+  status                  text not null default 'pending'
+    check (status in ('pending','paid','failed','waived')),
+  created_at              timestamptz default now() not null
+);
+
+alter table billing_events enable row level security;
+
+drop policy if exists "billing_events: business owner read" on billing_events;
+drop policy if exists "billing_events: admin full access" on billing_events;
+create policy "billing_events: business owner read" on billing_events
+  for select using (
+    exists (select 1 from businesses b where b.id = business_id and b.user_id = auth.uid())
+  );
+create policy "billing_events: admin full access" on billing_events
+  for all using (
+    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  );
+
+create index if not exists idx_billing_events_business
+  on billing_events (business_id, created_at desc);
+create index if not exists idx_billing_events_reservation
+  on billing_events (reservation_id);
+
+-- pending → confirmed になったときに billing_event を自動作成（従量課金の記録）
+create or replace function auto_create_billing_event()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.status = 'confirmed' and old.status = 'pending' then
+    insert into billing_events (business_id, reservation_id, event_type, amount, status)
+    values (new.business_id, new.id, 'reservation_fee', 300, 'pending');
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_auto_create_billing_event on reservations;
+create trigger trg_auto_create_billing_event
+  after update on reservations
+  for each row execute function auto_create_billing_event();

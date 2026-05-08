@@ -4,6 +4,8 @@ export type Equipment = 'wheelchair' | 'reclining_wheelchair' | 'stretcher'
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected'
 
+export type SubscriptionStatus = 'none' | 'trialing' | 'active' | 'past_due' | 'canceled'
+
 export type Database = {
   public: {
     Tables: {
@@ -52,6 +54,10 @@ export type Database = {
           vehicle_image_urls: string[]
           pr_text: string | null
           approved: boolean
+          stripe_customer_id: string | null
+          subscription_status: SubscriptionStatus
+          subscription_period_end: string | null
+          trial_ends_at: string | null
           created_at: string
         }
         Insert: {
@@ -81,6 +87,10 @@ export type Database = {
           vehicle_image_urls?: string[]
           pr_text?: string | null
           approved?: boolean
+          stripe_customer_id?: string | null
+          subscription_status?: SubscriptionStatus
+          subscription_period_end?: string | null
+          trial_ends_at?: string | null
         }
         Update: {
           id?: string
@@ -109,6 +119,10 @@ export type Database = {
           vehicle_image_urls?: string[]
           pr_text?: string | null
           approved?: boolean
+          stripe_customer_id?: string | null
+          subscription_status?: SubscriptionStatus
+          subscription_period_end?: string | null
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
@@ -371,6 +385,43 @@ export type Database = {
         Relationships: []
       }
     }
+      billing_events: {
+        Row: {
+          id: string
+          business_id: string
+          reservation_id: string | null
+          event_type: 'reservation_fee' | 'subscription'
+          amount: number
+          stripe_invoice_id: string | null
+          stripe_payment_intent_id: string | null
+          status: 'pending' | 'paid' | 'failed' | 'waived'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          reservation_id?: string | null
+          event_type: 'reservation_fee' | 'subscription'
+          amount?: number
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          status?: 'pending' | 'paid' | 'failed' | 'waived'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          reservation_id?: string | null
+          event_type?: 'reservation_fee' | 'subscription'
+          amount?: number
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          status?: 'pending' | 'paid' | 'failed' | 'waived'
+          created_at?: string
+        }
+        Relationships: []
+      }
+    }
     Views: Record<string, never>
     Functions: {
       approve_reservation: {
@@ -421,3 +472,4 @@ export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Favorite = Database['public']['Tables']['favorites']['Row']
 export type Vehicle = Database['public']['Tables']['vehicles']['Row']
 export type OccupiedSlot = Database['public']['Tables']['occupied_slots']['Row']
+export type BillingEvent = Database['public']['Tables']['billing_events']['Row']

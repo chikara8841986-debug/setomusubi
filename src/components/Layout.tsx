@@ -11,6 +11,7 @@ const NAV_BUSINESS: NavItem[] = [
   { to: '/business/calendar', label: 'カレンダー', icon: '📅' },
   { to: '/business/reservations', label: '予約管理', icon: '✅' },
   { to: '/business/introduction', label: '紹介・PR', icon: '📝' },
+  { to: '/business/billing', label: 'ご請求', icon: '💳' },
   { to: '/business/profile', label: '設定', icon: '⚙️' },
 ]
 
@@ -308,6 +309,43 @@ function MswPendingBadge({
   )
 }
 
+/** 事業所向け: サブスク未登録・支払い遅延のとき上部に警告バナーを表示 */
+function BillingBanner({ businessId }: { businessId: string }) {
+  const [status, setStatus] = useState<string>('none')
+  const location = useLocation()
+
+  useEffect(() => {
+    let mounted = true
+    supabase
+      .from('businesses')
+      .select('subscription_status')
+      .eq('id', businessId)
+      .single()
+      .then(({ data }) => {
+        if (mounted && data) setStatus(data.subscription_status ?? 'none')
+      })
+    return () => { mounted = false }
+  }, [businessId])
+
+  // 請求ページ自体では表示しない
+  if (location.pathname.startsWith('/business/billing')) return null
+  if (status === 'active' || status === 'trialing') return null
+
+  const isPastDue = status === 'past_due'
+  return (
+    <div className={`px-4 py-2 text-center text-xs font-medium flex items-center justify-center gap-2 ${
+      isPastDue
+        ? 'bg-red-500 text-white'
+        : 'bg-amber-400 text-amber-900'
+    }`}>
+      <span>{isPastDue ? '⚠️ お支払いが確認できていません。' : '📢 プランに未登録のため、検索結果に掲載されていません。'}</span>
+      <Link to="/business/billing" className="underline font-bold hover:opacity-80">
+        {isPastDue ? 'お支払い確認 →' : '登録する →'}
+      </Link>
+    </div>
+  )
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, role, businessId, businessName, hospitalId, hospitalName, loading, signOut } = useAuth()
   const location = useLocation()
@@ -427,6 +465,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       )}
 
       <OfflineBanner />
+      {role === 'business' && businessId && <BillingBanner businessId={businessId} />}
 
       <header
         className="sticky top-0 z-30"

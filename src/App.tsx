@@ -9,8 +9,9 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 const PAGE_TITLES: Record<string, string> = {
   '/business/calendar':     'カレンダー',
   '/business/reservations': '予約管理',
-  '/business/introduction': '紹介ページ',
+  '/business/introduction': '紹介・PR',
   '/business/profile':      'プロフィール設定',
+  '/business/billing':      'ご請求・プラン管理',
   '/msw/search':            '予約する',
   '/msw/reservations':      '予約履歴',
   '/msw/businesses':        '事業所一覧',
@@ -58,6 +59,7 @@ const BusinessCalendar     = lazy(() => import('./pages/business/Calendar'))
 const BusinessProfile      = lazy(() => import('./pages/business/Profile'))
 const BusinessReservations = lazy(() => import('./pages/business/Reservations'))
 const BusinessIntroduction = lazy(() => import('./pages/business/Introduction'))
+const BusinessBilling      = lazy(() => import('./pages/business/Billing'))
 
 // MSW pages (lazy)
 const MswSearch      = lazy(() => import('./pages/msw/Search'))
@@ -124,6 +126,7 @@ function AppRoutes() {
                 <Route path="profile"       element={<BusinessProfile />} />
                 <Route path="reservations"  element={<BusinessReservations />} />
                 <Route path="introduction"  element={<BusinessIntroduction />} />
+                <Route path="billing"       element={<BusinessBilling />} />
                 <Route path="*"             element={<Navigate to="calendar" replace />} />
               </Routes>
             </Layout>
