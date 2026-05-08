@@ -45,11 +45,26 @@ Deno.serve(async (req) => {
       return json({ error: 'business_id is required' }, 400)
     }
 
-    // Origin ヘッダーを使うことで環境変数不要・どの環境でも正しいURLになる
-    const origin = req.headers.get('origin')
-      ?? req.headers.get('referer')?.replace(/\/[^/]*$/, '')
-      ?? (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
-    const billingUrl = `${origin}/business/billing`
+    // return_url: APP_URL（canonical）を正とし、クライアント Origin は allowlist 検証後のみ採用
+    const appUrl   = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
+    const allowSet = new Set(
+      [appUrl, ...(Deno.env.get('ALLOWED_RETURN_ORIGINS') ?? '').split(',')]
+        .map(s => s.trim()).filter(Boolean)
+    )
+    const clientOrigin = (() => {
+      const o = req.headers.get('origin')
+      if (o) return o
+      const r = req.headers.get('referer')
+      if (!r) return null
+      try { return new URL(r).origin } catch { return null }
+    })()
+    const resolvedOrigin = (clientOrigin && allowSet.has(clientOrigin))
+      ? clientOrigin
+      : (appUrl || null)
+    if (!resolvedOrigin) {
+      return json({ error: 'APP_URL is not configured on the server' }, 500)
+    }
+    const billingUrl = new URL('/business/billing', resolvedOrigin).toString()
 
     // ── 所有権確認 + Stripe Customer ID 取得 ────────────
     const { data: biz, error: bizErr } = await supabase
