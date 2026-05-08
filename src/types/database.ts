@@ -58,6 +58,11 @@ export type Database = {
           subscription_status: SubscriptionStatus
           subscription_period_end: string | null
           trial_ends_at: string | null
+          stripe_subscription_id: string | null
+          stripe_vehicle_item_id: string | null
+          custom_base_price: number | null
+          custom_per_vehicle_price: number | null
+          stripe_coupon_id: string | null
           created_at: string
         }
         Insert: {
@@ -91,6 +96,11 @@ export type Database = {
           subscription_status?: SubscriptionStatus
           subscription_period_end?: string | null
           trial_ends_at?: string | null
+          stripe_subscription_id?: string | null
+          stripe_vehicle_item_id?: string | null
+          custom_base_price?: number | null
+          custom_per_vehicle_price?: number | null
+          stripe_coupon_id?: string | null
         }
         Update: {
           id?: string
@@ -123,6 +133,11 @@ export type Database = {
           subscription_status?: SubscriptionStatus
           subscription_period_end?: string | null
           trial_ends_at?: string | null
+          stripe_subscription_id?: string | null
+          stripe_vehicle_item_id?: string | null
+          custom_base_price?: number | null
+          custom_per_vehicle_price?: number | null
+          stripe_coupon_id?: string | null
         }
         Relationships: []
       }

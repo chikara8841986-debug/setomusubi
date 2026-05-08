@@ -28,6 +28,7 @@ const NAV_ADMIN: NavItem[] = [
   { to: '/admin/approvals', label: '事業所承認', icon: '🛡️' },
   { to: '/admin/reservations', label: '予約一覧', icon: '📋' },
   { to: '/admin/stats', label: '統計', icon: '📊' },
+  { to: '/admin/billing', label: '課金管理', icon: '💰' },
 ]
 
 function AdminPendingBadge() {

@@ -836,8 +836,13 @@ create index if not exists idx_billing_events_business
   on billing_events (business_id, created_at desc);
 create index if not exists idx_billing_events_reservation
   on billing_events (reservation_id);
+create unique index if not exists idx_billing_events_stripe_invoice_unique
+  on billing_events (stripe_invoice_id)
+  where stripe_invoice_id is not null;
 
 -- pending → confirmed になったときに billing_event を自動作成（従量課金の記録）
+-- ※ 2026年5月以降は trg_auto_create_billing_event を廃止（¥300/件は撤廃）。
+--    下記トリガーは残しておくが DROP で無効化する。
 create or replace function auto_create_billing_event()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
@@ -848,7 +853,52 @@ begin
   return new;
 end $$;
 
+-- ¥300/件 従量課金トリガーは廃止（新料金体系では不要）
 drop trigger if exists trg_auto_create_billing_event on reservations;
-create trigger trg_auto_create_billing_event
-  after update on reservations
-  for each row execute function auto_create_billing_event();
+
+-- =====================================================
+-- Billing v2: 車両台数連動プラン（2026年5月導入）
+-- 基本料 ¥3,850/月（2台まで）＋ ¥1,650/月 × 追加1台ごと
+-- 半月区切り按分: 日付≤15 → 当月即時請求, 日付>15 → 翌月から
+-- =====================================================
+
+-- 新規課金管理フィールドを businesses に追加
+alter table businesses
+  add column if not exists stripe_subscription_id   text,
+  add column if not exists stripe_vehicle_item_id   text,
+  add column if not exists custom_base_price        integer,    -- NULL=デフォルト ¥3,850
+  add column if not exists custom_per_vehicle_price integer,    -- NULL=デフォルト ¥1,650
+  add column if not exists stripe_coupon_id         text;       -- キャンペーン/特別契約クーポン
+
+alter table businesses
+  drop constraint if exists businesses_custom_base_price_nonnegative,
+  drop constraint if exists businesses_custom_per_vehicle_price_nonnegative;
+
+alter table businesses
+  add constraint businesses_custom_base_price_nonnegative
+    check (custom_base_price is null or custom_base_price >= 0),
+  add constraint businesses_custom_per_vehicle_price_nonnegative
+    check (custom_per_vehicle_price is null or custom_per_vehicle_price >= 0);
+
+-- TODO: vehicle create/update/delete に連動した自動同期は未実装。現状は UI / 管理画面から sync-vehicle-billing を呼ぶ。
+
+-- オーナーによる課金フィールドの書き換えをガード（既存ガード関数を再定義）
+create or replace function public.guard_business_owner_immutable()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_is_owner boolean := (auth.uid() = old.user_id);
+begin
+  if v_is_owner then
+    if old.user_id                   is distinct from new.user_id                   then raise exception 'business_user_id_immutable'; end if;
+    if old.approved                  is distinct from new.approved                  then raise exception 'business_approved_owner_change_forbidden'; end if;
+    if old.subscription_status       is distinct from new.subscription_status       then raise exception 'business_subscription_status_owner_change_forbidden'; end if;
+    if old.stripe_customer_id        is distinct from new.stripe_customer_id        then raise exception 'business_stripe_customer_id_owner_change_forbidden'; end if;
+    if old.subscription_period_end   is distinct from new.subscription_period_end   then raise exception 'business_subscription_period_end_owner_change_forbidden'; end if;
+    if old.trial_ends_at             is distinct from new.trial_ends_at             then raise exception 'business_trial_ends_at_owner_change_forbidden'; end if;
+    if old.stripe_subscription_id    is distinct from new.stripe_subscription_id    then raise exception 'business_stripe_subscription_id_owner_change_forbidden'; end if;
+    if old.stripe_vehicle_item_id    is distinct from new.stripe_vehicle_item_id    then raise exception 'business_stripe_vehicle_item_id_owner_change_forbidden'; end if;
+    if old.custom_base_price         is distinct from new.custom_base_price         then raise exception 'business_custom_price_owner_change_forbidden'; end if;
+    if old.custom_per_vehicle_price  is distinct from new.custom_per_vehicle_price  then raise exception 'business_custom_price_owner_change_forbidden'; end if;
+    if old.stripe_coupon_id          is distinct from new.stripe_coupon_id          then raise exception 'business_stripe_coupon_id_owner_change_forbidden'; end if;
+  end if;
+  return new;
+end $$;

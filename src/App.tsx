@@ -21,6 +21,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/approvals':       '事業所承認',
   '/admin/reservations':    '予約一覧',
   '/admin/stats':           '統計ダッシュボード',
+  '/admin/billing':         '課金管理',
   '/login':                 'ログイン',
   '/register/business':     '事業所登録',
   '/register/msw':          'MSW登録',
@@ -73,6 +74,7 @@ const HospitalProfile = lazy(() => import('./pages/msw/HospitalProfile'))
 const AdminApprovals    = lazy(() => import('./pages/admin/Approvals'))
 const AdminReservations = lazy(() => import('./pages/admin/Reservations'))
 const AdminStats        = lazy(() => import('./pages/admin/Stats'))
+const AdminBilling      = lazy(() => import('./pages/admin/BillingAdmin'))
 
 // Other pages
 const NotFound = lazy(() => import('./pages/NotFound'))
@@ -158,6 +160,7 @@ function AppRoutes() {
                 <Route path="approvals"    element={<AdminApprovals />} />
                 <Route path="reservations" element={<AdminReservations />} />
                 <Route path="stats"        element={<AdminStats />} />
+                <Route path="billing"      element={<AdminBilling />} />
                 <Route path="*"            element={<Navigate to="approvals" replace />} />
               </Routes>
             </Layout>

@@ -1,25 +1,20 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import type { SubscriptionStatus } from '../../types/database'
 
-// ── 料金設定 ──────────────────────────────────────────
-const MONTHLY_FEE   = 5_500  // 月額基本料（税込）
-const PER_RES_FEE   =   300  // 予約1件あたり（税込）
-const TRIAL_DAYS    =    30  // 無料トライアル日数
+const DEFAULT_BASE_FEE = 3_850
+const DEFAULT_PER_VEHICLE_FEE = 1_650
+const FREE_VEHICLES = 2
 
-// ── ステータス表示定義 ────────────────────────────────
-const STATUS_CONFIG: Record<
-  SubscriptionStatus,
-  { label: string; pill: string }
-> = {
-  none:     { label: '未登録',          pill: 'bg-slate-100 text-slate-600'    },
-  trialing: { label: '無料トライアル中', pill: 'bg-blue-100 text-blue-700'     },
-  active:   { label: '掲載中',          pill: 'bg-emerald-100 text-emerald-700'},
-  past_due: { label: '支払い遅延',       pill: 'bg-red-100 text-red-700'       },
-  canceled: { label: '解約済み',         pill: 'bg-orange-100 text-orange-700' },
+const STATUS_CONFIG: Record<SubscriptionStatus, { label: string; pill: string }> = {
+  none: { label: '未登録', pill: 'bg-slate-100 text-slate-600' },
+  trialing: { label: '開始待ち', pill: 'bg-blue-100 text-blue-700' },
+  active: { label: '利用中', pill: 'bg-emerald-100 text-emerald-700' },
+  past_due: { label: '支払い失敗', pill: 'bg-red-100 text-red-700' },
+  canceled: { label: '解約済み', pill: 'bg-orange-100 text-orange-700' },
 }
 
 type BillingRow = {
@@ -28,215 +23,258 @@ type BillingRow = {
   amount: number
   status: 'pending' | 'paid' | 'failed' | 'waived'
   created_at: string
-  patient_name: string | null
 }
 
-function fmtDate(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  })
+type BillingBusiness = {
+  id: string
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  subscription_status: SubscriptionStatus | null
+  subscription_period_end: string | null
+  trial_ends_at: string | null
+  custom_base_price: number | null
+  custom_per_vehicle_price: number | null
 }
 
-function fmtYen(n: number) {
-  return `¥${n.toLocaleString()}`
+type BusinessRow = BillingBusiness
+
+function fmtDate(value: string | null) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('ja-JP')
+}
+
+function fmtYen(value: number) {
+  return `¥${value.toLocaleString()}`
 }
 
 export default function Billing() {
   const { user } = useAuth()
   const { showToast } = useToast()
 
-  const [businessId,   setBusinessId]   = useState<string | null>(null)
-  const [status,       setStatus]       = useState<SubscriptionStatus>('none')
-  const [periodEnd,    setPeriodEnd]    = useState<string | null>(null)
-  const [trialEnd,     setTrialEnd]     = useState<string | null>(null)
-  const [hasCustomer,  setHasCustomer]  = useState(false)
-  const [events,       setEvents]       = useState<BillingRow[]>([])
-  const [monthCount,   setMonthCount]   = useState(0)
-  const [loading,      setLoading]      = useState(true)
+  const [business, setBusiness] = useState<BillingBusiness | null>(null)
+  const [activeVehicles, setActiveVehicles] = useState(0)
+  const [events, setEvents] = useState<BillingRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [checkoutBusy, setCheckoutBusy] = useState(false)
-  const [portalBusy,   setPortalBusy]   = useState(false)
+  const [portalBusy, setPortalBusy] = useState(false)
+  const [syncBusy, setSyncBusy] = useState(false)
 
-  // ─── Load ─────────────────────────────────────────
   const load = useCallback(async () => {
     if (!user) return
+
     setLoading(true)
     try {
-      const { data: biz } = await supabase
+      const { data: biz, error: bizErr } = await supabase
         .from('businesses')
         .select(
-          'id, stripe_customer_id, subscription_status, subscription_period_end, trial_ends_at'
+          'id, stripe_customer_id, stripe_subscription_id, subscription_status,' +
+            'subscription_period_end, trial_ends_at, custom_base_price, custom_per_vehicle_price',
         )
         .eq('user_id', user.id)
         .single()
 
-      if (!biz) return
-      setBusinessId(biz.id)
-      setStatus((biz.subscription_status ?? 'none') as SubscriptionStatus)
-      setPeriodEnd(biz.subscription_period_end ?? null)
-      setTrialEnd(biz.trial_ends_at ?? null)
-      setHasCustomer(!!biz.stripe_customer_id)
+      if (bizErr) throw bizErr
+      if (!biz) {
+        setBusiness(null)
+        setEvents([])
+        setActiveVehicles(0)
+        return
+      }
 
-      // 直近20件の billing_events
-      const { data: evtRaw } = await supabase
+      const businessRow = biz as unknown as BusinessRow
+      setBusiness(businessRow)
+
+      const { count: vehicleCount, error: vehicleCountErr } = await supabase
+        .from('vehicles')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', businessRow.id)
+        .eq('active', true)
+
+      if (vehicleCountErr) throw vehicleCountErr
+      setActiveVehicles(vehicleCount ?? 0)
+
+      const { data: eventRows, error: eventErr } = await supabase
         .from('billing_events')
-        .select(`
-          id, event_type, amount, status, created_at,
-          reservations ( patient_name )
-        `)
-        .eq('business_id', biz.id)
+        .select('id, event_type, amount, status, created_at')
+        .eq('business_id', businessRow.id)
+        .eq('event_type', 'subscription')
         .order('created_at', { ascending: false })
         .limit(20)
 
-      setEvents(
-        (evtRaw ?? []).map((e: any) => ({
-          id: e.id,
-          event_type: e.event_type,
-          amount: e.amount,
-          status: e.status,
-          created_at: e.created_at,
-          patient_name: e.reservations?.patient_name ?? null,
-        }))
-      )
-
-      // 今月の確認済み予約件数（従量分の見積もり）
-      const now = new Date()
-      const from = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .slice(0, 10)
-      const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-        .toISOString()
-        .slice(0, 10)
-      const { count } = await supabase
-        .from('reservations')
-        .select('*', { count: 'exact', head: true })
-        .eq('business_id', biz.id)
-        .eq('status', 'confirmed')
-        .gte('reservation_date', from)
-        .lte('reservation_date', to)
-      setMonthCount(count ?? 0)
+      if (eventErr) throw eventErr
+      setEvents((eventRows ?? []) as BillingRow[])
+    } catch (e: any) {
+      showToast(e?.message ?? '課金情報の読み込みに失敗しました', 'error')
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [showToast, user])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
-  // ─── Query param feedback ──────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('billing') === 'success') {
-      showToast('登録が完了しました！プランが有効になるまで少々お待ちください。', 'success')
-      window.history.replaceState({}, '', window.location.pathname)
-      load()
-    } else if (params.get('billing') === 'canceled') {
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    const billing = params.get('billing')
+    if (!billing) return
 
-  // ─── Stripe Checkout ──────────────────────────────
+    if (billing === 'success') {
+      showToast('決済画面から戻りました。Webhook反映後に状態が更新されます。', 'success')
+      load()
+    }
+
+    if (billing === 'canceled') {
+      showToast('決済はキャンセルされました。', 'info')
+    }
+
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [load, showToast])
+
   const handleCheckout = async () => {
-    if (!businessId) return
+    if (!business) return
+
     setCheckoutBusy(true)
     try {
-      const { data, error } = await supabase.functions.invoke(
-        'create-checkout-session',
-        { body: { business_id: businessId } }
-      )
-      if (error || !data?.url) throw error ?? new Error('URLが取得できませんでした')
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { business_id: business.id },
+      })
+      if (error || !data?.url) {
+        throw error ?? new Error('決済URLを取得できませんでした')
+      }
       window.location.href = data.url
     } catch (e: any) {
-      showToast(e?.message ?? '決済ページを開けませんでした', 'error')
+      showToast(e?.message ?? '決済画面を開けませんでした', 'error')
       setCheckoutBusy(false)
     }
   }
 
-  // ─── Stripe Portal ────────────────────────────────
   const handlePortal = async () => {
-    if (!businessId) return
+    if (!business) return
+
     setPortalBusy(true)
     try {
-      const { data, error } = await supabase.functions.invoke(
-        'create-billing-portal-session',
-        { body: { business_id: businessId } }
-      )
-      if (error || !data?.url) throw error ?? new Error('URLが取得できませんでした')
+      const { data, error } = await supabase.functions.invoke('create-billing-portal-session', {
+        body: { business_id: business.id },
+      })
+      if (error || !data?.url) {
+        throw error ?? new Error('ポータルURLを取得できませんでした')
+      }
       window.location.href = data.url
     } catch (e: any) {
-      showToast(e?.message ?? '管理ページを開けませんでした', 'error')
+      showToast(e?.message ?? '請求ポータルを開けませんでした', 'error')
       setPortalBusy(false)
     }
   }
 
-  // ─── Derived ──────────────────────────────────────
-  const cfg = STATUS_CONFIG[status]
-  const isSubscribed   = status === 'active' || status === 'trialing'
-  const needsRegister  = status === 'none' || status === 'canceled'
-  const isPastDue      = status === 'past_due'
-  const canOpenPortal  = (isSubscribed || isPastDue) && hasCustomer
+  const handleSync = async () => {
+    if (!business) return
 
-  const now = new Date()
-  const monthLabel = `${now.getFullYear()}年${now.getMonth() + 1}月`
-  const estimatedTotal = MONTHLY_FEE + monthCount * PER_RES_FEE
+    setSyncBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-vehicle-billing', {
+        body: { business_id: business.id },
+      })
+      if (error) throw error
 
-  // ─── Render ───────────────────────────────────────
+      if (data?.synced) {
+        showToast(
+          `車両数を反映しました。稼働車両 ${data.active_vehicles} 台、追加課金 ${data.addon_qty} 台分です。`,
+          'success',
+        )
+      } else {
+        showToast(`同期対象がありません: ${data?.reason ?? 'unknown'}`, 'info')
+      }
+
+      await load()
+    } catch (e: any) {
+      showToast(e?.message ?? '車両課金の同期に失敗しました', 'error')
+    } finally {
+      setSyncBusy(false)
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh]">
+      <div className="flex min-h-[40vh] items-center justify-center">
         <span className="spinner" />
       </div>
     )
   }
 
+  if (!business) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-8">
+        <div className="card space-y-3">
+          <h1 className="text-xl font-bold text-slate-800">課金・プラン</h1>
+          <p className="text-sm text-slate-600">事業所情報が見つかりませんでした。</p>
+        </div>
+      </div>
+    )
+  }
+
+  const status = (business.subscription_status ?? 'none') as SubscriptionStatus
+  const cfg = STATUS_CONFIG[status]
+  const isSubscribed = status === 'active' || status === 'trialing'
+  const needsCheckout = status === 'none' || status === 'canceled'
+  const canOpenPortal =
+    Boolean(business.stripe_customer_id) &&
+    (status === 'active' || status === 'trialing' || status === 'past_due')
+
+  const baseFee = business.custom_base_price ?? DEFAULT_BASE_FEE
+  const perVehicleFee = business.custom_per_vehicle_price ?? DEFAULT_PER_VEHICLE_FEE
+  const addonQty = Math.max(0, activeVehicles - FREE_VEHICLES)
+  const estimatedFee = baseFee + addonQty * perVehicleFee
+  const hasCustomPrice =
+    business.custom_base_price != null || business.custom_per_vehicle_price != null
+
   return (
-    <div className="max-w-xl mx-auto px-4 py-6 sm:py-8 space-y-5">
-      <h1 className="text-xl font-bold text-slate-800">ご請求・プラン管理</h1>
+    <div className="mx-auto max-w-xl space-y-5 px-4 py-6 sm:py-8">
+      <h1 className="text-xl font-bold text-slate-800">課金・プラン</h1>
 
-      {/* ── プラン状態カード ── */}
       <div className="card space-y-5">
-
-        {/* 状態ヘッダ */}
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs text-slate-500">現在の状態</p>
               <h2 className="text-lg font-semibold text-slate-900">{cfg.label}</h2>
             </div>
-            <span className={`shrink-0 text-xs font-bold px-3 py-1 rounded-full ${cfg.pill}`}>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${cfg.pill}`}>
               {cfg.label}
             </span>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed">
+
+          <p className="text-sm leading-relaxed text-slate-600">
             {status === 'none' &&
-              `まだ掲載は開始されていません。登録後すぐに検索結果に掲載されます。最初の${TRIAL_DAYS}日間は無料です。`}
-            {status === 'trialing' && trialEnd &&
-              `無料トライアル中です。終了日は ${fmtDate(trialEnd)} です。終了後は自動的に有料プランへ移行します。`}
-            {status === 'active' && periodEnd &&
-              `掲載中です。次回更新日は ${fmtDate(periodEnd)} です。`}
+              '契約はまだ開始されていません。毎月1日から15日に開始した場合は当月分が即時請求され、16日以降は翌月1日開始です。'}
+            {status === 'trialing' &&
+              `利用開始待ちです。次回の更新基準日は ${fmtDate(
+                business.subscription_period_end,
+              )} です。`}
+            {status === 'active' &&
+              `利用中です。次回更新基準日は ${fmtDate(business.subscription_period_end)} です。`}
             {status === 'past_due' &&
-              'お支払いの確認が必要です。下のボタンから支払い方法を確認・更新してください。確認後も掲載状態は維持されます。'}
+              '支払いに失敗しています。請求ポータルでカード情報や支払い状況を確認してください。'}
             {status === 'canceled' &&
-              '掲載は停止中です。再登録後すぐに検索結果への掲載が再開されます。'}
+              'サブスクリプションは解約済みです。再開する場合はもう一度決済画面へ進んでください。'}
           </p>
         </div>
 
-        {/* CTA */}
-        {needsRegister && (
+        {needsCheckout && (
           <div className="space-y-2">
             <button
               onClick={handleCheckout}
               disabled={checkoutBusy}
               className="btn-primary w-full"
             >
-              {checkoutBusy
-                ? 'Stripeへ移動しています…'
-                : `${TRIAL_DAYS}日間無料で掲載を始める`}
+              {checkoutBusy ? 'Stripeへ移動中...' : '決済画面へ進む'}
             </button>
-            <p className="text-xs text-slate-400 text-center">
-              外部の決済画面 Stripe に移動します。せとむすびがカード情報を保持することはありません。
+            <p className="text-center text-xs text-slate-400">
+              1日から15日は当月分を即時請求、16日以降は翌月1日開始です。
             </p>
           </div>
         )}
+
         {canOpenPortal && (
           <div className="space-y-2">
             <button
@@ -244,111 +282,117 @@ export default function Billing() {
               disabled={portalBusy}
               className="btn-secondary w-full"
             >
-              {portalBusy
-                ? '管理画面を開いています…'
-                : '支払い方法・請求情報を確認する'}
+              {portalBusy ? '請求ポータルを開いています...' : '請求ポータルを開く'}
             </button>
-            <p className="text-xs text-slate-400 text-center">
-              Stripe の安全な管理画面に移動します。プランの解約もこちらから行えます。
+            <p className="text-center text-xs text-slate-400">
+              支払い方法の変更、請求書確認、解約は Stripe ポータルで行えます。
             </p>
           </div>
         )}
-        {isPastDue && !hasCustomer && (
+
+        <div className="rounded-xl bg-slate-50 p-4 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-700">現在の料金設定</p>
+            {hasCustomPrice && (
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                個別料金
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 text-sm text-slate-600">
+            <span>基本料（{FREE_VEHICLES}台まで）</span>
+            <span className="font-medium text-slate-800">{fmtYen(baseFee)}/月</span>
+          </div>
+          <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 text-sm text-slate-600">
+            <span>{FREE_VEHICLES + 1}台目以降の追加料金</span>
+            <span className="font-medium text-slate-800">{fmtYen(perVehicleFee)}/台・月</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="card space-y-4">
+        <div className="space-y-1">
+          <h2 className="font-semibold text-slate-700">今月の見込み請求額</h2>
+          <p className="text-xs text-slate-400">
+            Stripe に反映される車両台数は同期ボタン実行時点の稼働車両数です。
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 border-b border-slate-100 py-2.5 text-sm">
+            <span className="text-slate-600">
+              基本料（稼働車両 {activeVehicles} 台 / {FREE_VEHICLES} 台まで）
+            </span>
+            <span className="font-medium text-slate-800">{fmtYen(baseFee)}</span>
+          </div>
+          {addonQty > 0 && (
+            <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 border-b border-slate-100 py-2.5 text-sm">
+              <span className="text-slate-600">
+                追加車両 {addonQty} 台 × {fmtYen(perVehicleFee)}
+              </span>
+              <span className="font-medium text-slate-800">
+                {fmtYen(addonQty * perVehicleFee)}
+              </span>
+            </div>
+          )}
+          <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 py-3 text-base font-bold">
+            <span className="text-slate-700">月額見込み</span>
+            <span className="text-lg text-teal-700">{fmtYen(estimatedFee)}</span>
+          </div>
+        </div>
+
+        {isSubscribed && business.stripe_subscription_id && (
           <div className="space-y-2">
             <button
-              onClick={handleCheckout}
-              disabled={checkoutBusy}
-              className="btn-primary w-full"
+              onClick={handleSync}
+              disabled={syncBusy}
+              className="w-full rounded-lg border border-slate-200 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
             >
-              {checkoutBusy ? 'Stripeへ移動しています…' : '支払い方法を更新する'}
+              {syncBusy ? '同期中...' : '車両台数を Stripe に反映する'}
             </button>
-            <p className="text-xs text-slate-400 text-center">
-              外部の決済画面 Stripe に移動します。
+            <p className="text-xs text-slate-400">
+              車両の追加・停止後はこの操作で追加課金台数を更新してください。
             </p>
+            {/* TODO: 車両更新時の自動同期は未実装。現在は手動同期に依存している。 */}
           </div>
         )}
-
-        {/* 料金表 */}
-        <div className="rounded-xl bg-slate-50 p-4 space-y-2.5">
-          <p className="text-sm font-semibold text-slate-700">せとむすび 標準プラン</p>
-          <div className="grid grid-cols-[1fr_auto] gap-x-3 text-sm text-slate-600 items-baseline">
-            <span>月額基本料</span>
-            <span className="font-medium text-slate-800 text-right">
-              {fmtYen(MONTHLY_FEE)}<span className="text-xs text-slate-400 ml-0.5">/月</span>
-            </span>
-          </div>
-          <div className="grid grid-cols-[1fr_auto] gap-x-3 text-sm text-slate-600 items-baseline">
-            <span>予約承認1件あたり（従量）</span>
-            <span className="font-medium text-slate-800 text-right">
-              {fmtYen(PER_RES_FEE)}<span className="text-xs text-slate-400 ml-0.5">/件</span>
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 pt-1">※ 価格はすべて税込です</p>
-        </div>
       </div>
 
-      {/* ── 今月の利用状況 ── */}
-      <div className="card space-y-4">
-        <h2 className="font-semibold text-slate-700">{monthLabel}の利用状況（推定）</h2>
-        <div className="space-y-1">
-          <div className="grid grid-cols-[1fr_auto] gap-x-3 py-2.5 border-b border-slate-100 text-sm items-baseline">
-            <span className="text-slate-600">月額基本料</span>
-            <span className="font-medium text-slate-800 text-right">{fmtYen(MONTHLY_FEE)}</span>
-          </div>
-          <div className="grid grid-cols-[1fr_auto] gap-x-3 py-2.5 border-b border-slate-100 text-sm items-baseline">
-            <span className="text-slate-600">
-              予約承認 {monthCount}件 × {fmtYen(PER_RES_FEE)}
-            </span>
-            <span className="font-medium text-slate-800 text-right">
-              {fmtYen(monthCount * PER_RES_FEE)}
-            </span>
-          </div>
-          <div className="grid grid-cols-[1fr_auto] gap-x-3 py-3 text-base font-bold items-baseline">
-            <span className="text-slate-700">合計（推定）</span>
-            <span className="text-teal-700 text-lg text-right">{fmtYen(estimatedTotal)}</span>
-          </div>
-        </div>
-        {!isSubscribed && (
-          <p className="text-xs text-slate-400">
-            ※ プランに登録後、請求が開始されます。トライアル期間中は課金されません。
-          </p>
-        )}
-        <p className="text-xs text-slate-400">
-          ※ 上記は当月の確認済み予約件数による推定です。実際の請求は Stripe 発行の請求書が正となります。
-        </p>
-      </div>
-
-      {/* ── 請求履歴 ── */}
       {events.length > 0 && (
         <div className="card space-y-3">
           <h2 className="font-semibold text-slate-700">請求履歴</h2>
           <div className="divide-y divide-slate-100">
-            {events.map((evt) => (
+            {events.map((event) => (
               <div
-                key={evt.id}
-                className="py-3 text-sm sm:flex sm:items-center sm:justify-between gap-3"
+                key={event.id}
+                className="py-3 text-sm sm:flex sm:items-center sm:justify-between"
               >
-                <div className="space-y-0.5">
-                  <p className="text-slate-700">
-                    {evt.event_type === 'subscription'
-                      ? '月額基本料'
-                      : `予約料${evt.patient_name ? `（${evt.patient_name} 様）` : ''}`}
-                  </p>
+                <div>
+                  <p className="text-slate-700">月額プラン</p>
                   <p className="text-xs text-slate-400">
-                    {new Date(evt.created_at).toLocaleDateString('ja-JP')}
+                    {new Date(event.created_at).toLocaleDateString('ja-JP')}
                   </p>
                 </div>
-                <div className="mt-1 sm:mt-0 flex items-center gap-3 sm:flex-col sm:items-end sm:gap-0.5">
-                  <p className="font-medium text-slate-800">{fmtYen(evt.amount)}</p>
-                  <span className={`text-xs font-medium ${
-                    evt.status === 'paid'    ? 'text-emerald-600' :
-                    evt.status === 'failed'  ? 'text-red-500'     :
-                    evt.status === 'waived'  ? 'text-slate-400'   :
-                    'text-amber-600'
-                  }`}>
-                    {evt.status === 'paid'   ? '支払済'  :
-                     evt.status === 'failed' ? '失敗'    :
-                     evt.status === 'waived' ? '免除'    : '処理中'}
+                <div className="mt-1 flex items-center gap-3 sm:mt-0 sm:flex-col sm:items-end sm:gap-0.5">
+                  <p className="font-medium text-slate-800">{fmtYen(event.amount)}</p>
+                  <span
+                    className={`text-xs font-medium ${
+                      event.status === 'paid'
+                        ? 'text-emerald-600'
+                        : event.status === 'failed'
+                          ? 'text-red-500'
+                          : event.status === 'waived'
+                            ? 'text-slate-400'
+                            : 'text-amber-600'
+                    }`}
+                  >
+                    {event.status === 'paid'
+                      ? '支払い済み'
+                      : event.status === 'failed'
+                        ? '失敗'
+                        : event.status === 'waived'
+                          ? '免除'
+                          : '処理中'}
                   </span>
                 </div>
               </div>
@@ -357,17 +401,16 @@ export default function Billing() {
         </div>
       )}
 
-      {/* ── フッター ── */}
-      <div className="text-center space-y-1 pt-2">
+      <div className="space-y-1 pt-2 text-center">
         <p className="text-xs text-slate-400">
-          ご請求・解約に関するお問い合わせは{' '}
+          不明点は{' '}
           <a href="mailto:support@setomusubi.jp" className="text-teal-600 hover:underline">
             support@setomusubi.jp
           </a>{' '}
-          までご連絡ください。
+          まで連絡してください。
         </p>
         <p className="text-xs text-slate-400">
-          決済はすべて{' '}
+          決済は{' '}
           <a
             href="https://stripe.com/jp"
             target="_blank"
@@ -376,14 +419,13 @@ export default function Billing() {
           >
             Stripe
           </a>{' '}
-          によって安全に処理されます。
+          を利用しています。
         </p>
       </div>
 
-      {/* ── 管理者リンク ── */}
       <div className="text-center">
         <Link to="/business/profile" className="text-xs text-slate-400 hover:text-slate-600">
-          ← プロフィール設定に戻る
+          プロフィール設定に戻る
         </Link>
       </div>
     </div>
