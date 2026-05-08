@@ -176,8 +176,33 @@ Deno.serve(async (req) => {
     const basePriceId = Deno.env.get('STRIPE_BASE_PRICE_ID') ?? ''
     const perVehiclePriceId = Deno.env.get('STRIPE_PER_VEHICLE_PRICE_ID') ?? ''
 
+    // 初月利用料の計算（JST日付基準）
+    const { day: jstDay } = getJstDateParts()
+    const billingCycleAnchor = getNextMonthStartUnix()
+    const totalMonthlyFee = baseFee + addonQty * perVehicleFee
+    const isHalfMonth = jstDay > 15
+    const initialCharge = isHalfMonth
+      ? Math.floor(totalMonthlyFee / 2)
+      : totalMonthlyFee
+
+    // line_items: 一回限りの初月利用料 + 月次サブスクリプション
+    // subscription mode では recurring と one-time を混在させることができる。
+    // 初月分はチェックアウト時に即時請求、月次分は billing_cycle_anchor から開始。
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
 
+    // 一回限りの初月利用料（最初に配置）
+    lineItems.push({
+      price_data: {
+        currency: 'jpy',
+        product_data: {
+          name: isHalfMonth ? '初月利用料（半額）' : '初月利用料（当月分）',
+        },
+        unit_amount: initialCharge,
+      },
+      quantity: 1,
+    })
+
+    // 月次基本料
     if (basePriceId && !useCustomBasePrice) {
       lineItems.push({ price: basePriceId, quantity: 1 })
     } else {
@@ -186,6 +211,7 @@ Deno.serve(async (req) => {
       )
     }
 
+    // 追加車両オプション
     if (addonQty > 0) {
       if (perVehiclePriceId && !useCustomVehiclePrice) {
         lineItems.push({ price: perVehiclePriceId, quantity: addonQty })
@@ -201,14 +227,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { day: jstDay } = getJstDateParts()
-    const billingCycleAnchor = getNextMonthStartUnix()
-    const totalMonthlyFee = baseFee + addonQty * perVehicleFee
-    const isHalfMonth = jstDay > 15
-    const initialCharge = isHalfMonth
-      ? Math.floor(totalMonthlyFee / 2)
-      : totalMonthlyFee
-
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       client_reference_id: biz.id,
@@ -218,18 +236,6 @@ Deno.serve(async (req) => {
       subscription_data: {
         billing_cycle_anchor: billingCycleAnchor,
         proration_behavior: 'none',
-        add_invoice_items: [
-          {
-            price_data: {
-              currency: 'jpy',
-              product_data: {
-                name: isHalfMonth ? '初月利用料（半額）' : '初月利用料（当月分）',
-              },
-              unit_amount: initialCharge,
-            },
-            quantity: 1,
-          },
-        ],
         metadata: { business_id: biz.id },
       },
       success_url: `${billingUrl}?billing=success`,
