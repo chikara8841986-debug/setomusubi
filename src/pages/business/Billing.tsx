@@ -228,6 +228,17 @@ export default function Billing() {
   const hasCustomPrice =
     business.custom_base_price != null || business.custom_per_vehicle_price != null
 
+  const jstDay = Number(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      day: '2-digit',
+    })
+      .formatToParts(new Date())
+      .find((p) => p.type === 'day')?.value ?? '1',
+  )
+  const isHalfMonth = jstDay > 15
+  const initialCharge = isHalfMonth ? Math.floor(estimatedFee / 2) : estimatedFee
+
   return (
     <div className="mx-auto max-w-xl space-y-5 px-4 py-6 sm:py-8">
       <h1 className="text-xl font-bold text-slate-800">課金・プラン</h1>
@@ -246,7 +257,7 @@ export default function Billing() {
 
           <p className="text-sm leading-relaxed text-slate-600">
             {status === 'none' &&
-              '契約はまだ開始されていません。毎月1日から15日に開始した場合は当月分が即時請求され、16日以降は翌月1日開始です。'}
+              '契約はまだ開始されていません。1日〜15日のご登録は当月1か月分、16日〜月末のご登録は当月の半額を即時請求します。翌月1日から通常の月額が請求されます。'}
             {status === 'trialing' &&
               `利用開始待ちです。次回の更新基準日は ${fmtDate(
                 business.subscription_period_end,
@@ -270,7 +281,9 @@ export default function Billing() {
               {checkoutBusy ? 'Stripeへ移動中...' : '決済画面へ進む'}
             </button>
             <p className="text-center text-xs text-slate-400">
-              1日から15日は当月分を即時請求、16日以降は翌月1日開始です。
+              今日（{jstDay}日）は
+              {isHalfMonth ? '16日以降のため当月半額' : '15日以内のため当月1か月分'}
+              を即時請求します。翌月1日から通常の月額が請求されます。
             </p>
           </div>
         )}
@@ -339,6 +352,19 @@ export default function Billing() {
             <span className="text-slate-700">月額見込み</span>
             <span className="text-lg text-teal-700">{fmtYen(estimatedFee)}</span>
           </div>
+          {needsCheckout && (
+            <div className="rounded-lg border border-teal-100 bg-teal-50 p-3">
+              <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 text-sm">
+                <span className="text-teal-700">
+                  今日登録した場合の初回請求（{isHalfMonth ? '当月半額' : '当月1か月分'}）
+                </span>
+                <span className="font-bold text-teal-800">{fmtYen(initialCharge)}</span>
+              </div>
+              <p className="mt-1 text-xs text-teal-600">
+                翌月1日から {fmtYen(estimatedFee)}/月 が自動請求されます。
+              </p>
+            </div>
+          )}
         </div>
 
         {isSubscribed && business.stripe_subscription_id && (

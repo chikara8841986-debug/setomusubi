@@ -199,9 +199,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    const prorationBehavior =
-      getJstDateParts().day <= 15 ? 'always_invoice' : 'none'
+    const { day: jstDay } = getJstDateParts()
     const billingCycleAnchor = getNextMonthStartUnix()
+    const totalMonthlyFee = baseFee + addonQty * perVehicleFee
+    const isHalfMonth = jstDay > 15
+    const initialCharge = isHalfMonth
+      ? Math.floor(totalMonthlyFee / 2)
+      : totalMonthlyFee
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
@@ -211,7 +215,19 @@ Deno.serve(async (req) => {
       line_items: lineItems,
       subscription_data: {
         billing_cycle_anchor: billingCycleAnchor,
-        proration_behavior: prorationBehavior,
+        proration_behavior: 'none',
+        add_invoice_items: [
+          {
+            price_data: {
+              currency: 'jpy',
+              product_data: {
+                name: isHalfMonth ? '初月利用料（半額）' : '初月利用料（当月分）',
+              },
+              unit_amount: initialCharge,
+            },
+            quantity: 1,
+          },
+        ],
         metadata: { business_id: biz.id },
       },
       success_url: `${billingUrl}?billing=success`,
