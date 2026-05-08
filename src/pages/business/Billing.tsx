@@ -13,31 +13,13 @@ const TRIAL_DAYS    =    30  // 無料トライアル日数
 // ── ステータス表示定義 ────────────────────────────────
 const STATUS_CONFIG: Record<
   SubscriptionStatus,
-  { label: string; pill: string; banner?: string }
+  { label: string; pill: string }
 > = {
-  none: {
-    label: '未登録',
-    pill: 'bg-slate-100 text-slate-600',
-    banner: '検索結果への掲載にはプランへの登録が必要です。',
-  },
-  trialing: {
-    label: '無料トライアル中',
-    pill: 'bg-blue-100 text-blue-700',
-  },
-  active: {
-    label: '有効',
-    pill: 'bg-emerald-100 text-emerald-700',
-  },
-  past_due: {
-    label: '支払い遅延',
-    pill: 'bg-red-100 text-red-700',
-    banner: 'お支払いが確認できていません。Stripeポータルでご確認ください。',
-  },
-  canceled: {
-    label: '解約済み',
-    pill: 'bg-orange-100 text-orange-700',
-    banner: 'プランが解約されています。再登録すると検索結果に再掲載されます。',
-  },
+  none:     { label: '未登録',          pill: 'bg-slate-100 text-slate-600'    },
+  trialing: { label: '無料トライアル中', pill: 'bg-blue-100 text-blue-700'     },
+  active:   { label: '掲載中',          pill: 'bg-emerald-100 text-emerald-700'},
+  past_due: { label: '支払い遅延',       pill: 'bg-red-100 text-red-700'       },
+  canceled: { label: '解約済み',         pill: 'bg-orange-100 text-orange-700' },
 }
 
 type BillingRow = {
@@ -144,7 +126,7 @@ export default function Billing() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('billing') === 'success') {
-      showToast({ type: 'success', message: '登録が完了しました！プランが有効になるまで少々お待ちください。' })
+      showToast('登録が完了しました！プランが有効になるまで少々お待ちください。', 'success')
       window.history.replaceState({}, '', window.location.pathname)
       load()
     } else if (params.get('billing') === 'canceled') {
@@ -159,12 +141,12 @@ export default function Billing() {
     try {
       const { data, error } = await supabase.functions.invoke(
         'create-checkout-session',
-        { body: { business_id: businessId, return_url: window.location.href } }
+        { body: { business_id: businessId } }
       )
       if (error || !data?.url) throw error ?? new Error('URLが取得できませんでした')
       window.location.href = data.url
     } catch (e: any) {
-      showToast({ type: 'error', message: e?.message ?? '決済ページを開けませんでした' })
+      showToast(e?.message ?? '決済ページを開けませんでした', 'error')
       setCheckoutBusy(false)
     }
   }
@@ -176,12 +158,12 @@ export default function Billing() {
     try {
       const { data, error } = await supabase.functions.invoke(
         'create-billing-portal-session',
-        { body: { business_id: businessId, return_url: window.location.href } }
+        { body: { business_id: businessId } }
       )
       if (error || !data?.url) throw error ?? new Error('URLが取得できませんでした')
       window.location.href = data.url
     } catch (e: any) {
-      showToast({ type: 'error', message: e?.message ?? '管理ページを開けませんでした' })
+      showToast(e?.message ?? '管理ページを開けませんでした', 'error')
       setPortalBusy(false)
     }
   }
@@ -207,126 +189,123 @@ export default function Billing() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-xl mx-auto px-4 py-6 sm:py-8 space-y-5">
       <h1 className="text-xl font-bold text-slate-800">ご請求・プラン管理</h1>
 
-      {/* ── ステータスバナー ── */}
-      {cfg.banner && (
-        <div className={`rounded-xl px-4 py-3 text-sm font-medium flex items-start gap-2 ${
-          isPastDue
-            ? 'bg-red-50 border border-red-200 text-red-700'
-            : 'bg-amber-50 border border-amber-200 text-amber-800'
-        }`}>
-          <span className="text-base mt-0.5">{isPastDue ? '⚠️' : '📢'}</span>
-          <span>{cfg.banner}</span>
-        </div>
-      )}
-
-      {/* ── プラン情報カード ── */}
+      {/* ── プラン状態カード ── */}
       <div className="card space-y-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-700">現在のプラン</h2>
-          <span className={`text-xs font-bold px-3 py-1 rounded-full ${cfg.pill}`}>
-            {cfg.label}
-          </span>
+
+        {/* 状態ヘッダ */}
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs text-slate-500">現在の状態</p>
+              <h2 className="text-lg font-semibold text-slate-900">{cfg.label}</h2>
+            </div>
+            <span className={`shrink-0 text-xs font-bold px-3 py-1 rounded-full ${cfg.pill}`}>
+              {cfg.label}
+            </span>
+          </div>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            {status === 'none' &&
+              `まだ掲載は開始されていません。登録後すぐに検索結果に掲載されます。最初の${TRIAL_DAYS}日間は無料です。`}
+            {status === 'trialing' && trialEnd &&
+              `無料トライアル中です。終了日は ${fmtDate(trialEnd)} です。終了後は自動的に有料プランへ移行します。`}
+            {status === 'active' && periodEnd &&
+              `掲載中です。次回更新日は ${fmtDate(periodEnd)} です。`}
+            {status === 'past_due' &&
+              'お支払いの確認が必要です。下のボタンから支払い方法を確認・更新してください。確認後も掲載状態は維持されます。'}
+            {status === 'canceled' &&
+              '掲載は停止中です。再登録後すぐに検索結果への掲載が再開されます。'}
+          </p>
         </div>
+
+        {/* CTA */}
+        {needsRegister && (
+          <div className="space-y-2">
+            <button
+              onClick={handleCheckout}
+              disabled={checkoutBusy}
+              className="btn-primary w-full"
+            >
+              {checkoutBusy
+                ? 'Stripeへ移動しています…'
+                : `${TRIAL_DAYS}日間無料で掲載を始める`}
+            </button>
+            <p className="text-xs text-slate-400 text-center">
+              外部の決済画面 Stripe に移動します。せとむすびがカード情報を保持することはありません。
+            </p>
+          </div>
+        )}
+        {canOpenPortal && (
+          <div className="space-y-2">
+            <button
+              onClick={handlePortal}
+              disabled={portalBusy}
+              className="btn-secondary w-full"
+            >
+              {portalBusy
+                ? '管理画面を開いています…'
+                : '支払い方法・請求情報を確認する'}
+            </button>
+            <p className="text-xs text-slate-400 text-center">
+              Stripe の安全な管理画面に移動します。プランの解約もこちらから行えます。
+            </p>
+          </div>
+        )}
+        {isPastDue && !hasCustomer && (
+          <div className="space-y-2">
+            <button
+              onClick={handleCheckout}
+              disabled={checkoutBusy}
+              className="btn-primary w-full"
+            >
+              {checkoutBusy ? 'Stripeへ移動しています…' : '支払い方法を更新する'}
+            </button>
+            <p className="text-xs text-slate-400 text-center">
+              外部の決済画面 Stripe に移動します。
+            </p>
+          </div>
+        )}
 
         {/* 料金表 */}
         <div className="rounded-xl bg-slate-50 p-4 space-y-2.5">
           <p className="text-sm font-semibold text-slate-700">せとむすび 標準プラン</p>
-          <div className="flex justify-between text-sm text-slate-600">
+          <div className="grid grid-cols-[1fr_auto] gap-x-3 text-sm text-slate-600 items-baseline">
             <span>月額基本料</span>
-            <span className="font-medium text-slate-800">
+            <span className="font-medium text-slate-800 text-right">
               {fmtYen(MONTHLY_FEE)}<span className="text-xs text-slate-400 ml-0.5">/月</span>
             </span>
           </div>
-          <div className="flex justify-between text-sm text-slate-600">
+          <div className="grid grid-cols-[1fr_auto] gap-x-3 text-sm text-slate-600 items-baseline">
             <span>予約承認1件あたり（従量）</span>
-            <span className="font-medium text-slate-800">
+            <span className="font-medium text-slate-800 text-right">
               {fmtYen(PER_RES_FEE)}<span className="text-xs text-slate-400 ml-0.5">/件</span>
             </span>
           </div>
           <p className="text-xs text-slate-400 pt-1">※ 価格はすべて税込です</p>
         </div>
-
-        {/* ステータス別メッセージ */}
-        {status === 'trialing' && trialEnd && (
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700">
-            🎉 無料トライアル中です。終了日：<strong>{fmtDate(trialEnd)}</strong>
-            <br />
-            <span className="text-xs">トライアル終了後は自動的に有料プランへ移行します。</span>
-          </div>
-        )}
-        {status === 'active' && periodEnd && (
-          <p className="text-sm text-slate-500">
-            次回更新日：<strong className="text-slate-700">{fmtDate(periodEnd)}</strong>
-          </p>
-        )}
-        {status === 'none' && (
-          <div className="rounded-lg bg-sky-50 border border-sky-200 p-3 text-sm text-sky-700">
-            プランに登録すると、MSWの検索結果に掲載されます。
-            <strong> 今すぐ登録で{TRIAL_DAYS}日間は無料</strong>でお試しいただけます。
-          </div>
-        )}
-        {status === 'canceled' && (
-          <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 text-sm text-orange-700">
-            プランが解約されています。再登録後、検索結果への掲載が再開されます。
-          </div>
-        )}
-
-        {/* CTA */}
-        {needsRegister && (
-          <button
-            onClick={handleCheckout}
-            disabled={checkoutBusy}
-            className="btn-primary w-full"
-          >
-            {checkoutBusy
-              ? <span className="spinner-sm" />
-              : `${TRIAL_DAYS}日間無料トライアルを始める →`}
-          </button>
-        )}
-        {canOpenPortal && (
-          <button
-            onClick={handlePortal}
-            disabled={portalBusy}
-            className="btn-secondary w-full"
-          >
-            {portalBusy
-              ? <span className="spinner-sm" />
-              : 'プランを管理・解約する（Stripe ポータル）'}
-          </button>
-        )}
-        {isPastDue && !hasCustomer && (
-          <button
-            onClick={handleCheckout}
-            disabled={checkoutBusy}
-            className="btn-primary w-full"
-          >
-            {checkoutBusy ? <span className="spinner-sm" /> : '支払い方法を登録する →'}
-          </button>
-        )}
       </div>
 
       {/* ── 今月の利用状況 ── */}
       <div className="card space-y-4">
         <h2 className="font-semibold text-slate-700">{monthLabel}の利用状況（推定）</h2>
         <div className="space-y-1">
-          <div className="flex justify-between py-2.5 border-b border-slate-100 text-sm">
+          <div className="grid grid-cols-[1fr_auto] gap-x-3 py-2.5 border-b border-slate-100 text-sm items-baseline">
             <span className="text-slate-600">月額基本料</span>
-            <span className="font-medium text-slate-800">{fmtYen(MONTHLY_FEE)}</span>
+            <span className="font-medium text-slate-800 text-right">{fmtYen(MONTHLY_FEE)}</span>
           </div>
-          <div className="flex justify-between py-2.5 border-b border-slate-100 text-sm">
+          <div className="grid grid-cols-[1fr_auto] gap-x-3 py-2.5 border-b border-slate-100 text-sm items-baseline">
             <span className="text-slate-600">
-              予約承認件数 {monthCount}件 × {fmtYen(PER_RES_FEE)}
+              予約承認 {monthCount}件 × {fmtYen(PER_RES_FEE)}
             </span>
-            <span className="font-medium text-slate-800">
+            <span className="font-medium text-slate-800 text-right">
               {fmtYen(monthCount * PER_RES_FEE)}
             </span>
           </div>
-          <div className="flex justify-between py-3 text-base font-bold">
+          <div className="grid grid-cols-[1fr_auto] gap-x-3 py-3 text-base font-bold items-baseline">
             <span className="text-slate-700">合計（推定）</span>
-            <span className="text-teal-700 text-lg">{fmtYen(estimatedTotal)}</span>
+            <span className="text-teal-700 text-lg text-right">{fmtYen(estimatedTotal)}</span>
           </div>
         </div>
         {!isSubscribed && (
@@ -334,6 +313,9 @@ export default function Billing() {
             ※ プランに登録後、請求が開始されます。トライアル期間中は課金されません。
           </p>
         )}
+        <p className="text-xs text-slate-400">
+          ※ 上記は当月の確認済み予約件数による推定です。実際の請求は Stripe 発行の請求書が正となります。
+        </p>
       </div>
 
       {/* ── 請求履歴 ── */}
@@ -342,7 +324,10 @@ export default function Billing() {
           <h2 className="font-semibold text-slate-700">請求履歴</h2>
           <div className="divide-y divide-slate-100">
             {events.map((evt) => (
-              <div key={evt.id} className="flex items-center justify-between py-3 text-sm">
+              <div
+                key={evt.id}
+                className="py-3 text-sm sm:flex sm:items-center sm:justify-between gap-3"
+              >
                 <div className="space-y-0.5">
                   <p className="text-slate-700">
                     {evt.event_type === 'subscription'
@@ -353,7 +338,7 @@ export default function Billing() {
                     {new Date(evt.created_at).toLocaleDateString('ja-JP')}
                   </p>
                 </div>
-                <div className="text-right space-y-0.5">
+                <div className="mt-1 sm:mt-0 flex items-center gap-3 sm:flex-col sm:items-end sm:gap-0.5">
                   <p className="font-medium text-slate-800">{fmtYen(evt.amount)}</p>
                   <span className={`text-xs font-medium ${
                     evt.status === 'paid'    ? 'text-emerald-600' :
@@ -373,7 +358,7 @@ export default function Billing() {
       )}
 
       {/* ── フッター ── */}
-      <div className="text-center space-y-1">
+      <div className="text-center space-y-1 pt-2">
         <p className="text-xs text-slate-400">
           ご請求・解約に関するお問い合わせは{' '}
           <a href="mailto:support@setomusubi.jp" className="text-teal-600 hover:underline">

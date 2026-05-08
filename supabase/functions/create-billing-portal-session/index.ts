@@ -7,6 +7,7 @@
  * 環境変数:
  *   STRIPE_SECRET_KEY                     sk_live_... or sk_test_...
  *   STRIPE_BILLING_PORTAL_CONFIGURATION   （省略可: Stripe ダッシュボードでデフォルト設定済みなら不要）
+ *   APP_URL                               https://setomusubi.vercel.app （戻り先URLのオリジン）
  *   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY  自動注入
  */
 
@@ -40,10 +41,14 @@ Deno.serve(async (req) => {
     )
     if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
 
-    const { business_id, return_url } = await req.json()
-    if (!business_id || !return_url) {
-      return json({ error: 'business_id and return_url are required' }, 400)
+    const { business_id } = await req.json()
+    if (!business_id) {
+      return json({ error: 'business_id is required' }, 400)
     }
+
+    // return_url はサーバ側で固定 — クライアント入力を使わない
+    const appUrl = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
+    const billingUrl = `${appUrl}/business/billing`
 
     // ── 所有権確認 + Stripe Customer ID 取得 ────────────
     const { data: biz, error: bizErr } = await supabase
@@ -61,7 +66,7 @@ Deno.serve(async (req) => {
     // ── Billing Portal Session ──────────────────────────
     const params: Stripe.BillingPortal.SessionCreateParams = {
       customer:   biz.stripe_customer_id,
-      return_url: return_url,
+      return_url: billingUrl,
     }
 
     const configId = Deno.env.get('STRIPE_BILLING_PORTAL_CONFIGURATION')

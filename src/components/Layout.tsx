@@ -333,14 +333,14 @@ function BillingBanner({ businessId }: { businessId: string }) {
 
   const isPastDue = status === 'past_due'
   return (
-    <div className={`px-4 py-2 text-center text-xs font-medium flex items-center justify-center gap-2 ${
+    <div className={`px-3 py-2 text-[13px] leading-5 flex items-center justify-between gap-3 border-b ${
       isPastDue
-        ? 'bg-red-500 text-white'
-        : 'bg-amber-400 text-amber-900'
+        ? 'bg-rose-50 text-rose-900 border-rose-100'
+        : 'bg-amber-50 text-amber-900 border-amber-100'
     }`}>
       <span>{isPastDue ? '⚠️ お支払いが確認できていません。' : '📢 プランに未登録のため、検索結果に掲載されていません。'}</span>
-      <Link to="/business/billing" className="underline font-bold hover:opacity-80">
-        {isPastDue ? 'お支払い確認 →' : '登録する →'}
+      <Link to="/business/billing" className="whitespace-nowrap underline font-semibold hover:opacity-80 shrink-0">
+        {isPastDue ? '支払い方法を確認する' : '掲載を開始する'}
       </Link>
     </div>
   )

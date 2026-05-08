@@ -177,7 +177,11 @@ Deno.serve(async (req) => {
     }
   } catch (e: any) {
     console.error('[stripe-webhook] handler error:', e.message)
-    // Stripe に 500 を返すと再試行される。ハンドラエラーは記録して 200 を返す。
+    // 500 を返すことで Stripe が自動再試行する
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   return new Response(JSON.stringify({ received: true }), {

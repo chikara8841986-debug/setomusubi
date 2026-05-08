@@ -8,6 +8,7 @@
  *   STRIPE_SECRET_KEY           sk_live_... or sk_test_...
  *   STRIPE_MONTHLY_PRICE_ID     price_xxx （月額固定: ¥5,500）
  *   STRIPE_PER_RES_PRICE_ID     price_xxx （従量メタード: ¥300/件）
+ *   APP_URL                     https://setomusubi.vercel.app （戻り先URLのオリジン）
  *   SUPABASE_URL                自動注入
  *   SUPABASE_SERVICE_ROLE_KEY   自動注入
  */
@@ -44,10 +45,14 @@ Deno.serve(async (req) => {
       return json({ error: 'Unauthorized' }, 401)
     }
 
-    const { business_id, return_url } = await req.json()
-    if (!business_id || !return_url) {
-      return json({ error: 'business_id and return_url are required' }, 400)
+    const { business_id } = await req.json()
+    if (!business_id) {
+      return json({ error: 'business_id is required' }, 400)
     }
+
+    // return_url はサーバ側で固定 — クライアント入力を使わない
+    const appUrl = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
+    const billingUrl = `${appUrl}/business/billing`
 
     // ── 所有権確認 ─────────────────────────────────────
     const { data: biz, error: bizErr } = await supabase
@@ -111,8 +116,8 @@ Deno.serve(async (req) => {
         trial_period_days: 30,
         metadata: { business_id: biz.id },
       },
-      success_url: `${return_url}?billing=success`,
-      cancel_url:  `${return_url}?billing=canceled`,
+      success_url: `${billingUrl}?billing=success`,
+      cancel_url:  `${billingUrl}?billing=canceled`,
       locale:      'ja',
     })
 

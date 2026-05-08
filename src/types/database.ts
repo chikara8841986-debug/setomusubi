@@ -384,7 +384,6 @@ export type Database = {
         }
         Relationships: []
       }
-    }
       billing_events: {
         Row: {
           id: string
@@ -421,7 +420,7 @@ export type Database = {
         }
         Relationships: []
       }
-    }
+    }  // Tables
     Views: Record<string, never>
     Functions: {
       approve_reservation: {
