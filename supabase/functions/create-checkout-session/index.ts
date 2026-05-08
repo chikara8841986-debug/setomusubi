@@ -42,7 +42,9 @@ function getNextMonthStartUnix(now = new Date()) {
   const { year, month } = getJstDateParts(now)
   const nextMonthYear = month === 12 ? year + 1 : year
   const nextMonth = month === 12 ? 1 : month + 1
-  return Math.floor(Date.UTC(nextMonthYear, nextMonth - 1, 1, 0, 0, 0) / 1000)
+  // JST 00:00 = UTC -9h。ISO8601 +09:00 で明示的に指定する。
+  const mm = String(nextMonth).padStart(2, '0')
+  return Math.floor(new Date(`${nextMonthYear}-${mm}-01T00:00:00+09:00`).getTime() / 1000)
 }
 
 function buildRecurringLineItem(
