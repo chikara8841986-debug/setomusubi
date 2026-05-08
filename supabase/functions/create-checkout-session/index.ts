@@ -8,7 +8,6 @@
  *   STRIPE_SECRET_KEY           sk_live_... or sk_test_...
  *   STRIPE_MONTHLY_PRICE_ID     price_xxx （月額固定: ¥5,500）
  *   STRIPE_PER_RES_PRICE_ID     price_xxx （従量メタード: ¥300/件）
- *   APP_URL                     https://setomusubi.vercel.app （戻り先URLのオリジン）
  *   SUPABASE_URL                自動注入
  *   SUPABASE_SERVICE_ROLE_KEY   自動注入
  */
@@ -50,9 +49,12 @@ Deno.serve(async (req) => {
       return json({ error: 'business_id is required' }, 400)
     }
 
-    // return_url はサーバ側で固定 — クライアント入力を使わない
-    const appUrl = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
-    const billingUrl = `${appUrl}/business/billing`
+    // Origin ヘッダーを使うことで環境変数不要・どの環境でも正しいURLになる
+    // supabase.functions.invoke() はブラウザのオリジンを Origin に乗せて送信する
+    const origin = req.headers.get('origin')
+      ?? req.headers.get('referer')?.replace(/\/[^/]*$/, '')
+      ?? (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
+    const billingUrl = `${origin}/business/billing`
 
     // ── 所有権確認 ─────────────────────────────────────
     const { data: biz, error: bizErr } = await supabase

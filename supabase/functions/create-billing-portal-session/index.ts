@@ -7,7 +7,6 @@
  * 環境変数:
  *   STRIPE_SECRET_KEY                     sk_live_... or sk_test_...
  *   STRIPE_BILLING_PORTAL_CONFIGURATION   （省略可: Stripe ダッシュボードでデフォルト設定済みなら不要）
- *   APP_URL                               https://setomusubi.vercel.app （戻り先URLのオリジン）
  *   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY  自動注入
  */
 
@@ -46,9 +45,11 @@ Deno.serve(async (req) => {
       return json({ error: 'business_id is required' }, 400)
     }
 
-    // return_url はサーバ側で固定 — クライアント入力を使わない
-    const appUrl = (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
-    const billingUrl = `${appUrl}/business/billing`
+    // Origin ヘッダーを使うことで環境変数不要・どの環境でも正しいURLになる
+    const origin = req.headers.get('origin')
+      ?? req.headers.get('referer')?.replace(/\/[^/]*$/, '')
+      ?? (Deno.env.get('APP_URL') ?? '').replace(/\/$/, '')
+    const billingUrl = `${origin}/business/billing`
 
     // ── 所有権確認 + Stripe Customer ID 取得 ────────────
     const { data: biz, error: bizErr } = await supabase
