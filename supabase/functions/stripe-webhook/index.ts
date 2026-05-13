@@ -53,6 +53,54 @@ function mapStatus(stripeStatus: string): string {
   }
 }
 
+function buildSubscriptionItems(input: {
+  baseFee: number
+  perVehicleFee: number
+  addonQty: number
+  basePriceId: string
+  perVehiclePriceId: string
+}): Stripe.SubscriptionCreateParams.Item[] {
+  const items: Stripe.SubscriptionCreateParams.Item[] = []
+
+  if (input.basePriceId) {
+    items.push({ price: input.basePriceId, quantity: 1 })
+  } else {
+    items.push({
+      price_data: {
+        currency: 'jpy',
+        product_data: {
+          name: '基本利用料',
+          metadata: { billing_type: 'base_monthly' },
+        },
+        unit_amount: input.baseFee,
+        recurring: { interval: 'month' },
+      },
+      quantity: 1,
+    })
+  }
+
+  if (input.addonQty > 0) {
+    if (input.perVehiclePriceId) {
+      items.push({ price: input.perVehiclePriceId, quantity: input.addonQty })
+    } else {
+      items.push({
+        price_data: {
+          currency: 'jpy',
+          product_data: {
+            name: '追加車両利用料',
+            metadata: { billing_type: 'per_vehicle' },
+          },
+          unit_amount: input.perVehicleFee,
+          recurring: { interval: 'month' },
+        },
+        quantity: input.addonQty,
+      })
+    }
+  }
+
+  return items
+}
+
 async function resolveBusinessId(input: {
   metadataBusinessId?: string | null
   subscriptionId?: string | null
@@ -143,34 +191,80 @@ Deno.serve(async (req) => {
   }
 
   const vehiclePriceId = Deno.env.get('STRIPE_PER_VEHICLE_PRICE_ID') ?? ''
+  const basePriceId = Deno.env.get('STRIPE_BASE_PRICE_ID') ?? ''
 
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        if (session.mode !== 'subscription') break
 
-        const subscriptionId = session.subscription as string | null
-        const customerId = session.customer as string | null
-        const businessId = await resolveBusinessId({
-          metadataBusinessId:
-            session.client_reference_id ?? (session as any).metadata?.business_id,
-          subscriptionId,
-          customerId,
-        })
+        if (session.mode === 'subscription') {
+          const subscriptionId = session.subscription as string | null
+          const customerId = session.customer as string | null
+          const businessId = await resolveBusinessId({
+            metadataBusinessId:
+              session.client_reference_id ?? (session as any).metadata?.business_id,
+            subscriptionId,
+            customerId,
+          })
 
-        if (!businessId || !subscriptionId) break
+          if (!businessId || !subscriptionId) break
 
-        const sub = await stripe.subscriptions.retrieve(subscriptionId, {
-          expand: ['items.data.price'],
-        })
-        const vehicleItemId = findVehicleItemId(sub.items.data, vehiclePriceId)
+          const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ['items.data.price'],
+          })
+          const vehicleItemId = findVehicleItemId(sub.items.data, vehiclePriceId)
 
-        await updateBusiness(businessId, {
-          stripe_customer_id: customerId,
-          stripe_subscription_id: subscriptionId,
-          stripe_vehicle_item_id: vehicleItemId,
-        })
+          await updateBusiness(businessId, {
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            stripe_vehicle_item_id: vehicleItemId,
+          })
+        } else if (session.mode === 'payment') {
+          const meta = (session.metadata ?? {}) as Record<string, string>
+          const businessId = meta.business_id
+          const paymentIntentId = session.payment_intent as string | null
+
+          if (!businessId || !paymentIntentId) break
+
+          const pi = await stripe.paymentIntents.retrieve(paymentIntentId)
+          const paymentMethodId = pi.payment_method as string | null
+
+          if (!paymentMethodId) break
+
+          const baseFee = meta.custom_base_price
+            ? Number(meta.custom_base_price)
+            : Number(meta.base_fee)
+          const perVehicleFee = meta.custom_per_vehicle_price
+            ? Number(meta.custom_per_vehicle_price)
+            : Number(meta.per_vehicle_fee)
+          const addonQty = Number(meta.addon_qty)
+          const billingCycleAnchor = Number(meta.billing_cycle_anchor)
+          const subscriptionItems = buildSubscriptionItems({
+            baseFee,
+            perVehicleFee,
+            addonQty,
+            basePriceId,
+            perVehiclePriceId: vehiclePriceId,
+          })
+
+          const sub = await stripe.subscriptions.create({
+            customer: session.customer as string,
+            default_payment_method: paymentMethodId,
+            items: subscriptionItems,
+            billing_cycle_anchor: billingCycleAnchor,
+            proration_behavior: 'none',
+            metadata: { business_id: businessId },
+          })
+          const vehicleItemId = findVehicleItemId(sub.items.data, vehiclePriceId)
+
+          await updateBusiness(businessId, {
+            stripe_customer_id: session.customer as string | null,
+            stripe_subscription_id: sub.id,
+            subscription_status: mapStatus(sub.status),
+            stripe_vehicle_item_id: vehicleItemId,
+          })
+        }
         break
       }
 

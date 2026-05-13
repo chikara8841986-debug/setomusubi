@@ -42,29 +42,8 @@ function getNextMonthStartUnix(now = new Date()) {
   const { year, month } = getJstDateParts(now)
   const nextMonthYear = month === 12 ? year + 1 : year
   const nextMonth = month === 12 ? 1 : month + 1
-  // JST 00:00 = UTC -9h。ISO8601 +09:00 で明示的に指定する。
   const mm = String(nextMonth).padStart(2, '0')
   return Math.floor(new Date(`${nextMonthYear}-${mm}-01T00:00:00+09:00`).getTime() / 1000)
-}
-
-function buildRecurringLineItem(
-  amount: number,
-  name: string,
-  billingType: 'base_monthly' | 'per_vehicle',
-  quantity: number,
-): Stripe.Checkout.SessionCreateParams.LineItem {
-  return {
-    price_data: {
-      currency: 'jpy',
-      product_data: {
-        name,
-        metadata: { billing_type: billingType },
-      },
-      unit_amount: amount,
-      recurring: { interval: 'month' },
-    },
-    quantity,
-  }
 }
 
 Deno.serve(async (req) => {
@@ -170,74 +149,61 @@ Deno.serve(async (req) => {
 
     const baseFee = biz.custom_base_price ?? DEFAULT_BASE_FEE
     const perVehicleFee = biz.custom_per_vehicle_price ?? DEFAULT_PER_VEHICLE_FEE
-    const useCustomBasePrice = biz.custom_base_price != null
-    const useCustomVehiclePrice = biz.custom_per_vehicle_price != null
 
-    const basePriceId = Deno.env.get('STRIPE_BASE_PRICE_ID') ?? ''
-    const perVehiclePriceId = Deno.env.get('STRIPE_PER_VEHICLE_PRICE_ID') ?? ''
-
-    // 初月利用料の計算（JST日付基準）
+    // Charge the initial fee immediately in Checkout.
+    // The recurring subscription must be created in the webhook afterward.
     const { day: jstDay } = getJstDateParts()
     const billingCycleAnchor = getNextMonthStartUnix()
-    const totalMonthlyFee = baseFee + addonQty * perVehicleFee
     const isHalfMonth = jstDay > 15
-    const initialCharge = isHalfMonth
-      ? Math.floor(totalMonthlyFee / 2)
-      : totalMonthlyFee
-
-    // line_items: 一回限りの初月利用料 + 月次サブスクリプション
-    // subscription mode では recurring と one-time を混在させることができる。
-    // 初月分はチェックアウト時に即時請求、月次分は billing_cycle_anchor から開始。
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
-
-    // 一回限りの初月利用料（最初に配置）
-    lineItems.push({
-      price_data: {
-        currency: 'jpy',
-        product_data: {
-          name: isHalfMonth ? '初月利用料（半額）' : '初月利用料（当月分）',
-        },
-        unit_amount: initialCharge,
-      },
-      quantity: 1,
-    })
-
-    // 月次基本料
-    if (basePriceId && !useCustomBasePrice) {
-      lineItems.push({ price: basePriceId, quantity: 1 })
-    } else {
-      lineItems.push(
-        buildRecurringLineItem(baseFee, 'せとむすび 基本プラン', 'base_monthly', 1),
-      )
-    }
-
-    // 追加車両オプション
-    if (addonQty > 0) {
-      if (perVehiclePriceId && !useCustomVehiclePrice) {
-        lineItems.push({ price: perVehiclePriceId, quantity: addonQty })
-      } else {
-        lineItems.push(
-          buildRecurringLineItem(
-            perVehicleFee,
-            'せとむすび 追加車両オプション',
-            'per_vehicle',
-            addonQty,
-          ),
-        )
-      }
-    }
+    const totalMonthlyFee = baseFee + addonQty * perVehicleFee
+    const initialCharge = isHalfMonth ? Math.floor(totalMonthlyFee / 2) : totalMonthlyFee
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       client_reference_id: biz.id,
-      mode: 'subscription',
+      mode: 'payment',
       payment_method_types: ['card'],
-      line_items: lineItems,
-      subscription_data: {
-        billing_cycle_anchor: billingCycleAnchor,
-        proration_behavior: 'none',
-        metadata: { business_id: biz.id },
+      line_items: [
+        {
+          price_data: {
+            currency: 'jpy',
+            product_data: {
+              name: isHalfMonth ? '初月利用料（半額）' : '初月利用料（当月分）',
+              metadata: {
+                billing_type: 'initial_registration_fee',
+                charge_timing: 'immediate',
+              },
+            },
+            unit_amount: initialCharge,
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        setup_future_usage: 'off_session',
       },
+      metadata: {
+        business_id: biz.id,
+        billing_cycle_anchor: String(billingCycleAnchor),
+        base_fee: String(baseFee),
+        per_vehicle_fee: String(perVehicleFee),
+        addon_qty: String(addonQty),
+        custom_base_price: biz.custom_base_price != null ? String(biz.custom_base_price) : '',
+        custom_per_vehicle_price:
+          biz.custom_per_vehicle_price != null ? String(biz.custom_per_vehicle_price) : '',
+        initial_charge: String(initialCharge),
+        initial_charge_rule: isHalfMonth ? 'half_month_after_15th' : 'full_month_1_to_15',
+      },
+      /*
+       * Webhook requirement for checkout.session.completed:
+       * - Read session.customer and the saved payment method from the completed payment.
+       * - Create the recurring subscription in the webhook, not in this function.
+       * - Use billing_cycle_anchor = metadata.billing_cycle_anchor for the 1st of next month.
+       * - Set trial_end = billing_cycle_anchor so the subscription does not charge again today.
+       * - Create the standard 3,850 JPY/month subscription by default, or apply the
+       *   business-specific base/add-on pricing if the webhook already supports that.
+       * - Attach the saved payment method for off-session renewals.
+       */
       success_url: `${billingUrl}?billing=success`,
       cancel_url: `${billingUrl}?billing=canceled`,
       locale: 'ja',
