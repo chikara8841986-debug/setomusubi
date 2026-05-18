@@ -33,7 +33,7 @@ type EditState = {
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   none: '未登録',
-  trialing: '無料トライアル期間中',
+  trialing: 'ご利用開始済み（初月）',
   active: '利用中',
   past_due: '支払い失敗',
   canceled: '解約済み',
@@ -237,13 +237,25 @@ export default function BillingAdmin() {
     }
   }
 
-  const handleActivate = async (bizId: string) => {
-    setActivateBusy(bizId)
+  const handleActivate = async (biz: BizRow) => {
+    // 安全策: 料金が ¥0 でない場合はアクティベートを拒否
+    // Stripe契約なしで active にすると、本来課金されるべき事業所が永遠に無料になってしまう
+    const baseFee = biz.custom_base_price ?? DEFAULT_BASE_FEE
+    const perVehicleFee = biz.custom_per_vehicle_price ?? DEFAULT_PER_VEHICLE_FEE
+    if (baseFee !== 0 || perVehicleFee !== 0) {
+      showToast(
+        'アクティベートする前に、基本料と追加単価の両方を ¥0 に設定してください（無料契約専用機能です）',
+        'error',
+      )
+      return
+    }
+
+    setActivateBusy(biz.id)
     try {
       const { error } = await supabase
         .from('businesses')
         .update({ subscription_status: 'active' })
-        .eq('id', bizId)
+        .eq('id', biz.id)
       if (error) throw error
       showToast('アクティベートしました（Stripe契約なし・無料プラン）', 'success')
       await load()
@@ -334,7 +346,7 @@ export default function BillingAdmin() {
           >
             <option value="all">すべて</option>
             <option value="active">利用中</option>
-            <option value="trialing">無料トライアル期間中</option>
+            <option value="trialing">ご利用開始済み（初月）</option>
             <option value="past_due">支払い失敗</option>
             <option value="none">未登録</option>
             <option value="canceled">解約済み</option>
@@ -442,9 +454,10 @@ export default function BillingAdmin() {
                     <button
                       className="flex-1 rounded-lg border border-emerald-200 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
                       disabled={activateBusy === biz.id}
-                      onClick={() => handleActivate(biz.id)}
+                      onClick={() => handleActivate(biz)}
+                      title="基本料・追加単価がともに ¥0 のときのみ有効（無料契約専用）"
                     >
-                      {activateBusy === biz.id ? '処理中...' : 'アクティベート'}
+                      {activateBusy === biz.id ? '処理中...' : 'アクティベート（無料契約）'}
                     </button>
                   )}
                 </div>

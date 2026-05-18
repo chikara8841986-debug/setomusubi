@@ -164,6 +164,19 @@ Deno.serve(async (req) => {
     const useCustomBasePrice = biz.custom_base_price != null
     const useCustomVehiclePrice = biz.custom_per_vehicle_price != null
 
+    // ¥0 ハンドリング（粒度別）:
+    //  - 両方 0: Stripe には何も送らない（完全無料プラン）
+    //  - 基本料のみ 0: 基本料 item は更新しない（既存価格維持）。車両のみ同期。
+    //  - 追加単価のみ 0: 車両 item を削除（実質 addonQty=0 扱い）。基本料は同期。
+    // Stripe の price_data は unit_amount:0 を JPY で受け付けないため、
+    // ¥0 にしたい場合は item 自体を作らない／消す方針で扱う。
+    const baseIsFree = baseFee === 0
+    const vehicleIsFree = perVehicleFee === 0
+
+    if (baseIsFree && vehicleIsFree) {
+      return json({ synced: false, reason: 'free_plan_full' })
+    }
+
     const subscription = await stripe.subscriptions.retrieve(biz.stripe_subscription_id, {
       expand: ['items.data.price'],
     })
@@ -173,7 +186,8 @@ Deno.serve(async (req) => {
     const liveVehicleItem =
       subscription.items.data.find((item) => isVehicleItem(item, vehiclePriceId)) ?? null
 
-    if (baseItem) {
+    // ── 基本料アイテム同期 ──
+    if (baseItem && !baseIsFree) {
       const baseNeedsPriceUpdate = useCustomBasePrice
         ? getUnitAmount(baseItem) !== baseFee || getPriceMeta(baseItem).billing_type !== 'base_monthly'
         : basePriceId
@@ -192,10 +206,15 @@ Deno.serve(async (req) => {
         )
       }
     }
+    // baseIsFree && baseItem あり: 既存 item は触らない（手動でStripeダッシュボードから削除推奨）
 
+    // ── 車両アイテム同期 ──
     let vehicleItemId = liveVehicleItem?.id ?? biz.stripe_vehicle_item_id ?? null
 
-    if (addonQty > 0) {
+    // ¥0 追加単価 OR 車両0台: 既存の車両 item を削除して終わり
+    const effectiveAddonQty = vehicleIsFree ? 0 : addonQty
+
+    if (effectiveAddonQty > 0) {
       if (liveVehicleItem) {
         const vehicleNeedsPriceUpdate = useCustomVehiclePrice
           ? getUnitAmount(liveVehicleItem) !== perVehicleFee ||
@@ -205,10 +224,10 @@ Deno.serve(async (req) => {
             : getUnitAmount(liveVehicleItem) !== perVehicleFee ||
               getPriceMeta(liveVehicleItem).billing_type !== 'per_vehicle'
 
-        if (vehicleNeedsPriceUpdate || liveVehicleItem.quantity !== addonQty) {
+        if (vehicleNeedsPriceUpdate || liveVehicleItem.quantity !== effectiveAddonQty) {
           const updated = await replaceItemPrice(
             liveVehicleItem.id,
-            addonQty,
+            effectiveAddonQty,
             !useCustomVehiclePrice && vehiclePriceId ? vehiclePriceId : null,
             useCustomVehiclePrice || !vehiclePriceId
               ? buildRecurringPriceData(
@@ -224,7 +243,7 @@ Deno.serve(async (req) => {
       } else {
         const createParams: Stripe.SubscriptionItemCreateParams = {
           subscription: biz.stripe_subscription_id,
-          quantity: addonQty,
+          quantity: effectiveAddonQty,
           proration_behavior: prorationBehavior,
           payment_behavior: 'allow_incomplete',
         }
@@ -243,6 +262,7 @@ Deno.serve(async (req) => {
         vehicleItemId = created.id
       }
     } else if (liveVehicleItem) {
+      // 0台 or vehicleIsFree → 既存 item を削除
       await stripe.subscriptionItems.del(liveVehicleItem.id, {
         proration_behavior: prorationBehavior,
       })

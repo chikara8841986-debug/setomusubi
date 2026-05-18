@@ -60,26 +60,38 @@ export default function AdminApprovals() {
       showToast('承認に失敗しました。再試行してください。', 'error')
       return
     }
-    supabase.functions.invoke('send-business-approved', { body: { business_id: id } }).catch(() => {})
+    // 承認メールの送信失敗を黙殺せず、ユーザーに通知（DB承認は既に完了している点を明示）
+    const { error: mailErr } = await supabase.functions.invoke('send-business-approved', {
+      body: { business_id: id },
+    })
     await fetchAll()
     setProcessing(null)
-    showToast('事業所を承認しました')
+    if (mailErr) {
+      showToast(`承認しましたが、通知メールの送信に失敗しました（${mailErr.message ?? 'unknown'}）。事業所に直接連絡が必要です。`, 'error')
+    } else {
+      showToast('事業所を承認し、通知メールを送信しました')
+    }
   }
 
   const handleReject = async (id: string) => {
     setProcessing(id)
     setConfirmState(null)
-    const { data: biz } = await supabase.from('businesses').select('user_id').eq('id', id).single()
-    const { error } = await supabase.from('businesses').delete().eq('id', id)
+    // admin-reject-business: メール通知 → businesses 削除 → profiles 削除 → auth.users 削除 を1コール
+    const { data, error } = await supabase.functions.invoke('admin-reject-business', {
+      body: { business_id: id },
+    })
     if (error) {
       setProcessing(null)
-      showToast('却下処理に失敗しました。再試行してください。', 'error')
+      showToast(`却下処理に失敗しました: ${error.message ?? 'unknown'}`, 'error')
       return
     }
-    if (biz) await supabase.from('profiles').delete().eq('id', biz.user_id)
     await fetchAll()
     setProcessing(null)
-    showToast('事業所を却下・削除しました', 'error')
+    if (data?.warning) {
+      showToast(`却下しました（${data.warning}）`, 'error')
+    } else {
+      showToast('事業所を却下・削除し、通知メールを送信しました', 'error')
+    }
   }
 
   const pending = businesses.filter(b => !b.approved)

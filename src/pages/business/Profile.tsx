@@ -252,6 +252,9 @@ export default function BusinessProfile() {
     setNewVehicleName('')
     showToast('車両を追加しました')
     fetchVehicles()
+    // 課金中の事業者は車両台数の変更を Stripe に自動反映（失敗しても黙殺、admin が手動同期で救済可能）
+    supabase.functions.invoke('sync-vehicle-billing', { body: { business_id: businessId } })
+      .catch((e) => console.error('[auto sync-vehicle-billing]', e))
   }
 
   const handleDeleteVehicle = async (vehicleId: string) => {
@@ -268,6 +271,11 @@ export default function BusinessProfile() {
 
     showToast('車両を削除しました')
     fetchVehicles()
+    // 課金中の事業者は車両台数の変更を Stripe に自動反映
+    if (businessId) {
+      supabase.functions.invoke('sync-vehicle-billing', { body: { business_id: businessId } })
+        .catch((e) => console.error('[auto sync-vehicle-billing]', e))
+    }
   }
 
   const startVehicleEdit = (vehicle: Vehicle) => {
