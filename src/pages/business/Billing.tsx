@@ -11,7 +11,7 @@ const FREE_VEHICLES = 2
 
 const STATUS_CONFIG: Record<SubscriptionStatus, { label: string; pill: string }> = {
   none: { label: '未登録', pill: 'bg-slate-100 text-slate-600' },
-  trialing: { label: '開始待ち', pill: 'bg-blue-100 text-blue-700' },
+  trialing: { label: '無料トライアル期間中', pill: 'bg-blue-100 text-blue-700' },
   active: { label: '利用中', pill: 'bg-emerald-100 text-emerald-700' },
   past_due: { label: '支払い失敗', pill: 'bg-red-100 text-red-700' },
   canceled: { label: '解約済み', pill: 'bg-orange-100 text-orange-700' },
@@ -259,7 +259,7 @@ export default function Billing() {
             {status === 'none' &&
               '契約はまだ開始されていません。1日〜15日のご登録は当月1か月分、16日〜月末のご登録は当月の半額を即時請求します。翌月1日から通常の月額が請求されます。'}
             {status === 'trialing' &&
-              `利用開始待ちです。次回の更新基準日は ${fmtDate(
+              `無料トライアル期間中です。次回の更新基準日は ${fmtDate(
                 business.subscription_period_end,
               )} です。`}
             {status === 'active' &&

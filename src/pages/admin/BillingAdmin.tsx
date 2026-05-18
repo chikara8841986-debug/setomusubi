@@ -33,7 +33,7 @@ type EditState = {
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   none: '未登録',
-  trialing: '開始待ち',
+  trialing: '無料トライアル期間中',
   active: '利用中',
   past_due: '支払い失敗',
   canceled: '解約済み',
@@ -316,7 +316,7 @@ export default function BillingAdmin() {
           >
             <option value="all">すべて</option>
             <option value="active">利用中</option>
-            <option value="trialing">開始待ち</option>
+            <option value="trialing">無料トライアル期間中</option>
             <option value="past_due">支払い失敗</option>
             <option value="none">未登録</option>
             <option value="canceled">解約済み</option>
