@@ -263,7 +263,9 @@ export default function Billing() {
                 business.subscription_period_end,
               )} です。`}
             {status === 'active' &&
-              `利用中です。次回更新基準日は ${fmtDate(business.subscription_period_end)} です。`}
+              (business.stripe_subscription_id
+                ? `利用中です。次回更新基準日は ${fmtDate(business.subscription_period_end)} です。`
+                : '無料契約で継続中です。')}
             {status === 'past_due' &&
               '支払いに失敗しています。請求ポータルでカード情報や支払い状況を確認してください。'}
             {status === 'canceled' &&

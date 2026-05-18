@@ -165,6 +165,7 @@ export default function BillingAdmin() {
   const [loading, setLoading] = useState(true)
   const [editState, setEditState] = useState<EditState | null>(null)
   const [syncBusy, setSyncBusy] = useState<string | null>(null)
+  const [activateBusy, setActivateBusy] = useState<string | null>(null)
   const [filter, setFilter] = useState<SubscriptionStatus | 'all'>('all')
   const [search, setSearch] = useState('')
 
@@ -233,6 +234,23 @@ export default function BillingAdmin() {
       showToast(e?.message ?? 'Stripe同期に失敗しました', 'error')
     } finally {
       setSyncBusy(null)
+    }
+  }
+
+  const handleActivate = async (bizId: string) => {
+    setActivateBusy(bizId)
+    try {
+      const { error } = await supabase
+        .from('businesses')
+        .update({ subscription_status: 'active' })
+        .eq('id', bizId)
+      if (error) throw error
+      showToast('アクティベートしました（Stripe契約なし・無料プラン）', 'success')
+      await load()
+    } catch (e: any) {
+      showToast(e?.message ?? 'アクティベートに失敗しました', 'error')
+    } finally {
+      setActivateBusy(null)
     }
   }
 
@@ -416,6 +434,17 @@ export default function BillingAdmin() {
                       onClick={() => handleSync(biz.id)}
                     >
                       {syncBusy === biz.id ? '同期中...' : 'Stripe 同期'}
+                    </button>
+                  )}
+
+                  {(biz.subscription_status === 'none' ||
+                    biz.subscription_status === 'canceled') && (
+                    <button
+                      className="flex-1 rounded-lg border border-emerald-200 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+                      disabled={activateBusy === biz.id}
+                      onClick={() => handleActivate(biz.id)}
+                    >
+                      {activateBusy === biz.id ? '処理中...' : 'アクティベート'}
                     </button>
                   )}
                 </div>
