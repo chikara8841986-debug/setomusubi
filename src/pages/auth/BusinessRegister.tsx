@@ -73,8 +73,8 @@ export default function BusinessRegister() {
       const msg = err instanceof Error ? err.message : ''
       if (msg === 'already_registered' || msg.includes('already registered') || msg.includes('already been registered')) {
         setError('このメールアドレスは既に登録されています')
-      } else if (msg.includes('uq_businesses_phone_digits') || msg.includes('duplicate key')) {
-        setError('この電話番号は既に他の事業所で登録されています。電話番号をご確認ください。')
+      } else if (msg.includes('uq_businesses_phone_digits') || msg.includes('duplicate key') || msg.includes('Database error saving new user')) {
+        setError('この電話番号は既に他の事業所で登録されている可能性があります。電話番号をご確認のうえ、別の番号でお試しください。')
       } else if (msg.includes('Password')) {
         setError('パスワードが要件を満たしていません')
       } else if (msg.includes('Email not confirmed')) {
