@@ -35,6 +35,10 @@ const PAGE_TITLES: Record<string, string> = {
   '/demo/business/calendar':        'デモ：カレンダー',
   '/demo/business/reservations':    'デモ：予約管理',
   '/demo/business/profile':         'デモ：プロフィール',
+  '/demo/business/billing':         'デモ：料金・契約',
+  '/demo/business/register':        'デモ：事業所登録の流れ',
+  '/demo/admin/approvals':          'デモ：事業所承認管理',
+  '/demo/admin/billing':            'デモ：課金管理',
   '/demo':                          'デモ',
 }
 
@@ -89,6 +93,10 @@ const DemoMswBusinesses = lazy(() => import('./pages/demo/DemoMswBusinesses'))
 const DemoBusinessCalendar = lazy(() => import('./pages/demo/DemoBusinessCalendar'))
 const DemoBusinessReservations = lazy(() => import('./pages/demo/DemoBusinessReservations'))
 const DemoBusinessProfile = lazy(() => import('./pages/demo/DemoBusinessProfile'))
+const DemoBusinessBilling = lazy(() => import('./pages/demo/DemoBusinessBilling'))
+const DemoBusinessRegister = lazy(() => import('./pages/demo/DemoBusinessRegister'))
+const DemoAdminApprovals = lazy(() => import('./pages/demo/DemoAdminApprovals'))
+const DemoAdminBilling = lazy(() => import('./pages/demo/DemoAdminBilling'))
 
 const Loader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -179,6 +187,10 @@ function AppRoutes() {
         <Route path="/demo/business/calendar"     element={<DemoBusinessCalendar />} />
         <Route path="/demo/business/reservations" element={<DemoBusinessReservations />} />
         <Route path="/demo/business/profile"      element={<DemoBusinessProfile />} />
+        <Route path="/demo/business/billing"      element={<DemoBusinessBilling />} />
+        <Route path="/demo/business/register"     element={<DemoBusinessRegister />} />
+        <Route path="/demo/admin/approvals"       element={<DemoAdminApprovals />} />
+        <Route path="/demo/admin/billing"         element={<DemoAdminBilling />} />
         <Route path="/demo/*"                element={<Navigate to="/demo" replace />} />
 
         <Route path="*" element={<NotFound />} />

@@ -344,3 +344,195 @@ export const STATUS_MAP: Record<string, { cls: string; label: string }> = {
   cancelled: { cls: 'badge-gray',  label: 'キャンセル' },
   rejected:  { cls: 'badge-gray',  label: '却下' },
 }
+
+// ─────────────────────────────────────────────
+// 課金システム関連
+// ─────────────────────────────────────────────
+
+export const DEMO_PRICING = {
+  baseFee: 3850,
+  perVehicleFee: 1650,
+  freeVehicles: 2,
+}
+
+export type DemoSubscriptionStatus = 'none' | 'trialing' | 'active' | 'past_due' | 'canceled'
+
+export const DEMO_SUBSCRIPTION_STATUS_LABEL: Record<DemoSubscriptionStatus, { label: string; pill: string }> = {
+  none:     { label: '未登録',                pill: 'bg-slate-100 text-slate-600' },
+  trialing: { label: 'ご利用開始済み（初月）', pill: 'bg-blue-100 text-blue-700' },
+  active:   { label: '利用中',                pill: 'bg-emerald-100 text-emerald-700' },
+  past_due: { label: '支払い失敗',            pill: 'bg-red-100 text-red-700' },
+  canceled: { label: '解約済み',              pill: 'bg-orange-100 text-orange-700' },
+}
+
+export type DemoVehicle = {
+  id: string
+  name: string
+  has_wheelchair: boolean
+  has_reclining_wheelchair: boolean
+  has_stretcher: boolean
+  rental_wheelchair: boolean
+  rental_reclining_wheelchair: boolean
+  rental_stretcher: boolean
+  active: boolean
+}
+
+export const INITIAL_DEMO_VEHICLES: DemoVehicle[] = [
+  {
+    id: 'demo-vehicle-1',
+    name: '1号車（ハイエース）',
+    has_wheelchair: true,
+    has_reclining_wheelchair: true,
+    has_stretcher: false,
+    rental_wheelchair: true,
+    rental_reclining_wheelchair: false,
+    rental_stretcher: false,
+    active: true,
+  },
+  {
+    id: 'demo-vehicle-2',
+    name: '2号車（ノア）',
+    has_wheelchair: true,
+    has_reclining_wheelchair: false,
+    has_stretcher: true,
+    rental_wheelchair: true,
+    rental_reclining_wheelchair: false,
+    rental_stretcher: true,
+    active: true,
+  },
+  {
+    id: 'demo-vehicle-3',
+    name: '3号車（セレナ）',
+    has_wheelchair: true,
+    has_reclining_wheelchair: true,
+    has_stretcher: false,
+    rental_wheelchair: false,
+    rental_reclining_wheelchair: false,
+    rental_stretcher: false,
+    active: true,
+  },
+]
+
+// ─────────────────────────────────────────────
+// admin 用データ
+// ─────────────────────────────────────────────
+
+export type DemoApprovalBusiness = {
+  id: string
+  name: string
+  address: string
+  phone: string
+  email: string
+  applied_hours_ago: number
+  approved: boolean
+  service_areas: string[]
+}
+
+export const INITIAL_DEMO_APPROVAL_QUEUE: DemoApprovalBusiness[] = [
+  {
+    id: 'demo-pending-1',
+    name: 'こんぴらケアタクシー',
+    address: '香川県仲多度郡琴平町1234',
+    phone: '0877-75-1234',
+    email: 'info@konpira-care.example.com',
+    applied_hours_ago: 2,
+    approved: false,
+    service_areas: ['琴平町', 'まんのう町', '善通寺市'],
+  },
+  {
+    id: 'demo-pending-2',
+    name: '坂出やすらぎ介護タクシー',
+    address: '香川県坂出市本町2-3-4',
+    phone: '0877-46-7890',
+    email: 'yasuragi@sakaide.example.com',
+    applied_hours_ago: 14,
+    approved: false,
+    service_areas: ['坂出市', '宇多津町'],
+  },
+]
+
+export type DemoBillingBusiness = {
+  id: string
+  name: string
+  subscription_status: DemoSubscriptionStatus
+  vehicle_count: number
+  custom_base_price: number | null
+  custom_per_vehicle_price: number | null
+  stripe_coupon_id: string | null
+  has_stripe_subscription: boolean
+}
+
+export const INITIAL_DEMO_BILLING_BUSINESSES: DemoBillingBusiness[] = [
+  {
+    id: 'demo-biz-1',
+    name: 'せとうち介護タクシー',
+    subscription_status: 'active',
+    vehicle_count: 3,
+    custom_base_price: null,
+    custom_per_vehicle_price: null,
+    stripe_coupon_id: null,
+    has_stripe_subscription: true,
+  },
+  {
+    id: 'demo-biz-2',
+    name: '瀬戸の風タクシー',
+    subscription_status: 'trialing',
+    vehicle_count: 2,
+    custom_base_price: null,
+    custom_per_vehicle_price: null,
+    stripe_coupon_id: null,
+    has_stripe_subscription: true,
+  },
+  {
+    id: 'demo-biz-3',
+    name: 'さぬき福祉タクシー',
+    subscription_status: 'active',
+    vehicle_count: 4,
+    custom_base_price: 3000,
+    custom_per_vehicle_price: 1200,
+    stripe_coupon_id: null,
+    has_stripe_subscription: true,
+  },
+  {
+    id: 'demo-biz-4',
+    name: '直島ふくしタクシー（特別契約）',
+    subscription_status: 'active',
+    vehicle_count: 2,
+    custom_base_price: 0,
+    custom_per_vehicle_price: 0,
+    stripe_coupon_id: null,
+    has_stripe_subscription: false,
+  },
+  {
+    id: 'demo-biz-5',
+    name: '高松ライフサポート',
+    subscription_status: 'past_due',
+    vehicle_count: 3,
+    custom_base_price: null,
+    custom_per_vehicle_price: null,
+    stripe_coupon_id: null,
+    has_stripe_subscription: true,
+  },
+]
+
+export function calcMonthlyFee(biz: DemoBillingBusiness): number {
+  const base = biz.custom_base_price ?? DEMO_PRICING.baseFee
+  const perVehicle = biz.custom_per_vehicle_price ?? DEMO_PRICING.perVehicleFee
+  const addon = Math.max(0, biz.vehicle_count - DEMO_PRICING.freeVehicles)
+  return base + addon * perVehicle
+}
+
+// 「自分の事業所」用の課金情報（事業者Billing画面）
+export const DEMO_OWN_BUSINESS_BILLING = {
+  business_id: 'demo-biz-1',
+  business_name: 'せとうち介護タクシー',
+  subscription_status: 'trialing' as DemoSubscriptionStatus,
+  vehicle_count: 3,
+  subscription_period_end_iso: (() => {
+    // 翌月1日
+    const now = new Date()
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    return nextMonth.toISOString()
+  })(),
+  has_stripe_subscription: true,
+}

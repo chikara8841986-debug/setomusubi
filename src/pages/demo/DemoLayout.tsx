@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 
-type DemoRole = 'msw' | 'business'
+type DemoRole = 'msw' | 'business' | 'admin'
 
 const NAV_BUSINESS = [
-  { to: '/demo/business/calendar',     label: 'カレンダー', icon: '📅' },
-  { to: '/demo/business/reservations', label: '予約管理',   icon: '📋' },
+  { to: '/demo/business/calendar',     label: 'カレンダー',   icon: '📅' },
+  { to: '/demo/business/reservations', label: '予約管理',     icon: '📋' },
   { to: '/demo/business/profile',      label: 'プロフィール', icon: '🏢' },
+  { to: '/demo/business/billing',      label: '料金・契約',   icon: '💴' },
 ]
 
 const NAV_MSW = [
@@ -14,11 +15,27 @@ const NAV_MSW = [
   { to: '/demo/msw/businesses',   label: '事業所一覧', icon: '🚗' },
 ]
 
+const NAV_ADMIN = [
+  { to: '/demo/admin/approvals', label: '事業所承認', icon: '✅' },
+  { to: '/demo/admin/billing',   label: '課金管理',   icon: '💴' },
+]
+
+const ROLE_META: Record<DemoRole, { label: string; bgClass: string }> = {
+  msw:      { label: 'MSW',    bgClass: 'bg-sky-600 text-white' },
+  business: { label: '事業所', bgClass: 'bg-teal-600 text-white' },
+  admin:    { label: '管理者', bgClass: 'bg-purple-600 text-white' },
+}
+
+const ROLE_NAV: Record<DemoRole, typeof NAV_BUSINESS> = {
+  msw: NAV_MSW,
+  business: NAV_BUSINESS,
+  admin: NAV_ADMIN,
+}
+
 export default function DemoLayout({ children, role }: { children: React.ReactNode; role: DemoRole }) {
   const location = useLocation()
-  const navItems = role === 'business' ? NAV_BUSINESS : NAV_MSW
-  const roleLabel = role === 'business' ? '事業所' : 'MSW'
-  const roleBgClass = role === 'business' ? 'bg-teal-600 text-white' : 'bg-sky-600 text-white'
+  const navItems = ROLE_NAV[role]
+  const meta = ROLE_META[role]
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #f0f9f8 0%, #e8f5f3 50%, #f0f4ff 100%)' }}>
@@ -51,8 +68,8 @@ export default function DemoLayout({ children, role }: { children: React.ReactNo
               瀬
             </div>
             <span className="font-black text-lg text-teal-700 tracking-tight">せとむすび</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide ${roleBgClass}`}>
-              {roleLabel}
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide ${meta.bgClass}`}>
+              {meta.label}
             </span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700 border border-amber-300">
               デモ

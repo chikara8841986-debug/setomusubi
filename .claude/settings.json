@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File \".claude\\codex-review.ps1\"",
+            "shell": "powershell",
+            "timeout": 180,
+            "asyncRewake": true,
+            "statusMessage": "Codex がバックグラウンドでレビュー中...",
+            "rewakeMessage": "🔍 Codexレビュー完了 —",
+            "rewakeSummary": "Codex から指摘あり"
+          }
+        ]
+      }
+    ]
+  }
+}
