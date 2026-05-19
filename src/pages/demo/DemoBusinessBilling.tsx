@@ -43,20 +43,20 @@ export default function DemoBusinessBilling() {
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-slate-800 mb-1">料金・契約</h1>
-      <p className="text-xs text-slate-400 mb-4">ご契約状況・月額料金の内訳・支払い方法の管理を行います。</p>
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">料金・契約</h1>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">ご契約状況・月額料金の内訳・支払い方法の管理を行います。</p>
 
       {/* 現在のステータス */}
       <div className="card mb-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-xs text-slate-400">現在のステータス</p>
+            <p className="text-sm text-slate-500">現在のステータス</p>
             <div className="flex items-center gap-2 mt-1">
               <span className={`text-sm font-bold px-3 py-1 rounded-full ${cfg.pill}`}>{cfg.label}</span>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-400">月額（来月以降）</p>
+            <p className="text-sm text-slate-500">月額（来月以降）</p>
             <p className="text-2xl font-black text-teal-700">{fmtYen(monthlyFee)}</p>
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function DemoBusinessBilling() {
 
       {/* 料金内訳 */}
       <div className="card mb-4 space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700">月額料金の内訳</h2>
+        <h2 className="text-lg font-bold text-slate-700">月額料金の内訳</h2>
         <div className="bg-slate-50 rounded-xl px-4 py-3 space-y-2 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-slate-600">基本プラン（{DEMO_PRICING.freeVehicles}台まで無料枠）</span>
@@ -94,7 +94,7 @@ export default function DemoBusinessBilling() {
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 leading-relaxed">
+        <p className="text-sm text-slate-600 leading-relaxed">
           ※ プロフィール → 車両管理から車両を追加・削除すると、料金が自動で調整されます。
           {DEMO_PRICING.freeVehicles}台までは追加料金がかかりません。
         </p>
@@ -103,8 +103,8 @@ export default function DemoBusinessBilling() {
       {/* 車両数シミュレーション */}
       <div className="card mb-4 space-y-3 border-2 border-dashed border-amber-200 bg-amber-50/30">
         <div>
-          <h2 className="text-sm font-semibold text-amber-800">⚡ デモ：車両数による料金変化を試す</h2>
-          <p className="text-xs text-amber-700 mt-1">
+          <h2 className="text-lg font-bold text-amber-800">⚡ デモ：車両数による料金変化を試す</h2>
+          <p className="text-sm text-amber-700 mt-1 leading-relaxed">
             実際の画面では車両管理から追加しますが、ここではスライダーで車両数を変えて料金変化を確認できます。
           </p>
         </div>

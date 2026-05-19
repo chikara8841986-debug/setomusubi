@@ -702,8 +702,8 @@ export default function BusinessCalendar() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">稼働カレンダー</h1>
-          <p className="text-xs text-slate-400 mt-0.5">車両ごとの稼働ブロックを管理します</p>
+          <h1 className="text-2xl font-bold text-slate-800">稼働カレンダー</h1>
+          <p className="text-sm text-slate-600 mt-1">車両ごとの稼働ブロックを管理します</p>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">

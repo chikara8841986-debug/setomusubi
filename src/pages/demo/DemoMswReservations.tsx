@@ -50,8 +50,8 @@ export default function DemoMswReservations() {
   return (
     <DemoLayout role="msw">
       <div>
-        <h1 className="text-xl font-bold text-slate-800 mb-1">予約履歴</h1>
-        <p className="text-xs text-slate-400 mb-4">「進行中」は申請中・確定済みの予約、「過去」は完了・キャンセル・却下を確認できます。</p>
+        <h1 className="text-2xl font-bold text-slate-800 mb-1">予約履歴</h1>
+        <p className="text-sm text-slate-600 mb-4 leading-relaxed">「進行中」は申請中・確定済みの予約、「過去」は完了・キャンセル・却下を確認できます。</p>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
@@ -75,7 +75,7 @@ export default function DemoMswReservations() {
 
         {/* Pending notice */}
         {tab === 'active' && active.some(r => r.status === 'pending') && (
-          <div className="mb-3 rounded-xl px-4 py-3 text-xs border bg-amber-50 border-amber-200 text-amber-800">
+          <div className="mb-3 rounded-xl px-4 py-3 text-sm border bg-amber-50 border-amber-200 text-amber-800">
             <p className="font-medium">申請中の仮予約が{active.filter(r => r.status === 'pending').length}件あります</p>
             <p className="mt-0.5">事業所が確認次第、承認・却下の通知が来ます</p>
           </div>
@@ -109,11 +109,11 @@ export default function DemoMswReservations() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-lg font-bold text-slate-800 leading-snug">
                       {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time}〜{r.end_time}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">{r.business_name} ／ 担当: {r.contact_name}</p>
-                    <p className="text-xs text-slate-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
+                    <p className="text-base font-medium text-slate-600 mt-1">{r.business_name} ／ 担当: {r.contact_name}</p>
+                    <p className="text-base text-slate-700 mt-1">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                   </div>
                   <span className={STATUS_MAP[r.status]?.cls ?? 'badge-gray'}>
                     {STATUS_MAP[r.status]?.label ?? r.status}

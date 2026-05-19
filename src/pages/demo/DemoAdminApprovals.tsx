@@ -49,8 +49,8 @@ export default function DemoAdminApprovals() {
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-slate-800 mb-1">事業所承認管理</h1>
-      <p className="text-xs text-slate-400 mb-4">登録申請が届いた事業所を審査・承認します。承認するとMSWの検索結果に表示されるようになります。</p>
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">事業所承認管理</h1>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">登録申請が届いた事業所を審査・承認します。承認するとMSWの検索結果に表示されるようになります。</p>
 
       <div className="flex gap-2 mb-4">
         {(['pending', 'approved'] as const).map(t => (
@@ -89,7 +89,7 @@ export default function DemoAdminApprovals() {
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="font-semibold text-slate-800">{biz.name}</h3>
+                      <h3 className="text-xl font-bold text-slate-800">{biz.name}</h3>
                       {biz.approved ? (
                         <span className="badge-green">承認済み</span>
                       ) : (
@@ -103,9 +103,9 @@ export default function DemoAdminApprovals() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500">{biz.address} ／ {biz.phone}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">📧 {biz.email}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">対応エリア: {biz.service_areas.join('・')}</p>
+                    <p className="text-base font-medium text-slate-600 leading-relaxed">{biz.address} ／ {biz.phone}</p>
+                    <p className="text-sm text-slate-500 mt-1">📧 {biz.email}</p>
+                    <p className="text-sm text-slate-500 mt-1">対応エリア: {biz.service_areas.join('・')}</p>
                   </div>
 
                   {!biz.approved && confirmState?.id !== biz.id && (
@@ -170,11 +170,11 @@ export default function DemoAdminApprovals() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setMailPreview(null)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-purple-600 text-white px-4 py-3 rounded-t-xl flex items-center justify-between">
-              <span className="font-bold text-sm">📧 自動送信されたメール（デモ）</span>
+              <span className="font-bold text-base">📧 自動送信されたメール（デモ）</span>
               <button onClick={() => setMailPreview(null)} className="text-white/80 hover:text-white text-xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
             <div className="p-5">
-              <div className="text-xs text-slate-500 space-y-1 border-b pb-3">
+              <div className="text-sm text-slate-500 space-y-1 border-b pb-3">
                 <p><span className="text-slate-400">From:</span> せとむすび &lt;noreply@send.hakobite-marugame.com&gt;</p>
                 <p><span className="text-slate-400">To:</span> {mailPreview.to}</p>
                 <p><span className="text-slate-400">Subject:</span> 【せとむすび】{mailPreview.kind === 'approved' ? '事業所登録が承認されました' : '事業所登録申請について'}</p>

@@ -296,15 +296,15 @@ export default function BusinessReservations() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold text-slate-800">予約管理</h1>
+        <h1 className="text-2xl font-bold text-slate-800">予約管理</h1>
         <button
           onClick={() => { setShowPhoneModal(true); setPhoneError('') }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors"
         >
           📞 電話予約を記録
         </button>
       </div>
-      <p className="text-xs text-slate-400 mb-4">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定し、MSWへ通知メールが送られます。</p>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定し、MSWへ通知メールが送られます。</p>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-4 overflow-x-auto">
@@ -396,7 +396,7 @@ export default function BusinessReservations() {
         return (
           <div className={`mb-3 rounded-xl px-4 py-3 text-sm border ${isUrgent ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
             <p className="font-medium">仮予約申請が{pending.length}件届いています</p>
-            <p className={`text-xs mt-0.5 ${isUrgent ? 'text-red-700' : 'text-amber-700'}`}>
+            <p className={`text-sm mt-0.5 ${isUrgent ? 'text-red-700' : 'text-amber-700'}`}>
               最も古い申請: {hoursOldest < 1 ? '1時間以内' : hoursOldest < 24 ? `${hoursOldest}時間経過` : `${Math.floor(hoursOldest / 24)}日経過`}
               {isUrgent && ' — お早めにご対応ください'}
             </p>
@@ -476,14 +476,14 @@ export default function BusinessReservations() {
             }`}>
               <div className="flex items-start justify-between gap-2">
                 <button className="flex-1 text-left min-w-0" onClick={() => openModal(r)}>
-                  <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <p className="text-lg font-bold text-slate-800 flex items-center gap-1.5 flex-wrap leading-snug">
                     {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     {r.source === 'phone' && <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium">📞 電話</span>}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-base font-medium text-slate-600 mt-1">
                     {r.source === 'phone' ? (r.caller_name || '電話予約') : (r.hospitals?.name ?? '—')} ／ {r.contact_name}
                   </p>
-                  <p className="text-xs text-slate-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
+                  <p className="text-base text-slate-700 mt-1">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                 </button>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   <StatusBadge status={r.status} />
@@ -551,7 +551,7 @@ export default function BusinessReservations() {
               const label = h < 1 ? '〜1時間以内' : h < 24 ? `${h}時間経過` : `${Math.floor(h / 24)}日${h % 24}時間経過`
               const cls = h >= 12 ? 'text-red-600 bg-red-50 border-red-200' : h >= 6 ? 'text-orange-600 bg-orange-50 border-orange-200' : h >= 3 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-slate-500 bg-slate-50 border-slate-200'
               return (
-                <div className={`mb-3 rounded-lg px-3 py-2 border text-xs font-medium ${cls}`}>
+                <div className={`mb-3 rounded-lg px-3 py-2 border text-sm font-medium ${cls}`}>
                   申請から {label} — 早めにご対応ください
                 </div>
               )
@@ -560,20 +560,20 @@ export default function BusinessReservations() {
             {selected.source === 'phone' && (
               <div className="mb-3 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                 <span className="text-blue-500">📞</span>
-                <span className="text-xs text-blue-700 font-medium">電話予約（手動記録）</span>
+                <span className="text-sm text-blue-700 font-medium">電話予約（手動記録）</span>
               </div>
             )}
 
-            <dl className="space-y-3 text-sm">
+            <dl className="space-y-3 text-base">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
               {selected.source === 'phone' ? (
                 <>
                   {selected.caller_name && <Row label="連絡者" value={selected.caller_name} />}
                   {selected.caller_phone && (
                     <div className="flex gap-3">
-                      <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">連絡先</dt>
-                      <dd className="font-medium text-sm">
-                        <a href={`tel:${selected.caller_phone}`} className="text-teal-700 hover:underline">
+                      <dt className="text-slate-500 w-20 flex-shrink-0 text-base">連絡先</dt>
+                      <dd className="font-medium text-base">
+                        <a href={`tel:${selected.caller_phone}`} className="text-lg font-bold text-teal-700 hover:underline">
                           📞 {selected.caller_phone}
                         </a>
                       </dd>
@@ -585,9 +585,9 @@ export default function BusinessReservations() {
                   <Row label="病院" value={selected.hospitals?.name ?? '—'} />
                   {selected.hospitals?.phone && (
                     <div className="flex gap-3">
-                      <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">病院電話</dt>
-                      <dd className="font-medium text-sm">
-                        <a href={`tel:${selected.hospitals.phone}`} className="text-teal-700 hover:underline">
+                      <dt className="text-slate-500 w-20 flex-shrink-0 text-base">病院電話</dt>
+                      <dd className="font-medium text-base">
+                        <a href={`tel:${selected.hospitals.phone}`} className="text-lg font-bold text-teal-700 hover:underline">
                           📞 {selected.hospitals.phone}
                         </a>
                       </dd>
@@ -598,8 +598,8 @@ export default function BusinessReservations() {
               )}
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
-                <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
-                <dd className="font-medium text-sm flex-1 min-w-0">
+                <dt className="text-slate-500 w-20 flex-shrink-0 text-base">乗車地</dt>
+                <dd className="font-medium text-base flex-1 min-w-0">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
@@ -611,8 +611,8 @@ export default function BusinessReservations() {
                 </dd>
               </div>
               <div className="flex gap-3">
-                <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">目的地</dt>
-                <dd className="font-medium text-sm flex-1 min-w-0">
+                <dt className="text-slate-500 w-20 flex-shrink-0 text-base">目的地</dt>
+                <dd className="font-medium text-base flex-1 min-w-0">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}

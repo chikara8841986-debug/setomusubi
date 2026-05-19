@@ -166,8 +166,8 @@ export default function MswReservations() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-1">予約履歴</h1>
-      <p className="text-xs text-slate-400 mb-4">「進行中」は申請中・確定済みの予約、「過去の予約」は完了・キャンセル・非承認の予約を確認できます。</p>
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">予約履歴</h1>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">「進行中」は申請中・確定済みの予約、「過去の予約」は完了・キャンセル・非承認の予約を確認できます。</p>
 
       <div className="flex gap-2 mb-4">
         <button onClick={() => switchTab('active')}
@@ -227,7 +227,7 @@ export default function MswReservations() {
         const elapsed = hrs < 1 ? '〜1時間以内' : hrs < 24 ? `${Math.floor(hrs)}時間前` : `${Math.floor(hrs / 24)}日前`
         const isLong = hrs >= 12
         return (
-          <div className={`mb-3 rounded-xl px-4 py-3 text-xs border ${isLong ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+          <div className={`mb-3 rounded-xl px-4 py-3 text-sm border ${isLong ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
             <p className="font-medium">申請中の仮予約が{pendingList.length}件あります</p>
             <p className="mt-0.5">
               最も古い申請: {elapsed}
@@ -315,11 +315,11 @@ export default function MswReservations() {
                 className="card w-full text-left hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-lg font-bold text-slate-800 leading-snug">
                       {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">{r.businesses?.name ?? '—'} ／ 担当: {r.contact_name}</p>
-                    <p className="text-xs text-slate-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
+                    <p className="text-base font-medium text-slate-600 mt-1">{r.businesses?.name ?? '—'} ／ 担当: {r.contact_name}</p>
+                    <p className="text-base text-slate-700 mt-1">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
                     <span className={STATUS_MAP[r.status]?.cls ?? 'badge-gray'}>
@@ -364,14 +364,14 @@ export default function MswReservations() {
               const elapsed = hrs < 1 ? '〜1時間以内' : hrs < 24 ? `${Math.floor(hrs)}時間前` : `${Math.floor(hrs / 24)}日前`
               const isLong = hrs >= 12
               return (
-                <div className={`rounded-lg px-3 py-2 mb-4 text-xs border ${isLong ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+                <div className={`rounded-lg px-3 py-2 mb-4 text-sm border ${isLong ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
                   <p className="font-medium">申請から {elapsed}</p>
                   <p className="mt-0.5">{isLong ? '事業所への直接連絡をお勧めします。' : '事業所が確認後に承認または非承認を行います。'}</p>
                 </div>
               )
             })()}
             {selected.status === 'rejected' && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-4 text-xs text-slate-600 space-y-2">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-4 text-sm text-slate-600 space-y-2">
                 <p>この申請は承認されませんでした。別の事業所をお探しください。</p>
                 <button
                   onClick={() => navigate('/msw/search', {
@@ -392,21 +392,21 @@ export default function MswReservations() {
                       },
                     }
                   })}
-                  className="w-full text-center text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg py-1.5 hover:bg-teal-100 transition-colors"
+                  className="w-full text-center text-sm font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded-lg py-2 hover:bg-teal-100 transition-colors"
                 >
                   別の事業所を探して申請する →
                 </button>
               </div>
             )}
 
-            <dl className="space-y-3 text-sm">
+            <dl className="space-y-3 text-base">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
               <Row label="事業所" value={selected.businesses?.name ?? '—'} />
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">
-                <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
-                <dd className="font-medium text-sm flex-1 min-w-0">
+                <dt className="text-slate-500 w-20 flex-shrink-0 text-base">乗車地</dt>
+                <dd className="font-medium text-base flex-1 min-w-0">
                   <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.patient_address}
@@ -418,8 +418,8 @@ export default function MswReservations() {
                 </dd>
               </div>
               <div className="flex gap-3">
-                <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">目的地</dt>
-                <dd className="font-medium text-sm flex-1 min-w-0">
+                <dt className="text-slate-500 w-20 flex-shrink-0 text-base">目的地</dt>
+                <dd className="font-medium text-base flex-1 min-w-0">
                   <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer"
                     className="text-teal-700 hover:underline break-all">
                     📍 {selected.destination}
@@ -437,10 +437,10 @@ export default function MswReservations() {
 
             {selected.businesses?.cancel_phone && (selected.status === 'pending' || selected.status === 'confirmed') && (
               <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mt-4">
-                <p className="text-xs font-medium text-teal-800 mb-1">
+                <p className="text-sm font-medium text-teal-800 mb-1">
                   {selected.status === 'pending' ? '急ぎの場合は直接お電話ください' : 'キャンセルの場合は直接お電話ください'}
                 </p>
-                <a href={`tel:${selected.businesses.cancel_phone}`} className="text-base font-bold text-teal-900">
+                <a href={`tel:${selected.businesses.cancel_phone}`} className="text-xl font-bold text-teal-900">
                   📞 {selected.businesses.cancel_phone}
                 </a>
               </div>

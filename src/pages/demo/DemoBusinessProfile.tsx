@@ -94,8 +94,8 @@ export default function DemoBusinessProfile() {
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-slate-800 mb-1">プロフィール設定</h1>
-      <p className="text-xs text-slate-400 mb-4">MSWの検索・紹介ページに表示される情報を設定します。</p>
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">プロフィール設定</h1>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">MSWの検索・紹介ページに表示される情報を設定します。</p>
 
       {!saved && (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -109,7 +109,7 @@ export default function DemoBusinessProfile() {
       <div className="space-y-4">
         {/* 基本情報 */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700">基本情報</h2>
+          <h2 className="text-lg font-bold text-slate-700">基本情報</h2>
           <div>
             <label className="label">事業所名 <span className="text-red-500">*</span></label>
             <input className="input-base" value={name} onChange={e => { setName(e.target.value); setSaved(false) }} />
@@ -117,19 +117,19 @@ export default function DemoBusinessProfile() {
           <div>
             <label className="label">住所</label>
             <input className="input-base" value={address} onChange={e => { setAddress(e.target.value); setSaved(false) }} />
-            <p className="text-xs text-slate-400 mt-0.5">MSWがルート確認・距離計算に使用します</p>
+            <p className="text-sm text-slate-500 mt-1">MSWがルート確認・距離計算に使用します</p>
           </div>
           <div>
             <label className="label">電話番号</label>
             <input className="input-base" value={phone} onChange={e => { setPhone(e.target.value); setSaved(false) }} />
-            <p className="text-xs text-slate-400 mt-0.5">急ぎのキャンセル連絡用として表示されます</p>
+            <p className="text-sm text-slate-500 mt-1">急ぎのキャンセル連絡用として表示されます</p>
           </div>
         </div>
 
         {/* 営業時間 */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700">営業時間</h2>
-          <p className="text-xs text-slate-400">カレンダーで「＋ 追加」を押したとき、この時間帯で空き枠が自動作成されます</p>
+          <h2 className="text-lg font-bold text-slate-700">営業時間</h2>
+          <p className="text-sm text-slate-500 leading-relaxed">カレンダーで「＋ 追加」を押したとき、この時間帯で空き枠が自動作成されます</p>
           <div className="flex items-center gap-2">
             <input type="time" className="input-base w-auto" value={startHour} onChange={e => { setStartHour(e.target.value); setSaved(false) }} />
             <span className="text-sm text-slate-500">〜</span>
@@ -137,7 +137,7 @@ export default function DemoBusinessProfile() {
           </div>
           <div>
             <label className="label">定休日</label>
-            <p className="text-xs text-slate-400 mb-2">設定した曜日はカレンダー上でグレー表示になります</p>
+            <p className="text-sm text-slate-500 mb-2">設定した曜日はカレンダー上でグレー表示になります</p>
             <div className="flex gap-1.5 flex-wrap">
               {DAY_LABELS.map((d, i) => (
                 <button
@@ -157,7 +157,7 @@ export default function DemoBusinessProfile() {
         {/* 車両管理 */}
         <div className="card space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-sm font-semibold text-slate-700">車両管理</h2>
+            <h2 className="text-lg font-bold text-slate-700">車両管理</h2>
             <Link to="/demo/business/billing" className="text-xs text-teal-700 hover:underline">
               💴 料金画面で確認 →
             </Link>
@@ -223,8 +223,8 @@ export default function DemoBusinessProfile() {
 
         {/* 事業所全体の特徴 */}
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700">事業所の特徴</h2>
-          <p className="text-xs text-slate-400">MSWが絞り込み条件で使います（車両ごとの設備とは別）</p>
+          <h2 className="text-lg font-bold text-slate-700">事業所の特徴</h2>
+          <p className="text-sm text-slate-500 leading-relaxed">MSWが絞り込み条件で使います（車両ごとの設備とは別）</p>
           {[
             ['女性介護者在籍', hasFemale, setHasFemale],
             ['長距離対応', longDist, setLongDist],

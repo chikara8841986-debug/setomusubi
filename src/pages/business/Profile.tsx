@@ -401,7 +401,7 @@ export default function BusinessProfile() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-4">プロフィール設定</h1>
+      <h1 className="text-2xl font-bold text-slate-800 mb-4">プロフィール設定</h1>
 
       {isDirty && (
         <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -446,7 +446,7 @@ export default function BusinessProfile() {
 
       <form id="profile-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="card space-y-3">
-          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2">基本情報</h2>
+          <h2 className="text-lg font-bold text-slate-700 border-b pb-2">基本情報</h2>
           <div>
             <label className="label">事業所名 <span className="text-red-500">*</span></label>
             <input className="input-base" value={form.name ?? ''} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} required maxLength={100} />
@@ -463,15 +463,15 @@ export default function BusinessProfile() {
             <div>
               <label className="label">キャンセル連絡先 <span className="text-red-500">*</span></label>
               <input className="input-base" value={form.cancel_phone ?? ''} onChange={(e) => setForm((current) => ({ ...current, cancel_phone: e.target.value }))} maxLength={20} />
-              <p className="text-xs text-slate-400 mt-0.5">MSW の申請確認画面に表示されます</p>
+              <p className="text-sm text-slate-500 mt-1">MSW の申請確認画面に表示されます</p>
             </div>
           </div>
         </div>
 
         <div className="card space-y-3">
           <div className="border-b pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">営業時間・休業日</h2>
-            <p className="text-xs text-slate-400 mt-0.5">カレンダーの初期表示に使います</p>
+            <h2 className="text-lg font-bold text-slate-700">営業時間・休業日</h2>
+            <p className="text-sm text-slate-500 mt-1">カレンダーの初期表示に使います</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -507,8 +507,8 @@ export default function BusinessProfile() {
         <div className="card space-y-3">
           <div className="flex items-center justify-between border-b pb-2">
             <div>
-              <h2 className="text-sm font-semibold text-slate-700">対応エリア <span className="text-red-500">*</span></h2>
-              <p className="text-xs text-slate-400 mt-0.5">MSW の検索対象になります</p>
+              <h2 className="text-lg font-bold text-slate-700">対応エリア <span className="text-red-500">*</span></h2>
+              <p className="text-sm text-slate-500 mt-1">MSW の検索対象になります</p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setForm((current) => ({ ...current, service_areas: [...SERVICE_AREAS] }))} className="text-xs text-teal-600 hover:underline">
@@ -531,8 +531,8 @@ export default function BusinessProfile() {
 
         <div className="card">
           <div className="border-b pb-2 mb-1">
-            <h2 className="text-sm font-semibold text-slate-700">機材・貸出</h2>
-            <p className="text-xs text-slate-400 mt-0.5">検索条件と事業所詳細に表示されます</p>
+            <h2 className="text-lg font-bold text-slate-700">機材・貸出</h2>
+            <p className="text-sm text-slate-500 mt-1">検索条件と事業所詳細に表示されます</p>
           </div>
           <BoolRow label="車椅子対応" field="has_wheelchair" />
           <BoolRow label="リクライニング車椅子対応" field="has_reclining_wheelchair" />
@@ -543,7 +543,7 @@ export default function BusinessProfile() {
         </div>
 
         <div className="card">
-          <h2 className="text-sm font-semibold text-slate-700 border-b pb-2 mb-1">その他対応</h2>
+          <h2 className="text-lg font-bold text-slate-700 border-b pb-2 mb-1">その他対応</h2>
           <BoolRow label="女性介助者対応" field="has_female_caregiver" />
           <BoolRow label="長距離対応" field="long_distance" />
           <BoolRow label="当日対応" field="same_day" />
@@ -551,7 +551,7 @@ export default function BusinessProfile() {
 
         <div className="card space-y-3">
           <div className="border-b pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">資格・料金・PR</h2>
+            <h2 className="text-lg font-bold text-slate-700">資格・料金・PR</h2>
           </div>
           <div>
             <label className="label">資格・特徴</label>
@@ -576,8 +576,8 @@ export default function BusinessProfile() {
 
       <div className="card mt-6 space-y-4">
         <div className="border-b pb-2">
-          <h2 className="text-sm font-semibold text-slate-700">車両管理</h2>
-          <p className="text-xs text-slate-400 mt-0.5">カレンダーと空き検索で利用する車両を管理します</p>
+          <h2 className="text-lg font-bold text-slate-700">車両管理</h2>
+          <p className="text-sm text-slate-500 mt-1">カレンダーと空き検索で利用する車両を管理します</p>
         </div>
 
         <div className="space-y-2">

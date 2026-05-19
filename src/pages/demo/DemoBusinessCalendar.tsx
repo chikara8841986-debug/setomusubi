@@ -200,8 +200,8 @@ export default function DemoBusinessCalendar() {
           </div>
         )}
 
-        <h1 className="text-xl font-bold text-slate-800 mb-0.5">カレンダー（空き枠管理）</h1>
-        <p className="text-xs text-slate-400 mb-3">グリッドをドラッグして空き枠を追加 / ブロックをタップで詳細・削除</p>
+        <h1 className="text-2xl font-bold text-slate-800 mb-1">カレンダー（空き枠管理）</h1>
+        <p className="text-sm text-slate-600 mb-3 leading-relaxed">グリッドをドラッグして空き枠を追加 / ブロックをタップで詳細・削除</p>
 
         {/* Week navigation */}
         <div className="flex items-center justify-between mb-3">

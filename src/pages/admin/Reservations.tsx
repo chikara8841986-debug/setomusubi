@@ -154,8 +154,8 @@ export default function AdminReservations() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-slate-800 mb-1">全予約一覧</h1>
-      <p className="text-xs text-slate-400 mb-4">全事業所・全病院の予約を確認できます</p>
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">全予約一覧</h1>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">全事業所・全病院の予約を確認できます</p>
 
       {/* Filters + Export */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -283,7 +283,7 @@ export default function AdminReservations() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-slate-400 mb-2">
+          <p className="text-sm text-slate-500 mb-2">
             {monthFilter === '' ? '全期間: ' : ''}{filtered.length}件{q && reservations.length !== filtered.length ? ` / 全${reservations.length}件` : ''}
           </p>
           <div className="space-y-2">
@@ -295,13 +295,13 @@ export default function AdminReservations() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-lg font-bold text-slate-800 leading-snug">
                       {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     </p>
-                    <p className="text-xs text-slate-600 mt-0.5 truncate">
+                    <p className="text-base font-medium text-slate-600 mt-1 truncate">
                       {r.businesses?.name ?? '—'} ← {r.hospitals?.name ?? '—'} ／ {r.contact_name}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment] ?? r.equipment}</p>
+                    <p className="text-base text-slate-700 mt-1">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment] ?? r.equipment}</p>
                   </div>
                   <span className={`flex-shrink-0 ${STATUS_BADGE[r.status] ?? 'badge-gray'}`}>
                     {STATUS_LABELS[r.status] ?? r.status}
@@ -375,7 +375,7 @@ export default function AdminReservations() {
               {selected.notes && <Row label="備考" value={selected.notes} />}
             </dl>
             <div className="mt-5 border-t pt-4">
-              <p className="text-xs text-slate-500 font-medium mb-2">ステータスを変更</p>
+              <p className="text-sm text-slate-500 font-medium mb-2">ステータスを変更</p>
               <div className="flex flex-wrap gap-1.5">
                 {(['pending', 'confirmed', 'completed', 'cancelled', 'rejected'] as ReservationStatus[]).map(s => (
                   <button

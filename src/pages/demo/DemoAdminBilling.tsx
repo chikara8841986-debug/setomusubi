@@ -76,8 +76,8 @@ export default function DemoAdminBilling() {
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-slate-800 mb-1">課金管理</h1>
-      <p className="text-xs text-slate-400 mb-4">事業所ごとの契約状況・料金設定・特別契約の管理を行います。</p>
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">課金管理</h1>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">事業所ごとの契約状況・料金設定・特別契約の管理を行います。</p>
 
       <div className="card mb-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -101,7 +101,7 @@ export default function DemoAdminBilling() {
             <option value="canceled">解約済み</option>
           </select>
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-sm text-slate-600 leading-relaxed">
           価格 override を保存すると、契約中の事業所はそのまま Stripe の subscription item まで同期します。
         </p>
       </div>
@@ -121,7 +121,7 @@ export default function DemoAdminBilling() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-slate-800">{biz.name}</p>
+                      <p className="text-xl font-bold text-slate-800">{biz.name}</p>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${statusCfg.pill}`}>
                         {statusCfg.label}
                       </span>
@@ -131,7 +131,7 @@ export default function DemoAdminBilling() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-base font-medium text-slate-600">
                       稼働車両 {biz.vehicle_count} 台
                       {addon > 0 ? ` / 追加課金 ${addon} 台` : ''}
                       {' / '}
@@ -140,7 +140,7 @@ export default function DemoAdminBilling() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 text-xs">
+                <div className="flex flex-wrap gap-2 text-sm">
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
                     基本料 {fmtYen(biz.custom_base_price ?? DEMO_PRICING.baseFee)}
                   </span>
@@ -203,14 +203,14 @@ export default function DemoAdminBilling() {
           >
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-slate-900">{editState.bizName}</h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 保存後、契約中の事業所には Stripe 同期を自動で実行します。
               </p>
             </div>
 
             <div className="mt-5 space-y-4">
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-slate-600">
+                <label className="block text-sm font-medium text-slate-600">
                   基本料 override（空欄で {fmtYen(DEMO_PRICING.baseFee)}）
                 </label>
                 <input
@@ -223,7 +223,7 @@ export default function DemoAdminBilling() {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-slate-600">
+                <label className="block text-sm font-medium text-slate-600">
                   追加車両単価 override（空欄で {fmtYen(DEMO_PRICING.perVehicleFee)}）
                 </label>
                 <input

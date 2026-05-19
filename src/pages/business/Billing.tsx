@@ -206,7 +206,7 @@ export default function Billing() {
     return (
       <div className="mx-auto max-w-xl px-4 py-8">
         <div className="card space-y-3">
-          <h1 className="text-xl font-bold text-slate-800">課金・プラン</h1>
+          <h1 className="text-2xl font-bold text-slate-800">課金・プラン</h1>
           <p className="text-sm text-slate-600">事業所情報が見つかりませんでした。</p>
         </div>
       </div>
@@ -241,13 +241,13 @@ export default function Billing() {
 
   return (
     <div className="mx-auto max-w-xl space-y-5 px-4 py-6 sm:py-8">
-      <h1 className="text-xl font-bold text-slate-800">課金・プラン</h1>
+      <h1 className="text-2xl font-bold text-slate-800">課金・プラン</h1>
 
       <div className="card space-y-5">
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs text-slate-500">現在の状態</p>
+              <p className="text-sm text-slate-500">現在の状態</p>
               <h2 className="text-lg font-semibold text-slate-900">{cfg.label}</h2>
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-bold ${cfg.pill}`}>
@@ -307,7 +307,7 @@ export default function Billing() {
 
         <div className="rounded-xl bg-slate-50 p-4 space-y-2.5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-slate-700">現在の料金設定</p>
+            <p className="text-lg font-bold text-slate-700">現在の料金設定</p>
             {hasCustomPrice && (
               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
                 個別料金

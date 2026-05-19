@@ -97,7 +97,7 @@ function EditModal({
 
         <div className="mt-5 space-y-4">
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-sm font-medium text-slate-600">
               Stripe Coupon ID
             </label>
             <input
@@ -112,7 +112,7 @@ function EditModal({
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-sm font-medium text-slate-600">
               基本料 override（空欄で {fmtYen(DEFAULT_BASE_FEE)}）
             </label>
             <input
@@ -127,7 +127,7 @@ function EditModal({
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-600">
+            <label className="block text-sm font-medium text-slate-600">
               追加車両単価 override（空欄で {fmtYen(DEFAULT_PER_VEHICLE_FEE)}）
             </label>
             <input
@@ -328,19 +328,19 @@ export default function BillingAdmin() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:py-8">
-      <h1 className="text-xl font-bold text-slate-800">課金管理</h1>
+      <h1 className="text-2xl font-bold text-slate-800">課金管理</h1>
 
       <div className="card space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
             type="text"
-            className="input flex-1"
+            className="input-base flex-1"
             placeholder="事業所名で検索"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
           <select
-            className="input sm:w-44"
+            className="input-base sm:w-44"
             value={filter}
             onChange={(event) => setFilter(event.target.value as typeof filter)}
           >
@@ -352,7 +352,7 @@ export default function BillingAdmin() {
             <option value="canceled">解約済み</option>
           </select>
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-sm text-slate-600 leading-relaxed">
           価格 override を保存すると、契約中の事業所はそのまま Stripe の subscription item まで同期します。
         </p>
       </div>
@@ -379,14 +379,14 @@ export default function BillingAdmin() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-slate-800">{biz.name}</p>
+                      <p className="text-xl font-bold text-slate-800">{biz.name}</p>
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_COLOR[biz.subscription_status]}`}
                       >
                         {STATUS_LABEL[biz.subscription_status]}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-base font-medium text-slate-600">
                       稼働車両 {biz.vehicle_count} 台
                       {addon > 0 ? ` / 追加課金 ${addon} 台` : ''}
                       {' / '}
@@ -401,7 +401,7 @@ export default function BillingAdmin() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 text-xs">
+                <div className="flex flex-wrap gap-2 text-sm">
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
                     基本料 {fmtYen(biz.custom_base_price ?? DEFAULT_BASE_FEE)}
                   </span>

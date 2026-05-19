@@ -188,8 +188,8 @@ export default function AdminStats() {
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h1 className="text-xl font-black text-slate-800">📊 統計ダッシュボード</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-black text-slate-800">📊 統計ダッシュボード</h1>
+          <p className="text-sm text-slate-600 mt-1">
             プラットフォーム全体の利用状況
             {lastUpdated && (
               <span className="ml-2 text-teal-500">
@@ -222,8 +222,8 @@ export default function AdminStats() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl">⏳</span>
                 <div>
-                  <p className="text-sm font-semibold text-amber-800">事業所の承認申請が {stats.totalPending}件 あります</p>
-                  <p className="text-xs text-amber-600 mt-0.5">登録申請を審査してください</p>
+                  <p className="text-base font-bold text-amber-800">事業所の承認申請が {stats.totalPending}件 あります</p>
+                  <p className="text-sm text-amber-600 mt-1">登録申請を審査してください</p>
                 </div>
               </div>
               <span className="text-amber-500 font-bold text-xl group-hover:translate-x-1 transition-transform">›</span>
@@ -237,8 +237,8 @@ export default function AdminStats() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔔</span>
                 <div>
-                  <p className="text-sm font-semibold text-red-800">未対応の仮予約申請が {stats.pendingRequestsNow}件 あります</p>
-                  <p className="text-xs text-red-600 mt-0.5">事業所に確認を促してください</p>
+                  <p className="text-base font-bold text-red-800">未対応の仮予約申請が {stats.pendingRequestsNow}件 あります</p>
+                  <p className="text-sm text-red-600 mt-1">事業所に確認を促してください</p>
                 </div>
               </div>
               <span className="text-red-500 font-bold text-xl group-hover:translate-x-1 transition-transform">›</span>

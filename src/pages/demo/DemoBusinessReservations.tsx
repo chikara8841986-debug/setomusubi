@@ -198,15 +198,15 @@ export default function DemoBusinessReservations() {
         )}
 
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-bold text-slate-800">予約管理</h1>
+          <h1 className="text-2xl font-bold text-slate-800">予約管理</h1>
           <button
             onClick={() => { setShowPhoneModal(true); setPhoneError('') }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors"
           >
             📞 電話予約を記録
           </button>
         </div>
-        <p className="text-xs text-slate-400 mb-4">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定しMSWへ通知されます。</p>
+        <p className="text-sm text-slate-600 mb-4 leading-relaxed">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定しMSWへ通知されます。</p>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto">
@@ -236,7 +236,7 @@ export default function DemoBusinessReservations() {
         {tab === 'pending' && pending.length > 0 && (
           <div className="mb-3 rounded-xl px-4 py-3 text-sm border bg-amber-50 border-amber-200 text-amber-800">
             <p className="font-medium">仮予約申請が{pending.length}件届いています</p>
-            <p className="text-xs mt-0.5 text-amber-700">申請から約2時間経過 — お早めにご対応ください</p>
+            <p className="text-sm mt-0.5 text-amber-700">申請から約2時間経過 — お早めにご対応ください</p>
           </div>
         )}
 
@@ -275,16 +275,16 @@ export default function DemoBusinessReservations() {
                 }`}>
                   <div className="flex items-start justify-between gap-2">
                     <button className="flex-1 text-left min-w-0" onClick={() => { setSelected(r); setConfirmAction(null) }}>
-                      <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                      <p className="text-lg font-bold text-slate-800 flex items-center gap-1.5 flex-wrap leading-snug">
                         {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time}〜{r.end_time}
                         {r.source === 'phone' && (
                           <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium">📞 電話</span>
                         )}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-base font-medium text-slate-600 mt-1">
                         {r.source === 'phone' ? (r.caller_name || '電話予約') : r.hospital_name} ／ {r.contact_name}
                       </p>
-                      <p className="text-xs text-slate-600 mt-0.5">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
+                      <p className="text-base text-slate-700 mt-1">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                     </button>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className={STATUS_MAP[r.status]?.cls ?? 'badge-gray'}>{STATUS_MAP[r.status]?.label}</span>
@@ -320,17 +320,17 @@ export default function DemoBusinessReservations() {
               {selected.source === 'phone' && (
                 <div className="mb-3 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   <span className="text-blue-500">📞</span>
-                  <span className="text-xs text-blue-700 font-medium">電話予約（手動記録）</span>
+                <span className="text-sm text-blue-700 font-medium">電話予約（手動記録）</span>
                 </div>
               )}
 
               {selected.status === 'pending' && (
-                <div className="mb-3 rounded-lg px-3 py-2 border text-xs font-medium text-amber-600 bg-amber-50 border-amber-200">
+                <div className="mb-3 rounded-lg px-3 py-2 border text-sm font-medium text-amber-600 bg-amber-50 border-amber-200">
                   申請から約2時間経過 — 早めにご対応ください
                 </div>
               )}
 
-              <dl className="space-y-3 text-sm">
+              <dl className="space-y-3 text-base">
                 <div className="flex gap-3">
                   <dt className="text-slate-500 w-20 flex-shrink-0">日時</dt>
                   <dd className="text-slate-800 font-medium">
@@ -350,7 +350,7 @@ export default function DemoBusinessReservations() {
                       <div className="flex gap-3">
                         <dt className="text-slate-500 w-20 flex-shrink-0">連絡先</dt>
                         <dd className="font-medium">
-                          <a href={`tel:${selected.caller_phone}`} className="text-teal-700 hover:underline">
+                          <a href={`tel:${selected.caller_phone}`} className="text-lg font-bold text-teal-700 hover:underline">
                             📞 {selected.caller_phone}
                           </a>
                         </dd>
@@ -383,16 +383,16 @@ export default function DemoBusinessReservations() {
                   <dd className="text-slate-800 font-medium">{selected.equipment_rental ? 'あり' : 'なし'}</dd>
                 </div>
                 <div className="flex gap-3">
-                  <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">乗車地</dt>
-                  <dd className="font-medium text-sm flex-1 min-w-0">
+                  <dt className="text-slate-500 w-20 flex-shrink-0 text-base">乗車地</dt>
+                  <dd className="font-medium text-base flex-1 min-w-0">
                     <a href={mapsUrl(selected.patient_address)} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline break-all">
                       📍 {selected.patient_address}
                     </a>
                   </dd>
                 </div>
                 <div className="flex gap-3">
-                  <dt className="text-slate-500 w-20 flex-shrink-0 text-sm">目的地</dt>
-                  <dd className="font-medium text-sm flex-1 min-w-0">
+                  <dt className="text-slate-500 w-20 flex-shrink-0 text-base">目的地</dt>
+                  <dd className="font-medium text-base flex-1 min-w-0">
                     <a href={mapsUrl(selected.destination)} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline break-all">
                       📍 {selected.destination}
                     </a>

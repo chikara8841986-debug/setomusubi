@@ -26,9 +26,9 @@ export default function DemoMswBusinesses() {
     <DemoLayout role="msw">
       <div>
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-bold text-slate-800">事業所一覧</h1>
+          <h1 className="text-2xl font-bold text-slate-800">事業所一覧</h1>
         </div>
-        <p className="text-xs text-slate-400 mb-4">☆ でお気に入り登録できます。事業所名をタップすると詳細を確認できます。</p>
+        <p className="text-sm text-slate-600 mb-4 leading-relaxed">☆ でお気に入り登録できます。事業所名をタップすると詳細を確認できます。</p>
 
         <div className="space-y-3">
           {DEMO_BUSINESSES.map(biz => {
@@ -47,7 +47,7 @@ export default function DemoMswBusinesses() {
                         <div className="flex items-center gap-1 flex-wrap">
                           <button
                             onClick={() => setPreview(biz)}
-                            className="font-semibold text-slate-800 text-sm hover:text-teal-700 hover:underline text-left leading-snug"
+                            className="text-xl font-bold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
                           >
                             {biz.name}
                           </button>
@@ -55,11 +55,11 @@ export default function DemoMswBusinesses() {
                             <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">本日定休</span>
                           )}
                         </div>
-                        <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-700 hover:underline mt-0.5 inline-block">
+                        <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-teal-700 hover:underline mt-1 inline-block leading-relaxed">
                           📍 {biz.address}
                         </a>
                         {biz.closed_days.length > 0 && (
-                          <p className="text-[10px] text-slate-400 mt-0.5">
+                          <p className="text-sm text-slate-500 mt-1">
                             定休: {biz.closed_days.sort((a,b)=>a-b).map(d=>DAY_LABELS[d]).join('・')}
                           </p>
                         )}
@@ -85,13 +85,13 @@ export default function DemoMswBusinesses() {
 
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {biz.cancel_phone && (
-                        <a href={`tel:${biz.cancel_phone}`} className="btn-secondary text-xs px-3 py-1.5">
+                        <a href={`tel:${biz.cancel_phone}`} className="inline-flex items-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-lg font-bold text-teal-800 hover:bg-teal-100 transition-colors">
                           📞 {biz.cancel_phone}
                         </a>
                       )}
                       <button
                         onClick={() => navigate('/demo/msw/search')}
-                        className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                        className="text-sm bg-teal-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-teal-700 transition-colors"
                       >
                         空き枠を検索 →
                       </button>
@@ -115,14 +115,14 @@ export default function DemoMswBusinesses() {
             <div className="flex items-start gap-3 mb-3">
               <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center text-teal-400 text-2xl flex-shrink-0">🚐</div>
               <div className="min-w-0">
-                <p className="font-bold text-slate-800">{preview.name}</p>
-                <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-700 hover:underline block mt-0.5">
+                <p className="text-xl font-bold text-slate-800 leading-snug">{preview.name}</p>
+                <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">
                   📍 {preview.address}
                 </a>
-                <a href={`tel:${preview.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">
+                <a href={`tel:${preview.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">
                   📞 {preview.cancel_phone}
                 </a>
-                <p className="text-xs text-slate-500 mt-0.5">営業: {preview.business_hours_start?.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}</p>
+                <p className="text-sm text-slate-500 mt-1">営業: {preview.business_hours_start?.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-1 mb-3">

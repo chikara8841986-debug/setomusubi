@@ -171,7 +171,7 @@ export default function MswBusinesses() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold text-slate-800">事業所一覧</h1>
+        <h1 className="text-2xl font-bold text-slate-800">事業所一覧</h1>
         <button
           onClick={() => setAvailCheck(v => !v)}
           className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
@@ -183,7 +183,7 @@ export default function MswBusinesses() {
           {availCheck ? '✓ 空き確認中' : '空き確認'}
         </button>
       </div>
-      <p className="text-xs text-slate-400 mb-4">エリアや対応機材で絞り込めます。☆ でお気に入り登録、「空き確認」で希望日時に空きのある事業所をまとめて確認できます。</p>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">エリアや対応機材で絞り込めます。☆ でお気に入り登録、「空き確認」で希望日時に空きのある事業所をまとめて確認できます。</p>
 
       {/* 空き確認パネル */}
       {availCheck && (
@@ -351,7 +351,7 @@ export default function MswBusinesses() {
                         <button
                           onClick={() => setPreview(biz)}
                           title="詳細を見る"
-                          className="font-semibold text-teal-700 hover:underline transition-colors text-left leading-snug inline-flex items-center gap-1"
+                          className="text-xl font-bold text-teal-700 hover:underline transition-colors text-left leading-snug inline-flex items-center gap-1"
                         >
                           <span>{biz.name}</span>
                           <span className="text-teal-500" aria-hidden="true">›</span>
@@ -372,12 +372,12 @@ export default function MswBusinesses() {
                       </div>
                       {biz.address && (
                         <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-teal-700 hover:underline block mt-0.5">
+                          className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">
                           📍 {biz.address}
                         </a>
                       )}
                       {formatHours(biz.business_hours_start, biz.business_hours_end) && (
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-sm text-slate-500 mt-1">
                           🕐 {formatHours(biz.business_hours_start, biz.business_hours_end)}
                         </p>
                       )}
@@ -406,7 +406,7 @@ export default function MswBusinesses() {
                   <div className="flex items-center gap-3 flex-wrap">
                     {biz.cancel_phone && (
                       <a href={`tel:${biz.cancel_phone}`}
-                        className="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">
+                        className="inline-flex items-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-lg font-bold text-teal-800 hover:bg-teal-100 transition-colors flex-shrink-0">
                         📞 {biz.cancel_phone}
                       </a>
                     )}
@@ -422,7 +422,7 @@ export default function MswBusinesses() {
                             }
                           }
                         })}
-                        className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                        className="text-sm bg-teal-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-teal-700 transition-colors"
                       >
                         この枠で申請 →
                       </button>
@@ -461,26 +461,26 @@ export default function MswBusinesses() {
                 <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center flex-shrink-0 text-teal-400 text-2xl">🚐</div>
               )}
               <div className="min-w-0">
-                <p className="font-bold text-slate-800">{preview.name}</p>
+                <p className="text-xl font-bold text-slate-800 leading-snug">{preview.name}</p>
                 {preview.address && (
                   <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-teal-700 hover:underline block mt-0.5">
+                    className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">
                     📍 {preview.address}
                   </a>
                 )}
                 {preview.cancel_phone && (
-                  <a href={`tel:${preview.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">
+                  <a href={`tel:${preview.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">
                     📞 {preview.cancel_phone}
                   </a>
                 )}
                 {preview.business_hours_start && (
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-sm text-slate-500 mt-1">
                     🕐 {preview.business_hours_start.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}
                   </p>
                 )}
                 {preview.website_url && (
                   <a href={preview.website_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-teal-700 underline block mt-0.5">🔗 ホームページ</a>
+                    className="text-sm text-teal-700 underline block mt-1">🔗 ホームページ</a>
                 )}
               </div>
             </div>
