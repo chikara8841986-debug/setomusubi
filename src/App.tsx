@@ -7,6 +7,8 @@ import Layout from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 const PAGE_TITLES: Record<string, string> = {
+  '/terms':                 '利用規約',
+  '/privacy':               'プライバシーポリシー',
   '/business/calendar':     'カレンダー',
   '/business/reservations': '予約管理',
   '/business/introduction': '紹介・PR',
@@ -84,6 +86,8 @@ const AdminBilling      = lazy(() => import('./pages/admin/BillingAdmin'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 const Manual = lazy(() => import('./pages/Manual'))
 const DemoGuide = lazy(() => import('./pages/DemoGuide'))
+const Terms = lazy(() => import('./pages/Terms'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 
 // Demo pages
 const DemoIndex = lazy(() => import('./pages/demo/DemoIndex'))
@@ -126,6 +130,8 @@ function AppRoutes() {
         <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/register/business" element={<BusinessRegister />} />
         <Route path="/register/msw" element={<MswRegister />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
 
         {/* Business routes */}
         <Route path="/business/*" element={

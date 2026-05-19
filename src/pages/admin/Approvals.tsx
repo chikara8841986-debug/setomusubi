@@ -188,7 +188,7 @@ export default function AdminApprovals() {
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="text-xl font-bold text-slate-800">{biz.name}</h3>
+                      <h3 className="text-2xl font-bold text-slate-800">{biz.name}</h3>
                       {biz.approved
                         ? <span className="badge-green">承認済み</span>
                         : <span className="badge-red">承認待ち</span>
@@ -207,7 +207,7 @@ export default function AdminApprovals() {
                         </span>
                       )}
                     </div>
-                    <p className="text-base font-medium text-slate-600 leading-relaxed">{biz.address ?? '住所未設定'} ／ {biz.phone ?? '電話番号未設定'}</p>
+                    <p className="text-lg font-semibold text-slate-700 leading-relaxed">{biz.address ?? '住所未設定'} ／ {biz.phone ?? '電話番号未設定'}</p>
                     <p className="text-sm text-slate-500 mt-1">
                       登録: {format(parseISO(biz.created_at), 'yyyy/M/d HH:mm', { locale: ja })}
                     </p>
@@ -302,7 +302,7 @@ export default function AdminApprovals() {
                     {biz.cancel_phone && (
                       <div>
                         <span className="font-medium text-slate-700">キャンセル連絡先: </span>
-                        <a href={`tel:${biz.cancel_phone}`} className="text-lg font-bold text-teal-700">{biz.cancel_phone}</a>
+                        <a href={`tel:${biz.cancel_phone}`} className="text-xl font-bold text-teal-700">{biz.cancel_phone}</a>
                       </div>
                     )}
                     {biz.pricing && (

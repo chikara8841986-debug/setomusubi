@@ -2,6 +2,9 @@ import { useState, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
+import { MonthFilter } from '../../components/MonthFilter'
+import { jstMonthStr } from '../../lib/jst'
+import { filterReservationsByMonth, sortReservationsNewestFirst } from '../../lib/reservationView'
 import DemoLayout from './DemoLayout'
 import {
   INITIAL_DEMO_RESERVATIONS,
@@ -58,6 +61,7 @@ export default function DemoBusinessReservations() {
   const [processing, setProcessing] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type?: 'error' | 'info' } | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [monthFilter, setMonthFilter] = useState(() => jstMonthStr(0))
 
   // 電話予約フォーム
   const [showPhoneModal, setShowPhoneModal] = useState(false)
@@ -71,11 +75,12 @@ export default function DemoBusinessReservations() {
     toastTimerRef.current = setTimeout(() => setToast(null), 3000)
   }
 
-  const pending  = reservations.filter(r => r.status === 'pending')
-  const upcoming = reservations.filter(r => r.status === 'confirmed')
-  const past     = reservations.filter(r => ['completed', 'cancelled', 'rejected'].includes(r.status))
+  const visibleReservations = filterReservationsByMonth(reservations, monthFilter)
+  const pending  = visibleReservations.filter(r => r.status === 'pending')
+  const upcoming = visibleReservations.filter(r => r.status === 'confirmed')
+  const past     = visibleReservations.filter(r => ['completed', 'cancelled', 'rejected'].includes(r.status))
 
-  const list = tab === 'pending' ? pending : tab === 'upcoming' ? upcoming : [...past].reverse()
+  const list = sortReservationsNewestFirst(tab === 'pending' ? pending : tab === 'upcoming' ? upcoming : past)
 
   const handleApprove = (r: DemoReservation) => {
     setProcessing(true)
@@ -207,6 +212,8 @@ export default function DemoBusinessReservations() {
           </button>
         </div>
         <p className="text-sm text-slate-600 mb-4 leading-relaxed">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定しMSWへ通知されます。</p>
+
+        <MonthFilter value={monthFilter} onChange={setMonthFilter} className="mb-4" />
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto">

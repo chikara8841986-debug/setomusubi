@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { useNavigate } from 'react-router-dom'
+import { MonthFilter } from '../../components/MonthFilter'
+import { jstMonthStr } from '../../lib/jst'
+import { filterReservationsByMonth, sortReservationsNewestFirst } from '../../lib/reservationView'
 import DemoLayout from './DemoLayout'
 import {
   INITIAL_DEMO_RESERVATIONS,
@@ -18,6 +21,7 @@ export default function DemoMswReservations() {
   const [tab, setTab] = useState<Tab>('active')
   const [selected, setSelected] = useState<DemoReservation | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [monthFilter, setMonthFilter] = useState(() => jstMonthStr(0))
 
   useEffect(() => {
     // Load from sessionStorage (items added via DemoMswSearch)
@@ -35,11 +39,10 @@ export default function DemoMswReservations() {
     return () => document.removeEventListener('keydown', handler)
   }, [])
 
-  const active = reservations.filter(r => r.status === 'pending' || r.status === 'confirmed')
-  const past = reservations.filter(r => ['completed', 'cancelled', 'rejected'].includes(r.status))
-  const list = tab === 'active'
-    ? [...active].sort((a, b) => a.reservation_date.localeCompare(b.reservation_date))
-    : [...past].sort((a, b) => b.reservation_date.localeCompare(a.reservation_date))
+  const visibleReservations = filterReservationsByMonth(reservations, monthFilter)
+  const active = visibleReservations.filter(r => r.status === 'pending' || r.status === 'confirmed')
+  const past = visibleReservations.filter(r => ['completed', 'cancelled', 'rejected'].includes(r.status))
+  const list = sortReservationsNewestFirst(tab === 'active' ? active : past)
 
   const handleCancel = (id: string) => {
     setReservations(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' as const } : r))
@@ -52,6 +55,8 @@ export default function DemoMswReservations() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800 mb-1">予約履歴</h1>
         <p className="text-sm text-slate-600 mb-4 leading-relaxed">「進行中」は申請中・確定済みの予約、「過去」は完了・キャンセル・却下を確認できます。</p>
+
+        <MonthFilter value={monthFilter} onChange={setMonthFilter} className="mb-4" />
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4">

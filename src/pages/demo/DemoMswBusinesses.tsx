@@ -47,7 +47,7 @@ export default function DemoMswBusinesses() {
                         <div className="flex items-center gap-1 flex-wrap">
                           <button
                             onClick={() => setPreview(biz)}
-                            className="text-xl font-bold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
+                            className="text-2xl font-bold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
                           >
                             {biz.name}
                           </button>
@@ -55,7 +55,7 @@ export default function DemoMswBusinesses() {
                             <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">本日定休</span>
                           )}
                         </div>
-                        <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-teal-700 hover:underline mt-1 inline-block leading-relaxed">
+                        <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold text-teal-700 hover:underline mt-1 inline-block leading-relaxed">
                           📍 {biz.address}
                         </a>
                         {biz.closed_days.length > 0 && (
@@ -85,7 +85,7 @@ export default function DemoMswBusinesses() {
 
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {biz.cancel_phone && (
-                        <a href={`tel:${biz.cancel_phone}`} className="inline-flex items-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-lg font-bold text-teal-800 hover:bg-teal-100 transition-colors">
+                        <a href={`tel:${biz.cancel_phone}`} className="inline-flex items-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xl font-bold text-teal-800 hover:bg-teal-100 transition-colors">
                           📞 {biz.cancel_phone}
                         </a>
                       )}
@@ -115,11 +115,11 @@ export default function DemoMswBusinesses() {
             <div className="flex items-start gap-3 mb-3">
               <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center text-teal-400 text-2xl flex-shrink-0">🚐</div>
               <div className="min-w-0">
-                <p className="text-xl font-bold text-slate-800 leading-snug">{preview.name}</p>
-                <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">
+                <p className="text-2xl font-bold text-slate-800 leading-snug">{preview.name}</p>
+                <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold text-teal-700 hover:underline block mt-1 leading-relaxed">
                   📍 {preview.address}
                 </a>
-                <a href={`tel:${preview.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">
+                <a href={`tel:${preview.cancel_phone}`} className="text-xl font-bold text-teal-700 block mt-1 leading-snug">
                   📞 {preview.cancel_phone}
                 </a>
                 <p className="text-sm text-slate-500 mt-1">営業: {preview.business_hours_start?.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}</p>

@@ -20,6 +20,7 @@ export default function MswRegister() {
   const [hospitalAddress, setHospitalAddress] = useState('')
   const [hospitalPhone, setHospitalPhone] = useState('')
   const [contactName, setContactName] = useState('')
+  const [agreedToPolicies, setAgreedToPolicies] = useState(false)
 
   const handleStep1 = (e: FormEvent) => {
     e.preventDefault()
@@ -39,6 +40,10 @@ export default function MswRegister() {
     e.preventDefault()
     if (!hospitalName.trim()) {
       setError('病院名を入力してください')
+      return
+    }
+    if (!agreedToPolicies) {
+      setError('利用規約とプライバシーポリシーへの同意が必要です')
       return
     }
     setLoading(true)
@@ -180,12 +185,31 @@ export default function MswRegister() {
                   <input type="text" className="input-base" value={contactName}
                     onChange={e => setContactName(e.target.value)} maxLength={50} placeholder="山田 花子" />
                 </div>
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={agreedToPolicies}
+                    onChange={e => setAgreedToPolicies(e.target.checked)}
+                    required
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                  />
+                  <span>
+                    <Link to="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-700 hover:underline">
+                      利用規約
+                    </Link>
+                    {' '}と{' '}
+                    <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-700 hover:underline">
+                      プライバシーポリシー
+                    </Link>
+                    に同意します。
+                  </span>
+                </label>
                 {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
                 <div className="flex gap-2">
                   <button type="button" className="btn-secondary flex-1" onClick={() => { setStep(1); setError('') }}>
                     ← 戻る
                   </button>
-                  <button type="submit" className="btn-primary flex-1" disabled={loading}>
+                  <button type="submit" className="btn-primary flex-1" disabled={loading || !agreedToPolicies}>
                     {loading ? '登録中...' : '登録する'}
                   </button>
                 </div>

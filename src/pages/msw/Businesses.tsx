@@ -351,7 +351,7 @@ export default function MswBusinesses() {
                         <button
                           onClick={() => setPreview(biz)}
                           title="詳細を見る"
-                          className="text-xl font-bold text-teal-700 hover:underline transition-colors text-left leading-snug inline-flex items-center gap-1"
+                          className="text-2xl font-bold text-teal-700 hover:underline transition-colors text-left leading-snug inline-flex items-center gap-1"
                         >
                           <span>{biz.name}</span>
                           <span className="text-teal-500" aria-hidden="true">›</span>
@@ -372,7 +372,7 @@ export default function MswBusinesses() {
                       </div>
                       {biz.address && (
                         <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer"
-                          className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">
+                          className="text-lg font-semibold text-teal-700 hover:underline block mt-1 leading-relaxed">
                           📍 {biz.address}
                         </a>
                       )}
@@ -406,7 +406,7 @@ export default function MswBusinesses() {
                   <div className="flex items-center gap-3 flex-wrap">
                     {biz.cancel_phone && (
                       <a href={`tel:${biz.cancel_phone}`}
-                        className="inline-flex items-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-lg font-bold text-teal-800 hover:bg-teal-100 transition-colors flex-shrink-0">
+                        className="inline-flex items-center rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xl font-bold text-teal-800 hover:bg-teal-100 transition-colors flex-shrink-0">
                         📞 {biz.cancel_phone}
                       </a>
                     )}
@@ -464,12 +464,12 @@ export default function MswBusinesses() {
                 <p className="text-xl font-bold text-slate-800 leading-snug">{preview.name}</p>
                 {preview.address && (
                   <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer"
-                    className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">
+                    className="text-lg font-semibold text-teal-700 hover:underline block mt-1 leading-relaxed">
                     📍 {preview.address}
                   </a>
                 )}
                 {preview.cancel_phone && (
-                  <a href={`tel:${preview.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">
+                  <a href={`tel:${preview.cancel_phone}`} className="text-xl font-bold text-teal-700 block mt-1 leading-snug">
                     📞 {preview.cancel_phone}
                   </a>
                 )}

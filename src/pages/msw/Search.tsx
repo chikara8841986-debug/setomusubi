@@ -903,7 +903,7 @@ export default function MswSearch() {
                         <button
                           type="button"
                           onClick={() => setPreviewBusiness(business)}
-                          className="text-xl font-bold text-teal-700 hover:underline transition-colors leading-snug text-left"
+                          className="text-2xl font-bold text-teal-700 hover:underline transition-colors leading-snug text-left"
                           title="詳細を見る"
                         >
                           {business.name} ›
@@ -914,13 +914,13 @@ export default function MswSearch() {
                           href={mapsUrl(business.address)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-base font-medium text-teal-700 hover:underline mt-1 inline-block leading-relaxed"
+                          className="text-lg font-semibold text-teal-700 hover:underline mt-1 inline-block leading-relaxed"
                         >
                           地図 {business.address}
                         </a>
                       )}
                       {business.cancel_phone && (
-                        <a href={`tel:${business.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">
+                        <a href={`tel:${business.cancel_phone}`} className="text-xl font-bold text-teal-700 block mt-1 leading-snug">
                           TEL {business.cancel_phone}
                         </a>
                       )}
@@ -1340,14 +1340,14 @@ export default function MswSearch() {
                 )
               )}
               <div>
-                <p className="text-xl font-bold text-slate-800 leading-snug">{previewBusiness.name}</p>
+                <p className="text-2xl font-bold text-slate-800 leading-snug">{previewBusiness.name}</p>
                 {previewBusiness.address && (
-                  <a href={mapsUrl(previewBusiness.address)} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">
+                  <a href={mapsUrl(previewBusiness.address)} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold text-teal-700 hover:underline block mt-1 leading-relaxed">
                     地図 {previewBusiness.address}
                   </a>
                 )}
                 {previewBusiness.cancel_phone && (
-                  <a href={`tel:${previewBusiness.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">
+                  <a href={`tel:${previewBusiness.cancel_phone}`} className="text-xl font-bold text-teal-700 block mt-1 leading-snug">
                     TEL {previewBusiness.cancel_phone}
                   </a>
                 )}

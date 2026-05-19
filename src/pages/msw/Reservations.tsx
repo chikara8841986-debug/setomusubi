@@ -5,6 +5,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import { MonthFilter } from '../../components/MonthFilter'
+import { jstMonthStr } from '../../lib/jst'
+import { filterReservationsByMonth, sortReservationsNewestFirst } from '../../lib/reservationView'
 import type { Reservation } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -43,6 +46,7 @@ export default function MswReservations() {
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [monthFilter, setMonthFilter] = useState(() => jstMonthStr(0))
   const [nameSearch, setNameSearch] = useState('')
   const [pastStatusFilter, setPastStatusFilter] = useState<'' | 'completed' | 'cancelled' | 'rejected'>('')
 
@@ -93,8 +97,10 @@ export default function MswReservations() {
     return () => { supabase.removeChannel(channel) }
   }, [fetchReservations, hospitalId])
 
+  const visibleReservations = filterReservationsByMonth(reservations, monthFilter)
+
   // Active: pending + confirmed future
-  const active = reservations.filter(r => {
+  const active = visibleReservations.filter(r => {
     if (r.status === 'pending') return true
     if (r.status === 'confirmed') {
       return !isPast(new Date(`${r.reservation_date}T${r.end_time}`))
@@ -109,7 +115,7 @@ export default function MswReservations() {
   }
 
   // Past: confirmed past + completed + cancelled + rejected
-  const past = reservations.filter(r => {
+  const past = visibleReservations.filter(r => {
     if (r.status === 'pending') return false
     if (r.status === 'confirmed') {
       return isPast(new Date(`${r.reservation_date}T${r.end_time}`))
@@ -117,15 +123,8 @@ export default function MswReservations() {
     return true
   })
 
-  // 進行中は直近の予約が先頭になるよう昇順ソート
   const pastFiltered = pastStatusFilter ? past.filter(r => r.status === pastStatusFilter) : past
-  const sorted = tab === 'active'
-    ? [...active].sort((a, b) => {
-        const da = `${a.reservation_date}T${a.start_time}`
-        const db = `${b.reservation_date}T${b.start_time}`
-        return da.localeCompare(db)
-      })
-    : pastFiltered
+  const sorted = sortReservationsNewestFirst(tab === 'active' ? active : pastFiltered)
   const q = nameSearch.trim().toLowerCase()
   const list = q
     ? sorted.filter(r =>
@@ -168,6 +167,12 @@ export default function MswReservations() {
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-1">予約履歴</h1>
       <p className="text-sm text-slate-600 mb-4 leading-relaxed">「進行中」は申請中・確定済みの予約、「過去の予約」は完了・キャンセル・非承認の予約を確認できます。</p>
+
+      <MonthFilter
+        value={monthFilter}
+        onChange={value => { setMonthFilter(value); setNameSearch('') }}
+        className="mb-4"
+      />
 
       <div className="flex gap-2 mb-4">
         <button onClick={() => switchTab('active')}

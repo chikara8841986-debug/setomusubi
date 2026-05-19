@@ -379,7 +379,7 @@ export default function BillingAdmin() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xl font-bold text-slate-800">{biz.name}</p>
+                      <p className="text-2xl font-bold text-slate-800">{biz.name}</p>
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_COLOR[biz.subscription_status]}`}
                       >

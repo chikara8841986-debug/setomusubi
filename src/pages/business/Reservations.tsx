@@ -5,7 +5,9 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { isTodayJST, jstTodayStr } from '../../lib/jst'
+import { MonthFilter } from '../../components/MonthFilter'
+import { isTodayJST, jstMonthStr, jstTodayStr } from '../../lib/jst'
+import { filterReservationsByMonth, sortReservationsNewestFirst } from '../../lib/reservationView'
 import type { Reservation } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -65,6 +67,7 @@ export default function BusinessReservations() {
   const [processing, setProcessing] = useState(false)
   const [actionError, setActionError] = useState('')
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
+  const [monthFilter, setMonthFilter] = useState(() => jstMonthStr(0))
   const [nameSearch, setNameSearch] = useState('')
   const [pastStatusFilter, setPastStatusFilter] = useState<'' | 'completed' | 'cancelled' | 'rejected'>('')
   const [showPhoneModal, setShowPhoneModal] = useState(false)
@@ -79,8 +82,8 @@ export default function BusinessReservations() {
       .from('reservations')
       .select('*, hospitals(name, phone)')
       .eq('business_id', businessId)
-      .order('reservation_date', { ascending: true })
-      .order('start_time', { ascending: true })
+      .order('reservation_date', { ascending: false })
+      .order('start_time', { ascending: false })
     if (error) { setLoadError(true); setLoading(false); return }
     setReservations((data as unknown as ReservationWithHospital[]) ?? [])
     setLoading(false)
@@ -157,17 +160,19 @@ export default function BusinessReservations() {
     setActionError('')
   }
 
-  const pending = reservations.filter(r => r.status === 'pending')
-  const today = reservations.filter(r =>
+  const visibleReservations = filterReservationsByMonth(reservations, monthFilter)
+
+  const pending = visibleReservations.filter(r => r.status === 'pending')
+  const today = visibleReservations.filter(r =>
     r.status === 'confirmed' && isTodayJST(r.reservation_date)
   )
-  const upcoming = reservations.filter(r => {
+  const upcoming = visibleReservations.filter(r => {
     if (r.status !== 'confirmed') return false
     if (isTodayJST(r.reservation_date)) return false
     const dt = new Date(`${r.reservation_date}T${r.end_time}`)
     return !isPast(dt)
   })
-  const past = reservations.filter(r => {
+  const past = visibleReservations.filter(r => {
     if (r.status === 'pending') return false
     if (r.status === 'confirmed') {
       const dt = new Date(`${r.reservation_date}T${r.end_time}`)
@@ -270,12 +275,11 @@ export default function BusinessReservations() {
     fetchReservations()
   }
 
-  // 過去タブは直近が先頭（降順）
   const pastFiltered = pastStatusFilter ? past.filter(r => r.status === pastStatusFilter) : past
-  const rawList = tab === 'pending' ? pending
+  const rawList = sortReservationsNewestFirst(tab === 'pending' ? pending
     : tab === 'today' ? today
     : tab === 'upcoming' ? upcoming
-    : [...pastFiltered].reverse()
+    : pastFiltered)
   const nq = nameSearch.trim().toLowerCase()
   const list = nq
     ? rawList.filter(r =>
@@ -305,6 +309,12 @@ export default function BusinessReservations() {
         </button>
       </div>
       <p className="text-sm text-slate-600 mb-4 leading-relaxed">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定し、MSWへ通知メールが送られます。</p>
+
+      <MonthFilter
+        value={monthFilter}
+        onChange={value => { setMonthFilter(value); setNameSearch('') }}
+        className="mb-4"
+      />
 
       {/* Tabs */}
       <div className="flex gap-2 mb-4 overflow-x-auto">
