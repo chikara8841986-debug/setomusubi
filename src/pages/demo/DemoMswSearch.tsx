@@ -212,12 +212,12 @@ export default function DemoMswSearch() {
                     <div className="flex-1 min-w-0">
                       <button
                         onClick={() => setPreview(biz)}
-                        className="font-semibold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
+                        className="text-xl font-bold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
                       >
                         {biz.name}
                       </button>
-                      <p className="text-xs text-slate-500 mt-0.5">📍 {biz.address}</p>
-                      <p className="text-xs text-teal-700 mt-0.5">📞 {biz.cancel_phone}</p>
+                      <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-slate-700 hover:text-teal-700 hover:underline block mt-1 leading-relaxed">📍 {biz.address}</a>
+                      <a href={`tel:${biz.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">📞 {biz.cancel_phone}</a>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -369,10 +369,10 @@ export default function DemoMswSearch() {
             <div className="flex items-start gap-3 mb-3">
               <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center text-teal-400 text-2xl flex-shrink-0">🚐</div>
               <div className="min-w-0">
-                <p className="font-bold text-slate-800">{preview.name}</p>
+                <p className="text-xl font-bold text-slate-800 leading-snug">{preview.name}</p>
                 <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-teal-700 hover:underline block mt-0.5">📍 {preview.address}</a>
-                <a href={`tel:${preview.cancel_phone}`} className="text-xs text-teal-700 block mt-0.5">📞 {preview.cancel_phone}</a>
+                  className="text-base font-medium text-teal-700 hover:underline block mt-1 leading-relaxed">📍 {preview.address}</a>
+                <a href={`tel:${preview.cancel_phone}`} className="text-lg font-bold text-teal-700 block mt-1 leading-snug">📞 {preview.cancel_phone}</a>
                 <p className="text-xs text-slate-500 mt-0.5">営業: {preview.business_hours_start?.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}</p>
               </div>
             </div>
