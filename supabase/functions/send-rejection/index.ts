@@ -12,6 +12,18 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@send.hakobite-marugame.com'
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://setomusubi.vercel.app'
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  })
+}
+
 async function sendEmail(to: string, subject: string, body: string) {
   if (!RESEND_API_KEY) {
     console.log('[DEV] Email to:', to, '\nSubject:', subject, '\n', body)
@@ -23,31 +35,31 @@ async function sendEmail(to: string, subject: string, body: string) {
       'Authorization': `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, text: body }),
+    body: JSON.stringify({ from: `せとむすび <${FROM_EMAIL}>`, to: [to], subject, text: body }),
   })
   if (!res.ok) console.error('Resend error:', await res.text())
 }
 
 Deno.serve(async (req) => {
-  const { reservation_id } = await req.json()
-  if (!reservation_id) {
-    return new Response('reservation_id required', { status: 400 })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
-  const { data: res } = await supabase
-    .from('reservations')
-    .select(`
-      *,
-      businesses(name, cancel_phone),
-      hospitals(name, user_id)
-    `)
-    .eq('id', reservation_id)
-    .single()
+  try {
+    const { reservation_id } = await req.json()
+    if (!reservation_id) return json({ error: 'reservation_id required' }, 400)
 
-  if (!res) return new Response('Not found', { status: 404 })
+    const { data: res } = await supabase
+      .from('reservations')
+      .select(`
+        *,
+        businesses(name, cancel_phone),
+        hospitals(name, user_id)
+      `)
+      .eq('id', reservation_id)
+      .single()
 
-  const body = `
-【せとむすび】仮予約が却下されました
+    if (!res) return json({ error: 'Not found' }, 404)
+
+    const body = `【せとむすび】仮予約が却下されました
 
 申し訳ありませんが、以下の仮予約申請が事業所により却下されました。
 別の事業所を検索してご利用ください。
@@ -65,19 +77,21 @@ ${APP_URL}/msw/search
 せとむすび
 `
 
-  const { data: hospUser } = await supabase.auth.admin.getUserById(
-    res.hospitals?.user_id ?? ''
-  )
-
-  if (hospUser?.user?.email) {
-    await sendEmail(
-      hospUser.user.email,
-      '【せとむすび】仮予約が却下されました',
-      body
+    const { data: hospUser } = await supabase.auth.admin.getUserById(
+      res.hospitals?.user_id ?? ''
     )
-  }
 
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
+    if (hospUser?.user?.email) {
+      await sendEmail(
+        hospUser.user.email,
+        '【せとむすび】仮予約が却下されました',
+        body
+      )
+    }
+
+    return json({ ok: true })
+  } catch (e: any) {
+    console.error('[send-rejection]', e)
+    return json({ error: e.message }, 500)
+  }
 })

@@ -12,6 +12,18 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@send.hakobite-marugame.com'
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://setomusubi.vercel.app'
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  })
+}
+
 async function sendEmail(to: string, subject: string, body: string) {
   if (!RESEND_API_KEY) {
     console.log('[DEV] Email to:', to, '\nSubject:', subject, '\n', body)
@@ -23,34 +35,32 @@ async function sendEmail(to: string, subject: string, body: string) {
       'Authorization': `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, text: body }),
+    body: JSON.stringify({ from: `せとむすび <${FROM_EMAIL}>`, to: [to], subject, text: body }),
   })
   if (!res.ok) console.error('Resend error:', await res.text())
 }
 
 Deno.serve(async (req) => {
-  const { business_id } = await req.json()
-  if (!business_id) {
-    return new Response('business_id required', { status: 400 })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
-  const { data: biz } = await supabase
-    .from('businesses')
-    .select('name, user_id')
-    .eq('id', business_id)
-    .single()
+  try {
+    const { business_id } = await req.json()
+    if (!business_id) return json({ error: 'business_id required' }, 400)
 
-  if (!biz) return new Response('Not found', { status: 404 })
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select('name, user_id')
+      .eq('id', business_id)
+      .single()
 
-  const { data: bizUser } = await supabase.auth.admin.getUserById(biz.user_id)
-  if (!bizUser?.user?.email) {
-    return new Response(JSON.stringify({ ok: true, skipped: 'no email' }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+    if (!biz) return json({ error: 'Not found' }, 404)
 
-  const body = `
-【せとむすび】事業所登録が承認されました
+    const { data: bizUser } = await supabase.auth.admin.getUserById(biz.user_id)
+    if (!bizUser?.user?.email) {
+      return json({ ok: true, skipped: 'no email' })
+    }
+
+    const body = `【せとむすび】事業所登録が承認されました
 
 ${biz.name} 様
 
@@ -66,13 +76,15 @@ ${APP_URL}/login
 せとむすび
 `
 
-  await sendEmail(
-    bizUser.user.email,
-    '【せとむすび】事業所登録が承認されました',
-    body
-  )
+    await sendEmail(
+      bizUser.user.email,
+      '【せとむすび】事業所登録が承認されました',
+      body
+    )
 
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
+    return json({ ok: true })
+  } catch (e: any) {
+    console.error('[send-business-approved]', e)
+    return json({ error: e.message }, 500)
+  }
 })
