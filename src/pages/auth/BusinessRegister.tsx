@@ -63,12 +63,12 @@ export default function BusinessRegister() {
         throw new Error('already_registered')
       }
 
-      // メール確認をサーバー側で自動承認（確認メール不要）
-      await supabase.functions.invoke('auto-confirm-email', {
-        body: { user_id: data.user.id },
+      navigate('/login', {
+        state: {
+          message: '登録申請を受け付けました。確認メールを送信したので、メール内のリンクをクリックして登録を完了してください。その後、管理者の承認をお待ちください。',
+          email,
+        },
       })
-
-      navigate('/login', { state: { message: '登録申請が完了しました。管理者の承認をお待ちください。', email } })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
       if (msg === 'already_registered' || msg.includes('already registered') || msg.includes('already been registered')) {
