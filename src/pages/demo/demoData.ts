@@ -536,3 +536,110 @@ export const DEMO_OWN_BUSINESS_BILLING = {
   })(),
   has_stripe_subscription: true,
 }
+
+// ─────────────────────────────────────────────
+// 新方式: 事業所 → 車両 → 占有スロット（本番と同じネガティブリスト型）
+// ─────────────────────────────────────────────
+
+// 事業所 → 車両一覧（MSW検索で機材判定に使う）
+export const DEMO_BUSINESS_VEHICLES: Record<string, DemoVehicle[]> = {
+  'demo-biz-1': [
+    {
+      id: 'v-biz1-1', name: '1号車（ハイエース）',
+      has_wheelchair: true, has_reclining_wheelchair: true, has_stretcher: false,
+      rental_wheelchair: true, rental_reclining_wheelchair: false, rental_stretcher: false,
+      active: true,
+    },
+    {
+      id: 'v-biz1-2', name: '2号車（ノア）',
+      has_wheelchair: true, has_reclining_wheelchair: false, has_stretcher: true,
+      rental_wheelchair: true, rental_reclining_wheelchair: false, rental_stretcher: true,
+      active: true,
+    },
+    {
+      id: 'v-biz1-3', name: '3号車（セレナ）',
+      has_wheelchair: true, has_reclining_wheelchair: true, has_stretcher: false,
+      rental_wheelchair: false, rental_reclining_wheelchair: false, rental_stretcher: false,
+      active: true,
+    },
+  ],
+  'demo-biz-2': [
+    {
+      id: 'v-biz2-1', name: '1号車',
+      has_wheelchair: true, has_reclining_wheelchair: false, has_stretcher: true,
+      rental_wheelchair: false, rental_reclining_wheelchair: false, rental_stretcher: true,
+      active: true,
+    },
+    {
+      id: 'v-biz2-2', name: '2号車',
+      has_wheelchair: true, has_reclining_wheelchair: false, has_stretcher: false,
+      rental_wheelchair: false, rental_reclining_wheelchair: false, rental_stretcher: false,
+      active: true,
+    },
+  ],
+  'demo-biz-3': [
+    {
+      id: 'v-biz3-1', name: '1号車',
+      has_wheelchair: true, has_reclining_wheelchair: true, has_stretcher: true,
+      rental_wheelchair: true, rental_reclining_wheelchair: true, rental_stretcher: false,
+      active: true,
+    },
+  ],
+}
+
+// 占有スロット（埋まっている時間）
+// 事業所はこれを登録し、MSWはこれを「避けて」予約する
+export type DemoOccupiedSlot = {
+  id: string
+  vehicle_id: string
+  date: string       // 'YYYY-MM-DD'
+  start_time: string // 'HH:mm'
+  end_time: string   // 'HH:mm'
+  reason: string     // '予約済み' / '休憩' / 'メンテ' 等
+}
+
+export const INITIAL_DEMO_OCCUPIED_SLOTS: DemoOccupiedSlot[] = [
+  // demo-biz-1 1号車: 明日10:00-12:00 が予約済み
+  { id: 'occ-1', vehicle_id: 'v-biz1-1', date: addDays(1), start_time: '10:00', end_time: '12:00', reason: '予約済み（佐藤様）' },
+  // demo-biz-1 2号車: 明日終日メンテ
+  { id: 'occ-2', vehicle_id: 'v-biz1-2', date: addDays(1), start_time: '08:00', end_time: '18:00', reason: 'メンテナンス' },
+  // demo-biz-1 1号車: 明後日13:00-15:00
+  { id: 'occ-3', vehicle_id: 'v-biz1-1', date: addDays(2), start_time: '13:00', end_time: '15:00', reason: '予約済み（鈴木様）' },
+  // demo-biz-2 1号車: 明日9:00-11:00
+  { id: 'occ-4', vehicle_id: 'v-biz2-1', date: addDays(1), start_time: '09:00', end_time: '11:00', reason: '予約済み（田中様）' },
+  // demo-biz-3 1号車: 明日13:00-17:00
+  { id: 'occ-5', vehicle_id: 'v-biz3-1', date: addDays(1), start_time: '13:00', end_time: '17:00', reason: '予約済み' },
+]
+
+// 「自分の事業所」用（DemoBusinessCalendar が編集対象にする事業所）
+export const DEMO_OWN_BUSINESS_ID = 'demo-biz-1'
+
+// 時間を分に変換
+export function timeToMin(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+// 2つの時間範囲が重なるか判定
+export function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return timeToMin(aStart) < timeToMin(bEnd) && timeToMin(aEnd) > timeToMin(bStart)
+}
+
+// 指定日時に「空いている車両」を取り出す（新方式の検索ロジック）
+export function findAvailableVehicles(
+  businessId: string,
+  date: string,
+  startTime: string,
+  endTime: string,
+  occupiedSlots: DemoOccupiedSlot[],
+): DemoVehicle[] {
+  const vehicles = DEMO_BUSINESS_VEHICLES[businessId] ?? []
+  return vehicles.filter(v => {
+    if (!v.active) return false
+    // この車両に同日の占有スロットがあり、検索時間と重なるなら空きなし
+    const conflicts = occupiedSlots.filter(s =>
+      s.vehicle_id === v.id && s.date === date && rangesOverlap(s.start_time, s.end_time, startTime, endTime),
+    )
+    return conflicts.length === 0
+  })
+}

@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DemoLayout from './DemoLayout'
 import {
   DEMO_BUSINESSES,
-  DEMO_SLOTS,
+  DEMO_BUSINESS_VEHICLES,
   DEMO_CONTACTS,
   DEMO_HOSPITAL,
+  INITIAL_DEMO_OCCUPIED_SLOTS,
   EQUIPMENT_LABELS,
+  findAvailableVehicles,
+  type DemoOccupiedSlot,
   type DemoReservation,
+  type DemoVehicle,
 } from './demoData'
 
 function mapsUrl(address: string) {
@@ -22,21 +26,20 @@ function addDays(n: number): string {
 
 type SearchResult = {
   business: typeof DEMO_BUSINESSES[number]
-  slots: typeof DEMO_SLOTS
+  vehicles: DemoVehicle[]
 }
 
 type Stage = 'form' | 'results' | 'request' | 'done'
 
 const EQUIPMENT_OPTIONS = [
-  { value: 'wheelchair', label: '車椅子' },
-  { value: 'reclining_wheelchair', label: 'リクライニング車椅子' },
-  { value: 'stretcher', label: 'ストレッチャー' },
+  { value: 'wheelchair',           label: '車椅子',                field: 'has_wheelchair' as const },
+  { value: 'reclining_wheelchair', label: 'リクライニング車椅子', field: 'has_reclining_wheelchair' as const },
+  { value: 'stretcher',            label: 'ストレッチャー',        field: 'has_stretcher' as const },
 ]
 
 export default function DemoMswSearch() {
   const navigate = useNavigate()
 
-  // Stage management
   const [stage, setStage] = useState<Stage>('form')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedBizId, setSelectedBizId] = useState<string | null>(null)
@@ -45,9 +48,10 @@ export default function DemoMswSearch() {
   // Search form
   const [searchDate, setSearchDate] = useState(addDays(1))
   const [startTime, setStartTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('12:00')
-  const [equipment, setEquipment] = useState('wheelchair')
+  const [endTime, setEndTime] = useState('11:00')
+  const [equipment, setEquipment] = useState<typeof EQUIPMENT_OPTIONS[number]['value']>('wheelchair')
   const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
 
   // Request form
   const [patientName, setPatientName] = useState('')
@@ -59,36 +63,45 @@ export default function DemoMswSearch() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
 
+  // デモ用: occupied_slots をstateで持つ（申請後に占有を追加して連動を見せられる）
+  const [occupied, setOccupied] = useState<DemoOccupiedSlot[]>(INITIAL_DEMO_OCCUPIED_SLOTS)
+
+  const equipField = useMemo(
+    () => EQUIPMENT_OPTIONS.find(o => o.value === equipment)!.field,
+    [equipment],
+  )
+
   const handleSearch = () => {
-    if (!searchDate || !startTime || !endTime) return
+    setSearchError('')
+    if (startTime >= endTime) {
+      setSearchError('終了時刻は開始時刻より後にしてください')
+      return
+    }
     setSearching(true)
-    // Simulate delay
     setTimeout(() => {
-      // Find matching slots
-      const matchingSlots = DEMO_SLOTS.filter(
-        s => s.date === searchDate && s.start_time <= startTime && s.end_time >= endTime && s.is_available
-      )
-      const bizIds = new Set(matchingSlots.map(s => s.business_id))
+      const matched: SearchResult[] = []
+      for (const biz of DEMO_BUSINESSES) {
+        if (!biz.approved) continue
+        // この事業所の車両 → 占有スロットを避けたうえで空いてる車両を抽出
+        const availableVehicles = findAvailableVehicles(
+          biz.id,
+          searchDate,
+          startTime,
+          endTime,
+          occupied,
+        ).filter(v => v[equipField]) // 機材対応も満たすもの
 
-      // Filter businesses by equipment
-      const bizResults: SearchResult[] = DEMO_BUSINESSES.filter(b => {
-        if (!bizIds.has(b.id)) return false
-        if (equipment === 'wheelchair' && !b.has_wheelchair) return false
-        if (equipment === 'reclining_wheelchair' && !b.has_reclining_wheelchair) return false
-        if (equipment === 'stretcher' && !b.has_stretcher) return false
-        return true
-      }).map(b => ({
-        business: b,
-        slots: matchingSlots.filter(s => s.business_id === b.id),
-      }))
-
-      setResults(bizResults)
+        if (availableVehicles.length > 0) {
+          matched.push({ business: biz, vehicles: availableVehicles })
+        }
+      }
+      setResults(matched)
       setStage('results')
       setSearching(false)
-    }, 800)
+    }, 600)
   }
 
-  const handleSelectSlot = (bizId: string, _slotId: string) => {
+  const handleSelectBiz = (bizId: string) => {
     setSelectedBizId(bizId)
     setStage('request')
     setFormError('')
@@ -100,7 +113,9 @@ export default function DemoMswSearch() {
     if (!destination.trim()) { setFormError('目的地を入力してください'); return }
     setSubmitting(true)
     setTimeout(() => {
-      // Simulate creating reservation
+      const result = results.find(r => r.business.id === selectedBizId)
+      const assignedVehicle = result?.vehicles[0] // 最初の空き車両を仮割当
+
       const newRes: DemoReservation = {
         id: `demo-res-new-${Date.now()}`,
         status: 'pending',
@@ -122,14 +137,27 @@ export default function DemoMswSearch() {
         business_id: selectedBizId!,
         business_name: DEMO_BUSINESSES.find(b => b.id === selectedBizId)?.name ?? '',
       }
-      // Store in sessionStorage so Reservations page can show it
+
       try {
         const existing = JSON.parse(sessionStorage.getItem('demo_reservations') ?? '[]')
         sessionStorage.setItem('demo_reservations', JSON.stringify([newRes, ...existing]))
       } catch {}
+
+      // 申請成立した時間帯は占有に追加（次の検索で空きが減るのを見せる）
+      if (assignedVehicle) {
+        setOccupied(prev => [...prev, {
+          id: `occ-from-msw-${Date.now()}`,
+          vehicle_id: assignedVehicle.id,
+          date: searchDate,
+          start_time: startTime,
+          end_time: endTime,
+          reason: '申請中（仮押さえ）',
+        }])
+      }
+
       setSubmitting(false)
       setStage('done')
-    }, 1000)
+    }, 800)
   }
 
   const selectedBiz = DEMO_BUSINESSES.find(b => b.id === selectedBizId)
@@ -138,8 +166,11 @@ export default function DemoMswSearch() {
     <DemoLayout role="msw">
       {stage === 'form' && (
         <div>
-          <h1 className="text-xl font-bold text-slate-800 mb-1">空き枠を検索する</h1>
-          <p className="text-xs text-slate-400 mb-4">希望日時・使用機材を選んで検索すると、空きのある事業所が表示されます。</p>
+          <h1 className="text-2xl font-bold text-slate-800 mb-1">空き事業所を検索する</h1>
+          <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+            希望日時と使用機材を指定すると、
+            <span className="font-bold text-teal-700">その時間帯に空いている車両を持つ事業所</span>が表示されます。
+          </p>
 
           <div className="card space-y-4">
             <div>
@@ -164,29 +195,29 @@ export default function DemoMswSearch() {
             </div>
             <div>
               <label className="label">使用機材</label>
-              <select className="input-base" value={equipment} onChange={e => setEquipment(e.target.value)}>
+              <select className="input-base" value={equipment} onChange={e => setEquipment(e.target.value as typeof equipment)}>
                 {EQUIPMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
-            <button
-              onClick={handleSearch}
-              disabled={searching}
-              className="btn-primary w-full"
-            >
-              {searching ? '検索中...' : '🔍 空き枠を検索する'}
+            {searchError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{searchError}</p>}
+            <button onClick={handleSearch} disabled={searching} className="btn-primary w-full">
+              {searching ? '検索中...' : '🔍 空き事業所を検索する'}
             </button>
           </div>
 
-          <div className="mt-4 card bg-sky-50 border-sky-200 text-xs text-sky-800 space-y-1">
+          <div className="mt-4 card bg-sky-50 border-sky-200 text-sm text-sky-800 space-y-1">
             <p className="font-semibold">💡 デモのヒント</p>
-            <p>明日の日付・車椅子で検索するとサンプル事業所が表示されます。</p>
+            <p>
+              <b>明日 9:00〜11:00 ／ 車椅子</b> で検索すると、車両が空いている事業所だけが表示されます。
+              事業所側で「占有時間」を追加すると、検索結果から消えます（カレンダー画面で試せます）。
+            </p>
           </div>
         </div>
       )}
 
       {stage === 'results' && (
         <div>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
             <button onClick={() => setStage('form')} className="text-xs text-slate-400 hover:text-slate-600">← 検索に戻る</button>
             <span className="text-slate-300">|</span>
             <p className="text-sm text-slate-600 font-medium">
@@ -197,13 +228,16 @@ export default function DemoMswSearch() {
           {results.length === 0 ? (
             <div className="card text-center py-10">
               <div className="text-4xl mb-2">🚫</div>
-              <p className="text-slate-500 text-sm">条件に合う空き枠が見つかりませんでした</p>
-              <button onClick={() => setStage('form')} className="mt-3 text-xs text-teal-600 hover:underline">検索条件を変更する</button>
+              <p className="text-slate-600 text-base">この時間帯に空き車両のある事業所はありませんでした</p>
+              <p className="text-xs text-slate-400 mt-1">時間帯を広げる・別の日にずらすなどお試しください</p>
+              <button onClick={() => setStage('form')} className="mt-3 text-xs text-teal-600 hover:underline">
+                検索条件を変更する
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-slate-500">{results.length}件の事業所に空きがあります</p>
-              {results.map(({ business: biz, slots }) => (
+              <p className="text-sm text-slate-600">{results.length}件の事業所に空きがあります</p>
+              {results.map(({ business: biz, vehicles }) => (
                 <div key={biz.id} className="card">
                   <div className="flex items-start gap-3 mb-3">
                     <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center text-teal-400 text-xl flex-shrink-0">
@@ -212,40 +246,36 @@ export default function DemoMswSearch() {
                     <div className="flex-1 min-w-0">
                       <button
                         onClick={() => setPreview(biz)}
-                        className="text-2xl font-bold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
+                        className="text-lg font-bold text-slate-800 hover:text-teal-700 hover:underline text-left leading-snug"
                       >
                         {biz.name}
                       </button>
-                      <a href={mapsUrl(biz.address)} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold text-slate-700 hover:text-teal-700 hover:underline block mt-1 leading-relaxed">📍 {biz.address}</a>
-                      <a href={`tel:${biz.cancel_phone}`} className="text-xl font-bold text-teal-700 block mt-1 leading-snug">📞 {biz.cancel_phone}</a>
+                      <p className="text-sm text-slate-600 mt-0.5">📍 {biz.address}</p>
+                      <p className="text-sm text-teal-700 mt-0.5">📞 {biz.cancel_phone}</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {biz.has_wheelchair && <span className="badge-blue">車椅子</span>}
-                    {biz.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
-                    {biz.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
+
+                  <div className="flex flex-wrap gap-1 mb-3">
                     {biz.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
                     {biz.has_female_caregiver && <span className="badge-green">女性介護者</span>}
                     {biz.long_distance && <span className="badge-gray">長距離対応</span>}
                     {biz.same_day && <span className="badge-gray">当日対応</span>}
                   </div>
-                  <div className="space-y-2">
-                    {slots.map(slot => (
-                      <button
-                        key={slot.id}
-                        onClick={() => handleSelectSlot(biz.id, slot.id)}
-                        className="w-full flex items-center justify-between bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 hover:bg-teal-100 transition-colors"
-                      >
-                        <div className="text-left">
-                          <p className="text-sm font-semibold text-teal-800">
-                            {slot.start_time.slice(0,5)}〜{slot.end_time.slice(0,5)}
-                          </p>
-                          <p className="text-xs text-teal-600">空き1枠あり</p>
-                        </div>
-                        <span className="text-sm font-bold text-teal-700">この枠で申請 →</span>
-                      </button>
-                    ))}
+
+                  <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 mb-3">
+                    <p className="text-sm font-bold text-teal-800 mb-1">
+                      ✅ 空き車両 {vehicles.length}台
+                    </p>
+                    <ul className="text-xs text-teal-700 space-y-0.5">
+                      {vehicles.map(v => (
+                        <li key={v.id}>・{v.name}</li>
+                      ))}
+                    </ul>
                   </div>
+
+                  <button onClick={() => handleSelectBiz(biz.id)} className="btn-primary w-full">
+                    この事業所に予約申請する →
+                  </button>
                 </div>
               ))}
             </div>
@@ -255,12 +285,16 @@ export default function DemoMswSearch() {
 
       {stage === 'request' && selectedBiz && (
         <div>
-          <button onClick={() => setStage('results')} className="text-xs text-slate-400 hover:text-slate-600 mb-4 block">← 検索結果に戻る</button>
-          <h1 className="text-xl font-bold text-slate-800 mb-1">仮予約を申請する</h1>
-          <p className="text-xs text-slate-400 mb-4">患者情報を入力して送信してください。事業所が確認後に承認・却下を行います。</p>
+          <button onClick={() => setStage('results')} className="text-xs text-slate-400 hover:text-slate-600 mb-4 block">
+            ← 検索結果に戻る
+          </button>
+          <h1 className="text-2xl font-bold text-slate-800 mb-1">仮予約を申請する</h1>
+          <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+            患者情報を入力して送信してください。事業所が確認後に承認・却下を行います。
+          </p>
 
           <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 mb-4 text-sm">
-            <p className="font-semibold text-teal-800">{selectedBiz.name}</p>
+            <p className="font-bold text-teal-800">{selectedBiz.name}</p>
             <p className="text-xs text-teal-600 mt-0.5">
               {searchDate} {startTime}〜{endTime} ／ {EQUIPMENT_LABELS[equipment]}
             </p>
@@ -275,41 +309,20 @@ export default function DemoMswSearch() {
             </div>
             <div>
               <label className="label">患者氏名 <span className="text-red-500">*</span></label>
-              <input
-                className="input-base"
-                placeholder="山田 太郎"
-                value={patientName}
-                onChange={e => setPatientName(e.target.value)}
-              />
+              <input className="input-base" placeholder="山田 太郎" value={patientName} onChange={e => setPatientName(e.target.value)} />
             </div>
             <div>
               <label className="label">乗車地（患者住所） <span className="text-red-500">*</span></label>
-              <input
-                className="input-base"
-                placeholder="香川県丸亀市〇〇町1-1"
-                value={patientAddress}
-                onChange={e => setPatientAddress(e.target.value)}
-              />
+              <input className="input-base" placeholder="香川県丸亀市〇〇町1-1" value={patientAddress} onChange={e => setPatientAddress(e.target.value)} />
             </div>
             <div>
               <label className="label">目的地 <span className="text-red-500">*</span></label>
-              <input
-                className="input-base"
-                placeholder="香川県高松市〇〇病院"
-                value={destination}
-                onChange={e => setDestination(e.target.value)}
-              />
+              <input className="input-base" placeholder="香川県高松市〇〇病院" value={destination} onChange={e => setDestination(e.target.value)} />
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="rental"
-                checked={equipmentRental}
-                onChange={e => setEquipmentRental(e.target.checked)}
-                className="w-4 h-4 accent-teal-600"
-              />
+              <input type="checkbox" id="rental" checked={equipmentRental} onChange={e => setEquipmentRental(e.target.checked)} className="w-4 h-4 accent-teal-600" />
               <label htmlFor="rental" className="text-sm text-slate-700">
-                {equipment === 'wheelchair' ? '普通型車椅子' : equipment === 'reclining_wheelchair' ? 'リクライニング車椅子' : 'ストレッチャー'}の貸出を希望する
+                {EQUIPMENT_LABELS[equipment]}の貸出を希望する
               </label>
             </div>
             <div>
@@ -323,11 +336,7 @@ export default function DemoMswSearch() {
               />
             </div>
             {formError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{formError}</p>}
-            <button
-              onClick={handleSubmitRequest}
-              disabled={submitting}
-              className="btn-primary w-full"
-            >
+            <button onClick={handleSubmitRequest} disabled={submitting} className="btn-primary w-full">
               {submitting ? '申請中...' : '📨 仮予約を申請する'}
             </button>
           </div>
@@ -337,18 +346,21 @@ export default function DemoMswSearch() {
       {stage === 'done' && (
         <div className="card text-center py-12">
           <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-lg font-bold text-slate-800 mb-2">仮予約を申請しました</h2>
-          <p className="text-sm text-slate-500 mb-1">事業所が確認次第、承認・却下の通知が届きます。</p>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">仮予約を申請しました</h2>
+          <p className="text-sm text-slate-600 mb-1">事業所が確認次第、承認・却下の通知が届きます。</p>
           <p className="text-xs text-slate-400 mb-6">（デモモードのため実際には送信されていません）</p>
           <div className="flex flex-col gap-2 max-w-xs mx-auto">
-            <button
-              onClick={() => navigate('/demo/msw/reservations')}
-              className="btn-primary"
-            >
+            <button onClick={() => navigate('/demo/msw/reservations')} className="btn-primary">
               予約履歴を確認する
             </button>
             <button
-              onClick={() => { setStage('form'); setPatientName(''); setPatientAddress(''); setDestination(''); setNotes('') }}
+              onClick={() => {
+                setStage('form')
+                setPatientName('')
+                setPatientAddress('')
+                setDestination('')
+                setNotes('')
+              }}
               className="btn-secondary"
             >
               もう一件申請する
@@ -356,30 +368,42 @@ export default function DemoMswSearch() {
           </div>
         </div>
       )}
+
       {/* Business detail modal */}
       {preview && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={() => setPreview(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5"
-            onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPreview(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-800">事業所詳細</h3>
+              <h3 className="font-bold text-slate-800">事業所詳細</h3>
               <button onClick={() => setPreview(null)} className="text-slate-400 hover:text-slate-600 text-xl w-8 h-8 flex items-center justify-center">×</button>
             </div>
             <div className="flex items-start gap-3 mb-3">
               <div className="w-16 h-16 rounded-xl bg-teal-100 flex items-center justify-center text-teal-400 text-2xl flex-shrink-0">🚐</div>
               <div className="min-w-0">
-                <p className="text-2xl font-bold text-slate-800 leading-snug">{preview.name}</p>
-                <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer"
-                  className="text-lg font-semibold text-teal-700 hover:underline block mt-1 leading-relaxed">📍 {preview.address}</a>
-                <a href={`tel:${preview.cancel_phone}`} className="text-xl font-bold text-teal-700 block mt-1 leading-snug">📞 {preview.cancel_phone}</a>
-                <p className="text-xs text-slate-500 mt-0.5">営業: {preview.business_hours_start?.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}</p>
+                <p className="font-bold text-slate-800">{preview.name}</p>
+                <a href={mapsUrl(preview.address)} target="_blank" rel="noopener noreferrer" className="text-sm text-teal-700 hover:underline block mt-0.5">📍 {preview.address}</a>
+                <a href={`tel:${preview.cancel_phone}`} className="text-sm text-teal-700 block mt-0.5">📞 {preview.cancel_phone}</a>
+                <p className="text-sm text-slate-500 mt-0.5">営業: {preview.business_hours_start?.slice(0,5)}〜{preview.business_hours_end?.slice(0,5)}</p>
               </div>
             </div>
+            <div className="border-t pt-3 mb-3">
+              <p className="text-xs text-slate-500 mb-1.5">保有車両（{(DEMO_BUSINESS_VEHICLES[preview.id] ?? []).length}台）</p>
+              <ul className="space-y-1 text-sm text-slate-700">
+                {(DEMO_BUSINESS_VEHICLES[preview.id] ?? []).map(v => (
+                  <li key={v.id}>
+                    🚐 {v.name}
+                    <span className="text-xs text-slate-400 ml-1">
+                      ({[
+                        v.has_wheelchair && '車椅子',
+                        v.has_reclining_wheelchair && 'リクライニング',
+                        v.has_stretcher && 'ストレッチャー',
+                      ].filter(Boolean).join('・')})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="flex flex-wrap gap-1 mb-3">
-              {preview.has_wheelchair && <span className="badge-blue">車椅子</span>}
-              {preview.has_reclining_wheelchair && <span className="badge-blue">リクライニング</span>}
-              {preview.has_stretcher && <span className="badge-blue">ストレッチャー</span>}
               {preview.rental_wheelchair && <span className="badge-green">車椅子貸出</span>}
               {preview.has_female_caregiver && <span className="badge-green">女性介護者</span>}
               {preview.long_distance && <span className="badge-gray">長距離対応</span>}
