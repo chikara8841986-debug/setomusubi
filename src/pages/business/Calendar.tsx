@@ -606,7 +606,7 @@ export default function BusinessCalendar() {
     fetchMonthStats()
   }
 
-  const handleCancelReservation = async (reservationId: string, slotId?: string) => {
+  const handleCancelReservation = async (reservationId: string, slotId?: string, wasConfirmed = false) => {
     setDeleteConfirmId(null)
     setCancelPendingConfirmId(null)
     setCancellingId(reservationId)
@@ -620,6 +620,13 @@ export default function BusinessCalendar() {
       setCancellingId(null)
       showToast('予約をキャンセルできませんでした', 'error')
       return
+    }
+
+    // 確定済み予約のキャンセルは、依頼元の病院（MSW）へ必ず通知する
+    if (wasConfirmed) {
+      supabase.functions.invoke('send-business-cancellation', {
+        body: { reservation_id: reservationId },
+      }).catch(() => {})
     }
 
     const { error: deleteByReservationError } = await supabase
@@ -663,6 +670,12 @@ export default function BusinessCalendar() {
     const { data, error } = await supabase.rpc('approve_reservation', { p_reservation_id: reservationId })
     setApprovingId(null)
     if (error) {
+      if (error.message?.includes('reservation_conflict')) {
+        showToast('同じ車両の同じ時間帯に別の確定予約が入ったため承認できませんでした', 'error')
+        fetchPendingReservations()
+        fetchMonthPendingReservations()
+        return
+      }
       showToast('承認に失敗しました', 'error')
       return
     }
@@ -1285,7 +1298,7 @@ export default function BusinessCalendar() {
                             <button onClick={() => setDeleteConfirmId(null)} className="flex-1 btn-secondary">
                               戻る
                             </button>
-                            <button onClick={() => handleCancelReservation(selectedSlot.reservation!.id, selectedSlot.id)} disabled={cancellingId === selectedSlot.reservation.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
+                            <button onClick={() => handleCancelReservation(selectedSlot.reservation!.id, selectedSlot.id, true)} disabled={cancellingId === selectedSlot.reservation.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
                               {cancellingId === selectedSlot.reservation.id ? '処理中...' : 'キャンセルする'}
                             </button>
                           </div>

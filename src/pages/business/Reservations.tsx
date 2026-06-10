@@ -189,6 +189,12 @@ export default function BusinessReservations() {
     // 満車時の自動却下 / status='confirmed' をまとめて行う
     const { data, error } = await supabase.rpc('approve_reservation', { p_reservation_id: r.id })
     if (error) {
+      if (error.message?.includes('reservation_conflict')) {
+        setActionError('同じ車両の同じ時間帯に別の確定予約が入ったため、承認できませんでした。この申請はお断りしてください。')
+        setProcessing(false)
+        fetchReservations()
+        return
+      }
       setActionError('承認に失敗しました。再試行してください。')
       setProcessing(false)
       return
