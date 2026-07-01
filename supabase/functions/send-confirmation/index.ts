@@ -9,8 +9,8 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 )
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@send.hakobite-marugame.com'
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://setomusubi.vercel.app'
 
 const CORS = {
@@ -31,25 +31,17 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   stretcher: 'ストレッチャー',
 }
 
-async function sendEmail(to: string, subject: string, body: string) {
-  if (!RESEND_API_KEY) {
-    console.log('[DEV] Email to:', to, '\nSubject:', subject)
-    return
+// 通知ディスパッチ層(notify)へ委譲：ユーザーの有効チャネル(メール/LINE…)へ配信
+async function dispatch(userId: string, subject: string, text: string) {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, subject, text }),
+    })
+  } catch (e) {
+    console.error('[dispatch]', e)
   }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: `せとむすび <${FROM_EMAIL}>`,
-      to: [to],
-      subject,
-      text: body,
-    }),
-  })
-  if (!res.ok) console.error('Resend error:', await res.text())
 }
 
 Deno.serve(async (req) => {
@@ -97,18 +89,10 @@ ${APP_URL}/msw/reservations
 せとむすび
 `
 
-    const { data: bizUser } = await supabase.auth.admin.getUserById(res.businesses?.user_id ?? '')
-    const { data: hospUser } = await supabase.auth.admin.getUserById(res.hospitals?.user_id ?? '')
-
-    const emailPromises = []
-    if (bizUser?.user?.email) {
-      emailPromises.push(sendEmail(bizUser.user.email, '【せとむすび】予約確定のお知らせ', body))
-    }
-    if (hospUser?.user?.email) {
-      emailPromises.push(sendEmail(hospUser.user.email, '【せとむすび】予約確定のお知らせ', body))
-    }
-
-    await Promise.all(emailPromises)
+    const targets: string[] = []
+    if (res.businesses?.user_id) targets.push(res.businesses.user_id)
+    if (res.hospitals?.user_id) targets.push(res.hospitals.user_id)
+    await Promise.all(targets.map((uid) => dispatch(uid, '【せとむすび】予約確定のお知らせ', body)))
 
     return json({ ok: true })
   } catch (e: any) {

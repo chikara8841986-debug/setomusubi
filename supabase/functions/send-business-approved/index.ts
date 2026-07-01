@@ -8,8 +8,8 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 )
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@send.hakobite-marugame.com'
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://setomusubi.vercel.app'
 
 const CORS = {
@@ -24,20 +24,17 @@ function json(body: unknown, status = 200) {
   })
 }
 
-async function sendEmail(to: string, subject: string, body: string) {
-  if (!RESEND_API_KEY) {
-    console.log('[DEV] Email to:', to, '\nSubject:', subject, '\n', body)
-    return
+// 通知ディスパッチ層(notify)へ委譲：ユーザーの有効チャネル(メール/LINE…)へ配信
+async function dispatch(userId: string, subject: string, text: string) {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, subject, text }),
+    })
+  } catch (e) {
+    console.error('[dispatch]', e)
   }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from: `せとむすび <${FROM_EMAIL}>`, to: [to], subject, text: body }),
-  })
-  if (!res.ok) console.error('Resend error:', await res.text())
 }
 
 Deno.serve(async (req) => {
@@ -55,11 +52,6 @@ Deno.serve(async (req) => {
 
     if (!biz) return json({ error: 'Not found' }, 404)
 
-    const { data: bizUser } = await supabase.auth.admin.getUserById(biz.user_id)
-    if (!bizUser?.user?.email) {
-      return json({ ok: true, skipped: 'no email' })
-    }
-
     const body = `【せとむすび】事業所登録が承認されました
 
 ${biz.name} 様
@@ -76,11 +68,7 @@ ${APP_URL}/login
 せとむすび
 `
 
-    await sendEmail(
-      bizUser.user.email,
-      '【せとむすび】事業所登録が承認されました',
-      body
-    )
+    await dispatch(biz.user_id, '【せとむすび】事業所登録が承認されました', body)
 
     return json({ ok: true })
   } catch (e: any) {

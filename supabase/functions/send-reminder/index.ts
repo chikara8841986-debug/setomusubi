@@ -11,8 +11,8 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 )
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@send.hakobite-marugame.com'
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://setomusubi.vercel.app'
 
 const EQUIPMENT_LABELS: Record<string, string> = {
@@ -35,23 +35,18 @@ function jstTime(d: Date): string {
   }).format(d)
 }
 
-async function sendEmail(to: string, subject: string, body: string) {
-  if (!RESEND_API_KEY) {
-    console.log('[DEV] Email to:', to, '\nSubject:', subject)
-    return
+// 通知ディスパッチ層(notify)へ委譲：ユーザーの有効チャネル(メール/LINE…)へ配信
+async function dispatch(userId: string | null | undefined, subject: string, text: string) {
+  if (!userId) return
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, subject, text }),
+    })
+  } catch (e) {
+    console.error('[dispatch]', e)
   }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: `せとむすび <${FROM_EMAIL}>`, to: [to], subject, text: body }),
-  })
-  if (!res.ok) console.error('Resend error:', await res.text())
-}
-
-async function emailOf(userId: string | null | undefined): Promise<string | null> {
-  if (!userId) return null
-  const { data } = await supabase.auth.admin.getUserById(userId)
-  return data?.user?.email ?? null
 }
 
 // ── 1) 確定予約の1時間前リマインド ──
@@ -99,11 +94,10 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
 
 せとむすび
 `
-    const [bizEmail, hospEmail] = await Promise.all([emailOf(biz.user_id), emailOf(hosp.user_id)])
-    const ps: Promise<void>[] = []
-    if (bizEmail) ps.push(sendEmail(bizEmail, '【せとむすび】1時間前リマインド', body))
-    if (hospEmail) ps.push(sendEmail(hospEmail, '【せとむすび】1時間前リマインド', body))
-    await Promise.all(ps)
+    await Promise.all([
+      dispatch(biz.user_id, '【せとむすび】1時間前リマインド', body),
+      dispatch(hosp.user_id, '【せとむすび】1時間前リマインド', body),
+    ])
     await supabase.from('reservations').update({ reminder_sent: true }).eq('id', res.id)
     sent++
   }
@@ -138,8 +132,7 @@ async function expireStalePending(now: Date): Promise<number> {
 
     const hosp = res.hospitals as { name: string; user_id: string } | null
     const biz = res.businesses as { name: string; cancel_phone: string | null } | null
-    const hospEmail = await emailOf(hosp?.user_id)
-    if (hospEmail) {
+    if (hosp?.user_id) {
       const body = `【せとむすび】申請が期限切れになりました
 
 下記の仮予約申請は、事業所からの承認がないままご希望日時を過ぎたため、無効となりました。
@@ -157,7 +150,7 @@ ${APP_URL}/msw/search
 
 せとむすび
 `
-      await sendEmail(hospEmail, '【せとむすび】申請が期限切れになりました', body)
+      await dispatch(hosp.user_id, '【せとむすび】申請が期限切れになりました', body)
     }
     expired++
   }
@@ -190,9 +183,7 @@ async function nudgePendingBusiness(now: Date): Promise<number> {
   for (const res of rows) {
     const biz = res.businesses as { name: string; user_id: string }
     const hosp = res.hospitals as { name: string } | null
-    const bizEmail = await emailOf(biz.user_id)
-    if (bizEmail) {
-      const body = `【せとむすび】未対応の仮予約申請があります
+    const body = `【せとむすび】未対応の仮予約申請があります
 
 下記の申請が3時間以上、未対応のままです。
 承認またはお断りのご対応をお願いします。承認されない間、この車両のこの時間帯は他のMSWからも予約できません。
@@ -209,8 +200,7 @@ ${APP_URL}/business/reservations
 
 せとむすび
 `
-      await sendEmail(bizEmail, '【せとむすび】未対応の仮予約申請があります', body)
-    }
+    await dispatch(biz.user_id, '【せとむすび】未対応の仮予約申請があります', body)
     await supabase.from('reservations').update({ pending_reminder_sent: true }).eq('id', res.id)
     nudged++
   }
