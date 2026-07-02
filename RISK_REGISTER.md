@@ -118,8 +118,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 ### [ ] C5. 適格請求書（インボイス）未対応
 - **修正方針**: Stripe の Customer Tax ID ＋ 請求書PDFに登録番号を載せる設定を調査。ローンチ後でも可。
 
-### [ ] C6. webhook_processed_events / webhook_debug の掃除cronなし
-- **修正方針**: pg_cron に `DELETE FROM webhook_processed_events WHERE processed_at < now()-interval '30 days'`（列名は要確認）と webhook_debug 7日を追加。
+### [x] C6. webhook_processed_events / webhook_debug の掃除cronなし — 対応済み 2026-07-02
+- **対応内容**: pg_cron `cleanup-webhook-tables-daily`（毎日JST 3:30）を追加。`webhook_processed_events` は `processed_at` 30日超、`webhook_debug` は `created_at` 7日超で削除。
+- **検証**: `cron.job` に登録されたことを確認。実際に30日/7日待って自動削除されることの確認は未実施（時間経過が必要なため）。
 
 ### [ ] C7. 本番切替チェックリスト
 - live鍵切替（STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET 再作成）、C2のprice ID、Billing Portal の日本語設定、振込口座・本人確認（設定済みかの最終確認）、テストデータ（テストハコビテ等）の掃除。
@@ -173,8 +174,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 
 ## ⚪ F. UX・クレーム由来（既出「クレーム20選」の未対応要点）
 
-### [ ] F1. 承認待ち事業者のログイン時表示が未検証
-- **確認方法**: 未承認 business アカウントでログインし、/business/calendar で「承認待ちです」等の明示があるか確認。なければ Layout か Calendar に承認待ちバナーを追加。
+### [x] F1. 承認待ち事業者のログイン時表示 — コードレビューで確認済み 2026-07-02
+- **確認結果**: `src/components/ProtectedRoute.tsx` の `PendingApproval` コンポーネントが既に実装済み。未承認(`businessApproved=false`)のbusinessロールは `/business/calendar` 等どのページへ行っても「⏳ 承認待ちです」画面に置き換えられ、管理者が承認すると Supabase Realtime（`businesses`テーブルのUPDATE購読）で自動的に `window.location.reload()` して切り替わる。追加改修は不要と判断。
+- **未実施**: 実際に未承認アカウントでログインしての目視確認（本番に未承認テストアカウントを作る必要があるため）→ 人間チェックリストに追加。
 
 ### [ ] F2. 料金のオンボーディング説明不足
 - 車両追加で自動増額（3台目〜¥1,650/台）と初月の二段請求（初期費用→翌月から月額）を、チェックアウト前画面と車両追加時の確認ダイアログで明示。
