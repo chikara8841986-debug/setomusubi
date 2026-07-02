@@ -412,6 +412,13 @@ export default function MswSearch() {
     const vehicleId = selectedBusiness.availableVehicles
       .find((v) => v.business_id === selectedBusiness.id && v[finalEquipField])?.id ?? null
 
+    // 検索時と異なる機材が選ばれ、対応車両が見つからない場合は車両なし予約を作らせない
+    if (!vehicleId) {
+      setSubmitError('選択した機材に対応する空き車両が見つかりませんでした。お手数ですが再度検索してください。')
+      setSubmitting(false)
+      return
+    }
+
     // ── 申請直前に最新の空き状況を再確認（検索後に別の予約が入った場合のダブルブッキング防止）──
     // occupied_slots（車両単位）の重複チェック
     if (vehicleId) {
@@ -1120,21 +1127,24 @@ export default function MswSearch() {
                 <label className="label">使用機材 <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-3 gap-2">
                   {EQUIPMENT_OPTIONS.map((option) => (
-                    <button
+                    <div
                       key={option.value}
-                      type="button"
-                      onClick={() => setForm((current) => ({ ...current, equipment: option.value }))}
-                      className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${
+                      aria-current={form.equipment === option.value}
+                      className={`py-2 px-2 rounded-lg border text-sm font-medium text-center ${
                         form.equipment === option.value
                           ? 'bg-teal-600 text-white border-teal-600'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                          : 'bg-slate-50 text-slate-400 border-slate-200'
                       }`}
                     >
                       {option.label}
-                    </button>
+                    </div>
                   ))}
                 </div>
-                <p className="text-xs text-slate-400 mt-1">検索条件から自動入力されています</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  検索条件から自動入力されています。この事業所の空き車両（{selectedBusiness.availableVehicles.length}台）に基づく条件のため変更できません。他の機材で申請する場合は
+                  <button type="button" onClick={() => setStep(1)} className="text-teal-600 hover:underline ml-0.5">条件を変えて再検索</button>
+                  してください。
+                </p>
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer">
