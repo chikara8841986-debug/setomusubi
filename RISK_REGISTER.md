@@ -10,6 +10,7 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 
 - [ ] **A1**: 業者アカウントでログイン→「電話予約を記録」で車両を選んで登録→MSW検索でその車両のその時間帯が候補から消えることを確認。
 - [ ] **A2**: MSWアカウントでログイン→車椅子で検索→事業所選択後の申請フォームで機材ボタンが押せない（表示専用）ことを確認。「条件を変えて再検索」リンクが検索画面(step1)に正しく戻ることを確認。
+- [ ] **D2**: 実ブラウザ（特にPWAとしてインストールした状態）でログイン→予約データ閲覧→DevTools Application→Cache Storageに `supabase-api` が無いことを確認。ログアウト後にCache Storageが空になることも確認。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -121,10 +122,11 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **修正方針**: 通知本文を最小化（例:「患者: 佐藤様」「詳細はアプリでご確認ください＋リンク」）。特に将来のLINE通知は必ず最小化版で。全 send-* のテンプレ修正。
 - **判断**: どこまで削るかはユーザー確認（利便性とのトレード）。
 
-### [ ] D2. PWA の Service Worker が患者データをディスクにキャッシュ
+### [x] D2. PWA の Service Worker が患者データをディスクにキャッシュ — 対応済み 2026-07-02
 - **事象**: `vite.config.ts` の runtimeCaching に `supabase.co` NetworkFirst(5分) があり、認証付きRESTレスポンス（患者名入り）が CacheStorage に平文保存される。SW の scope は `/` なので**本番アプリ全体**が対象。病院の共用PCで残存・ログアウトでも消えない。
-- **修正方針**: `supabase.co` の runtimeCaching エントリを**削除**（NetworkOnlyへ）。デモのオフライン動作は静的アセットのprecacheだけで成立するので影響なし。加えてログアウト時に `caches.delete` を呼ぶと堅い。
-- **該当**: `vite.config.ts`
+- **該当**: `vite.config.ts`、`src/contexts/AuthContext.tsx`
+- **対応内容**: `vite.config.ts` の `supabase.co` runtimeCaching エントリを削除（NetworkOnly相当）。ビルド後の `dist/sw.js` から `supabase-api` キャッシュ名が消えたことを確認。あわせて `AuthContext.tsx` の `signOut()` に `caches.delete` を追加し、ログアウト時に既存のCacheStorageも掃除するようにした（共用PC対策の追加防御）。
+- **検証**: `npm.cmd run build` 成功、`dist/sw.js` に `supabase-api` 文字列が含まれないことを確認。precacheエントリ数(56件)は変化なし＝静的アセットのオフライン動作に影響なし。実ブラウザでのオフライン動作確認は未実施 → 人間チェックリストに追加。
 
 ### [ ] D3. 共用PCでのセッション永続
 - **事象**: Supabase セッションが localStorage 永続、自動ログアウトなし。病院共用端末で放置ログインが起きうる。

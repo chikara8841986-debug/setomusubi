@@ -81,18 +81,8 @@ export default defineConfig({
               },
             },
           },
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5,
-              },
-            },
-          },
+          // supabase.co のレスポンス（患者名等の要配慮個人情報を含む）は
+          // CacheStorageに平文保存されるため意図的にキャッシュしない（NetworkOnly相当）。
         ],
         // PWA キャッシュ容量上限を緩める（vendor JS が大きいため）
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,

@@ -108,6 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    // 共用PC対策: ログアウト時にService WorkerのCacheStorageを掃除しておく
+    if ('caches' in window) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((key) => caches.delete(key)))
+    }
   }
 
   return (
