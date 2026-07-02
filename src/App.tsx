@@ -1,10 +1,32 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, type ComponentType } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
+
+// デプロイ直後はチャンクのハッシュが変わり、ページを開いたままの利用者は
+// 古い import() が404になる(ChunkLoadError)。1度だけ自動リロードして復帰させる。
+const RELOAD_FLAG_KEY = 'chunk-retry-reloaded'
+
+function lazyWithRetry<T extends { default: ComponentType<unknown> }>(factory: () => Promise<T>) {
+  return lazy(async () => {
+    try {
+      const module = await factory()
+      sessionStorage.removeItem(RELOAD_FLAG_KEY)
+      return module
+    } catch (error) {
+      if (!sessionStorage.getItem(RELOAD_FLAG_KEY)) {
+        sessionStorage.setItem(RELOAD_FLAG_KEY, '1')
+        window.location.reload()
+        // リロードでページ遷移するため、この場では解決しないPromiseを返して待機する
+        return new Promise<T>(() => {})
+      }
+      throw error
+    }
+  })
+}
 
 const PAGE_TITLES: Record<string, string> = {
   '/terms':                 '利用規約',
@@ -62,45 +84,45 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 
 // Business pages (lazy)
-const BusinessCalendar     = lazy(() => import('./pages/business/Calendar'))
-const BusinessProfile      = lazy(() => import('./pages/business/Profile'))
-const BusinessReservations = lazy(() => import('./pages/business/Reservations'))
-const BusinessIntroduction = lazy(() => import('./pages/business/Introduction'))
-const BusinessBilling      = lazy(() => import('./pages/business/Billing'))
+const BusinessCalendar     = lazyWithRetry(() => import('./pages/business/Calendar'))
+const BusinessProfile      = lazyWithRetry(() => import('./pages/business/Profile'))
+const BusinessReservations = lazyWithRetry(() => import('./pages/business/Reservations'))
+const BusinessIntroduction = lazyWithRetry(() => import('./pages/business/Introduction'))
+const BusinessBilling      = lazyWithRetry(() => import('./pages/business/Billing'))
 
 // MSW pages (lazy)
-const MswSearch      = lazy(() => import('./pages/msw/Search'))
-const MswReservations = lazy(() => import('./pages/msw/Reservations'))
-const MswContacts    = lazy(() => import('./pages/msw/Contacts'))
-const MswFavorites   = lazy(() => import('./pages/msw/Favorites'))
-const MswBusinesses  = lazy(() => import('./pages/msw/Businesses'))
-const HospitalProfile = lazy(() => import('./pages/msw/HospitalProfile'))
+const MswSearch      = lazyWithRetry(() => import('./pages/msw/Search'))
+const MswReservations = lazyWithRetry(() => import('./pages/msw/Reservations'))
+const MswContacts    = lazyWithRetry(() => import('./pages/msw/Contacts'))
+const MswFavorites   = lazyWithRetry(() => import('./pages/msw/Favorites'))
+const MswBusinesses  = lazyWithRetry(() => import('./pages/msw/Businesses'))
+const HospitalProfile = lazyWithRetry(() => import('./pages/msw/HospitalProfile'))
 
 // Admin pages (lazy)
-const AdminApprovals    = lazy(() => import('./pages/admin/Approvals'))
-const AdminReservations = lazy(() => import('./pages/admin/Reservations'))
-const AdminStats        = lazy(() => import('./pages/admin/Stats'))
-const AdminBilling      = lazy(() => import('./pages/admin/BillingAdmin'))
+const AdminApprovals    = lazyWithRetry(() => import('./pages/admin/Approvals'))
+const AdminReservations = lazyWithRetry(() => import('./pages/admin/Reservations'))
+const AdminStats        = lazyWithRetry(() => import('./pages/admin/Stats'))
+const AdminBilling      = lazyWithRetry(() => import('./pages/admin/BillingAdmin'))
 
 // Other pages
-const NotFound = lazy(() => import('./pages/NotFound'))
-const Manual = lazy(() => import('./pages/Manual'))
-const DemoGuide = lazy(() => import('./pages/DemoGuide'))
-const Terms = lazy(() => import('./pages/Terms'))
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const NotFound = lazyWithRetry(() => import('./pages/NotFound'))
+const Manual = lazyWithRetry(() => import('./pages/Manual'))
+const DemoGuide = lazyWithRetry(() => import('./pages/DemoGuide'))
+const Terms = lazyWithRetry(() => import('./pages/Terms'))
+const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy'))
 
 // Demo pages
-const DemoIndex = lazy(() => import('./pages/demo/DemoIndex'))
-const DemoMswSearch = lazy(() => import('./pages/demo/DemoMswSearch'))
-const DemoMswReservations = lazy(() => import('./pages/demo/DemoMswReservations'))
-const DemoMswBusinesses = lazy(() => import('./pages/demo/DemoMswBusinesses'))
-const DemoBusinessCalendar = lazy(() => import('./pages/demo/DemoBusinessCalendar'))
-const DemoBusinessReservations = lazy(() => import('./pages/demo/DemoBusinessReservations'))
-const DemoBusinessProfile = lazy(() => import('./pages/demo/DemoBusinessProfile'))
-const DemoBusinessBilling = lazy(() => import('./pages/demo/DemoBusinessBilling'))
-const DemoBusinessRegister = lazy(() => import('./pages/demo/DemoBusinessRegister'))
-const DemoAdminApprovals = lazy(() => import('./pages/demo/DemoAdminApprovals'))
-const DemoAdminBilling = lazy(() => import('./pages/demo/DemoAdminBilling'))
+const DemoIndex = lazyWithRetry(() => import('./pages/demo/DemoIndex'))
+const DemoMswSearch = lazyWithRetry(() => import('./pages/demo/DemoMswSearch'))
+const DemoMswReservations = lazyWithRetry(() => import('./pages/demo/DemoMswReservations'))
+const DemoMswBusinesses = lazyWithRetry(() => import('./pages/demo/DemoMswBusinesses'))
+const DemoBusinessCalendar = lazyWithRetry(() => import('./pages/demo/DemoBusinessCalendar'))
+const DemoBusinessReservations = lazyWithRetry(() => import('./pages/demo/DemoBusinessReservations'))
+const DemoBusinessProfile = lazyWithRetry(() => import('./pages/demo/DemoBusinessProfile'))
+const DemoBusinessBilling = lazyWithRetry(() => import('./pages/demo/DemoBusinessBilling'))
+const DemoBusinessRegister = lazyWithRetry(() => import('./pages/demo/DemoBusinessRegister'))
+const DemoAdminApprovals = lazyWithRetry(() => import('./pages/demo/DemoAdminApprovals'))
+const DemoAdminBilling = lazyWithRetry(() => import('./pages/demo/DemoAdminBilling'))
 
 const Loader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-400">

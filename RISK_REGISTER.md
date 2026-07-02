@@ -11,6 +11,7 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **A1**: 業者アカウントでログイン→「電話予約を記録」で車両を選んで登録→MSW検索でその車両のその時間帯が候補から消えることを確認。
 - [ ] **A2**: MSWアカウントでログイン→車椅子で検索→事業所選択後の申請フォームで機材ボタンが押せない（表示専用）ことを確認。「条件を変えて再検索」リンクが検索画面(step1)に正しく戻ることを確認。
 - [ ] **D2**: 実ブラウザ（特にPWAとしてインストールした状態）でログイン→予約データ閲覧→DevTools Application→Cache Storageに `supabase-api` が無いことを確認。ログアウト後にCache Storageが空になることも確認。
+- [ ] **E3**: 本番デプロイ直後にブラウザを開きっぱなしの状態で画面遷移し、白画面にならず自動で復帰することを確認（例: デプロイ前後でタブを開いたまま別ページに遷移してみる）。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -149,9 +150,10 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **対応内容**: `supabase_migrations.schema_migrations`（`statements`列）から本番DBに適用済みの全16マイグレーション＋A1対応時の1件（計17件）を復元し、`supabase/migrations/` にDB上のバージョン番号をファイル名として書き出し。`admin-reject-business/index.ts` を `get_edge_function` で取得し `supabase/functions/admin-reject-business/index.ts` として保存。あわせて、A1修正時に誤って実際のDBバージョン(`20260702124356`)と異なるファイル名(`20260702214409`)で保存していたのを修正（リネーム）。
 - **今後の運用**: 以後「`apply_migration`／`deploy_edge_function` でデプロイしたら必ずrepoにも同じ内容を書く」を徹底する。
 
-### [ ] E3. デプロイ直後の ChunkLoadError 対策なし
+### [x] E3. デプロイ直後の ChunkLoadError 対策なし — 対応済み 2026-07-02
 - **事象**: lazy import のチャンクハッシュがデプロイで変わり、滞在中ユーザーの画面遷移が白画面/読込失敗になりうる（PWAのautoUpdateは緩和するが保証なし）。
-- **修正方針**: `src/App.tsx` の lazy を「import失敗時に一度だけ location.reload() する」ラッパー（lazyWithRetry）に置換。約20行。
+- **対応内容**: `src/App.tsx` に `lazyWithRetry` ヘルパーを追加し、全31箇所の `lazy(() => import(...))` を置換。import失敗時は `sessionStorage` のフラグで1回だけ `location.reload()` し、再読込後も失敗する場合はそのままエラーを投げる（無限リロード防止）。
+- **検証**: `npm.cmd run build` 成功。プレビューでログインページ・`/manual`（別チャンク）とも正常表示、コンソールエラーなしを確認。実際のデプロイ切替中の動作（意図的に古いチャンクを404にしての確認）は未実施 → 人間チェックリストに追加。
 
 ### [ ] E4. バス係数1
 - **事象**: 管理者アカウント・開発環境・Vercel/Supabase/Stripe/Resend/ConoHa の認証情報が単一人・単一PC。
