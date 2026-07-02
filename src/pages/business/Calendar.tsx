@@ -1446,7 +1446,7 @@ export default function BusinessCalendar() {
                       <button onClick={() => setCancelPendingConfirmId(null)} className="flex-1 btn-secondary">
                         戻る
                       </button>
-                      <button onClick={() => handleCancelReservation(selectedPendingRes.id)} disabled={cancellingId === selectedPendingRes.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
+                      <button onClick={() => handleCancelReservation(selectedPendingRes.id, undefined, true)} disabled={cancellingId === selectedPendingRes.id} className="flex-1 bg-red-500 text-white rounded-xl px-4 py-2 hover:bg-red-600 font-medium disabled:opacity-50">
                         {cancellingId === selectedPendingRes.id ? '処理中...' : 'キャンセルする'}
                       </button>
                     </div>

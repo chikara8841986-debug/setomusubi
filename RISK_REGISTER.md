@@ -14,6 +14,8 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **E3**: 本番デプロイ直後にブラウザを開きっぱなしの状態で画面遷移し、白画面にならず自動で復帰することを確認（例: デプロイ前後でタブを開いたまま別ページに遷移してみる）。
 - [ ] **B1/B2**: 実際に予約の承認・お断り・キャンセル・電話予約・MSW申請を一通り操作し、通知メールが届くこと、`notification_log`テーブルに記録が残ることを確認。可能であれば一時的にResend APIキーを無効化するなどして送信失敗させ、フロントに失敗トーストが出ること／`send-reminder`の次回cronでリトライされ`notification_log.status`が`sent`に変わることを確認。
 - [ ] **C3**: Stripeテストモードで決済失敗を再現（テストカード4000000000000341等）→ businesses.subscription_status='past_due'・past_due_since が記録されることを確認 → MSW検索にその事業所が引き続き表示されることを確認。あわせて stripe-webhook v23 の差分について、C1のCodex再レビュー時に一緒に見てもらうこと。
+- [ ] **A3**: pendingの reservation_date/start_time を意図的に24時間以内・当日は3時間以内に設定したテストデータで send-reminder を実叩きし、`warned` が1以上になりMSWへ警告メールが届くこと、`msw_unconfirmed_warning_sent` がtrueになり再送されないことを確認。
+- [ ] **A6**: 業者アカウントで確定済み予約を「予約詳細」パネルの「予約をキャンセル」ボタン（カレンダーのタイムラインからではなく、一覧パネル経由）でキャンセルし、MSW側にキャンセル通知メールが届くことを確認。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -46,11 +48,11 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **対応内容**: 修正方針(a)を採用。申請フォームの機材選択ボタンをクリック不可の表示専用に変更し、「検索条件から自動入力されています。変更する場合は条件を変えて再検索してください」+ 再検索リンク(setStep(1))を表示。加えて(b)側の防御も追加: `handleSubmitRequest` 内で `vehicleId` が null になった場合は送信前に中断し「選択した機材に対応する空き車両が見つかりませんでした」エラーを表示する多重ガードを実装。
 - **検証**: `npm.cmd run build` 成功。プレビュー起動でコンソールエラーなし確認。**実ログインでのUI操作確認（検索=車椅子→フォームでストレッチャーに変更できないこと）は未実施** → 後でチェックリストに追加。
 
-### [ ] A3. 期限切れ通知が「乗車時刻を過ぎてから」しか出ない
+### [x] A3. 期限切れ通知が「乗車時刻を過ぎてから」しか出ない — 対応済み 2026-07-02
 - **事象**: `send-reminder` の expireStalePending は end_time 経過後に失効させMSWへ通知。MSWは希望時刻まで宙ぶらりんで、知らせが来るのは手遅れになってから。事業者向けナッジ（3時間放置）はあるがMSW向け事前警告がない。
 - **該当**: `supabase/functions/send-reminder/index.ts`
-- **修正方針**: expire/nudgeに加え第4パス「乗車24時間前（同日申請は3時間前）時点で pending のままなら MSW に『まだ承認されていません。別事業所の検討をおすすめします』を dispatch」。フラグ列 `msw_unconfirmed_warning_sent boolean default false` を reservations に追加して重複防止。
-- **検証**: cron実叩き（`curl -X POST .../functions/v1/send-reminder`）で `{reminded, expired, nudged, warned}` を確認。
+- **対応内容**: `reservations.msw_unconfirmed_warning_sent boolean default false` を追加。send-reminder（v17）に第4パス `warnMswUnconfirmed` を追加し、乗車24時間前（申請日=乗車日の当日申請は3時間前）時点でまだpendingならMSWへ「まだ承認されていません。別の事業所もご検討ください」を1回だけ通知するようにした。乗車時刻を過ぎたものはexpireStalePendingに任せて二重通知しない。
+- **検証**: `curl -X POST .../functions/v1/send-reminder` 実叩きで `{"reminded":0,"expired":0,"nudged":0,"warned":0,"retried":0,"retrySucceeded":0}` を確認（対象データなしのため0件だが新フィールドが正しく返ることを確認）。実際に閾値に達したpendingでの警告送信・重複防止は未実施 → 人間チェックリストに追加。
 
 ### [ ] A4. 予約間の移動バッファがない
 - **事象**: 10:00-11:00の直後に11:00-12:00が別現場で確定でき、回送時間が確保されない（クレーム由来: 現場が回らない）。
@@ -62,9 +64,11 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **修正方針**: 全status変更をRPC経由に統一してからガードを `COALESCE(v_rpc_ctx,'') NOT IN (...)` に厳格化。依存箇所の洗い出しが必要な**大きめ案件**。単独で塞ぐと本番が壊れるため、必ず全経路（business Calendar cancel / send-reminder expire / complete / msw cancel）をRPC化 or rpc_context設定してから。
 - **検証**: 各キャンセル・完了・失効フローの回帰テスト必須。
 
-### [ ] A6. 事業者がpendingを「キャンセル」経路で消すとMSW無通知
+### [x] A6. 事業者がpendingを「キャンセル」経路で消すとMSW無通知 — 対応済み 2026-07-02
 - **事象**: 正規の「お断り」ボタンは send-rejection でMSWへ通知するが、`handleCancelReservation`（`src/pages/business/Calendar.tsx`）を pending に使った場合は通知なし（wasConfirmed=false のため）。
-- **修正方針**: pending へのキャンセルはUI上「お断り」へ誘導（キャンセルボタンをconfirmed限定にする）か、pendingキャンセル時も reject 相当の通知を送る。
+- **実際の内容**: 調査の結果、`予約詳細` パネル（1441行目、`selectedPendingRes.status === 'confirmed'` でガード済み）の「予約をキャンセル」ボタンが `handleCancelReservation(selectedPendingRes.id)` を `wasConfirmed` 引数なし（=false扱い）で呼んでいたのが実バグ。呼び出し時点で対象は必ず確定済み予約なのに通知がスキップされていた。カレンダー側の同等ボタン（1303行目）は元々 `wasConfirmed=true` を渡していて正常。
+- **対応内容**: 1449行目の呼び出しを `handleCancelReservation(selectedPendingRes.id, undefined, true)` に修正し、確定済み予約キャンセル時は必ずMSWへ`send-business-cancellation`通知が飛ぶようにした。
+- **検証**: `npm.cmd run build` 成功。プレビューでコンソールエラーなし確認。実ログインでキャンセル操作→MSWへの通知メール到達確認は未実施 → 人間チェックリストに追加。
 
 ---
 

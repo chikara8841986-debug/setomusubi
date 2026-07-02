@@ -3,7 +3,8 @@
 // 1) 確定予約の1時間前リマインド
 // 2) 期限切れ pending（乗車時刻を過ぎた申請）の自動失効＋MSWへ通知
 // 3) 放置 pending（一定時間未対応）の事業者へのナッジ
-// 4) notification_log の失敗分の再送（B1: outboxリトライ、最大3回・直近24時間）
+// 4) 乗車が迫っているのに未承認のpendingをMSWへ事前警告（A3: 24時間前・当日申請は3時間前）
+// 5) notification_log の失敗分の再送（B1: outboxリトライ、最大3回・直近24時間）
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -208,7 +209,57 @@ ${APP_URL}/business/reservations
   return nudged
 }
 
-// ── 4) notification_log の失敗分の再送 ──
+// ── 4) 乗車が迫っているのに未承認のpendingをMSWへ事前警告（A3）──
+// 乗車24時間前、当日申請（申請日=乗車日）は3時間前を基準に1回だけ通知する。
+async function warnMswUnconfirmed(now: Date): Promise<number> {
+  const { data: rows, error } = await supabase
+    .from('reservations')
+    .select(`
+      id, contact_name, patient_name, reservation_date, start_time, end_time, created_at,
+      hospitals!inner(name, user_id)
+    `)
+    .eq('status', 'pending')
+    .eq('msw_unconfirmed_warning_sent', false)
+
+  if (error) { console.error('warn query error:', error); return 0 }
+  if (!rows || rows.length === 0) return 0
+
+  let warned = 0
+  for (const res of rows) {
+    const startDt = new Date(`${res.reservation_date}T${res.start_time}+09:00`)
+    const hoursUntilStart = (startDt.getTime() - now.getTime()) / (1000 * 60 * 60)
+    // 乗車時刻を過ぎたものは expireStalePending の失効通知に任せる
+    if (hoursUntilStart <= 0) continue
+
+    const isSameDayRequest = jstDate(new Date(res.created_at)) === res.reservation_date
+    const thresholdHours = isSameDayRequest ? 3 : 24
+    if (hoursUntilStart > thresholdHours) continue
+
+    const hosp = res.hospitals as { name: string; user_id: string }
+    const body = `【せとむすび】まだ承認されていません
+
+下記の仮予約申請は、まだ事業所からの承認がありません。
+乗車時刻が近づいています。念のため、別の事業所もあわせてご検討ください。
+
+━━━━━━━━━━━━━━━━
+希望日時: ${res.reservation_date} ${String(res.start_time).slice(0,5)}〜${String(res.end_time).slice(0,5)}
+担当者: ${res.contact_name ?? ''}
+患者: ${res.patient_name ?? ''}
+━━━━━━━━━━━━━━━━
+
+▶ 別の事業所を検索する
+${APP_URL}/msw/search
+
+せとむすび
+`
+    await dispatch(hosp.user_id, '【せとむすび】まだ承認されていません', body)
+    await supabase.from('reservations').update({ msw_unconfirmed_warning_sent: true }).eq('id', res.id)
+    warned++
+  }
+  return warned
+}
+
+// ── 5) notification_log の失敗分の再送 ──
 async function retryFailedNotifications(): Promise<{ retried: number; succeeded: number }> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/notify`, {
@@ -227,10 +278,11 @@ async function retryFailedNotifications(): Promise<{ retried: number; succeeded:
 
 Deno.serve(async () => {
   const now = new Date()
-  const result = { reminded: 0, expired: 0, nudged: 0, retried: 0, retrySucceeded: 0 }
+  const result = { reminded: 0, expired: 0, nudged: 0, warned: 0, retried: 0, retrySucceeded: 0 }
   try { result.reminded = await sendConfirmedReminders(now) } catch (e) { console.error('reminder pass failed', e) }
   try { result.expired = await expireStalePending(now) } catch (e) { console.error('expire pass failed', e) }
   try { result.nudged = await nudgePendingBusiness(now) } catch (e) { console.error('nudge pass failed', e) }
+  try { result.warned = await warnMswUnconfirmed(now) } catch (e) { console.error('warn pass failed', e) }
   try {
     const retry = await retryFailedNotifications()
     result.retried = retry.retried
