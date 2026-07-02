@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { jstHour, jstTodayStr } from '../../lib/jst'
+import { invokeNotifyWithRetry } from '../../lib/notifyInvoke'
 import type { AvailabilitySlot, Business, MswContact, Vehicle } from '../../types/database'
 import { SERVICE_AREAS } from '../../lib/constants'
 
@@ -493,9 +494,8 @@ export default function MswSearch() {
     }
 
     if (newReservation?.id) {
-      supabase.functions.invoke('send-request-received', {
-        body: { reservation_id: newReservation.id },
-      }).catch(() => {})
+      invokeNotifyWithRetry('send-request-received', { reservation_id: newReservation.id })
+        .then((ok) => { if (!ok) showToast('申請は完了しましたが、事業所への通知メール送信に失敗しました。念のため事業所へ直接ご確認ください。', 'error') })
     }
 
     setConfirmed({

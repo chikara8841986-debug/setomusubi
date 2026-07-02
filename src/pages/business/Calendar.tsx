@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { isTodayJST, jstMonthLabel, jstMonthRange } from '../../lib/jst'
+import { invokeNotifyWithRetry } from '../../lib/notifyInvoke'
 import type { Business, OccupiedSlot, Reservation, Vehicle } from '../../types/database'
 
 const GRID_START = 6
@@ -624,9 +625,8 @@ export default function BusinessCalendar() {
 
     // 確定済み予約のキャンセルは、依頼元の病院（MSW）へ必ず通知する
     if (wasConfirmed) {
-      supabase.functions.invoke('send-business-cancellation', {
-        body: { reservation_id: reservationId },
-      }).catch(() => {})
+      invokeNotifyWithRetry('send-business-cancellation', { reservation_id: reservationId })
+        .then((ok) => { if (!ok) showToast('予約はキャンセルされましたが、通知メールの送信に失敗しました。病院へ直接ご連絡ください。', 'error') })
     }
 
     const { error: deleteByReservationError } = await supabase
@@ -680,7 +680,8 @@ export default function BusinessCalendar() {
       return
     }
     const autoRejectedCount: number = typeof data === 'number' ? data : 0
-    supabase.functions.invoke('send-confirmation', { body: { reservation_id: reservationId } }).catch(() => {})
+    invokeNotifyWithRetry('send-confirmation', { reservation_id: reservationId })
+      .then((ok) => { if (!ok) showToast('承認しましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
     showToast(autoRejectedCount > 0 ? `承認しました。他${autoRejectedCount}件は自動でお断りしました` : '予約を承認しました')
     setSelectedSlot(null)
     setSelectedPendingRes(null)
@@ -700,7 +701,8 @@ export default function BusinessCalendar() {
       showToast('お断り処理に失敗しました', 'error')
       return
     }
-    supabase.functions.invoke('send-rejection', { body: { reservation_id: reservationId } }).catch(() => {})
+    invokeNotifyWithRetry('send-rejection', { reservation_id: reservationId })
+      .then((ok) => { if (!ok) showToast('お断りしましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
     showToast('申請をお断りしました', 'error')
     setSelectedSlot(null)
     setSelectedPendingRes(null)

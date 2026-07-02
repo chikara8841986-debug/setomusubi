@@ -10,6 +10,9 @@
 //      （notification_recipients）— これによりオーナー＋スタッフ全員へ配信できる。
 //   宛先はメールアドレス／LINE userId で重複排除する。
 //
+// 送信結果は notification_log に記録する（B1: outbox）。
+// { retry: true } で呼ぶと、直近24時間以内の失敗分（retry_count<3）を再送する。
+//
 // 内部専用。呼び出し側は SERVICE_ROLE_KEY を Bearer に付けて叩く。
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -19,6 +22,9 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@send.hakobite-marugame.com'
 const LINE_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') ?? ''
+
+const MAX_RETRY = 3
+const RETRY_WINDOW_HOURS = 24
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
@@ -33,30 +39,97 @@ type Endpoint = {
   notifyLine: boolean
 }
 
-async function sendEmail(to: string, subject: string, text: string) {
+type SendResult = { ok: boolean; error?: string }
+
+async function sendEmail(to: string, subject: string, text: string): Promise<SendResult> {
   if (!RESEND_API_KEY) {
     console.log('[notify/email DEV] to:', to, 'subject:', subject)
-    return true
+    return { ok: true }
   }
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: `せとむすび <${FROM_EMAIL}>`, to: [to], subject, text }),
   })
-  if (!res.ok) { console.error('[notify/email] Resend error:', await res.text()); return false }
-  return true
+  if (!res.ok) {
+    const errText = await res.text()
+    console.error('[notify/email] Resend error:', errText)
+    return { ok: false, error: errText.slice(0, 500) }
+  }
+  return { ok: true }
 }
 
-async function sendLinePush(lineUserId: string, subject: string, text: string) {
-  if (!LINE_TOKEN) return false // トークン未設定なら送らない（メールのみで運用）
+async function sendLinePush(lineUserId: string, subject: string, text: string): Promise<SendResult> {
+  if (!LINE_TOKEN) return { ok: false, error: 'LINE_CHANNEL_ACCESS_TOKEN not configured' }
   const message = `【${subject}】\n\n${text}`.slice(0, 4900)
   const res = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${LINE_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: message }] }),
   })
-  if (!res.ok) { console.error('[notify/line] push error:', await res.text()); return false }
-  return true
+  if (!res.ok) {
+    const errText = await res.text()
+    console.error('[notify/line] push error:', errText)
+    return { ok: false, error: errText.slice(0, 500) }
+  }
+  return { ok: true }
+}
+
+async function logSend(entry: {
+  userId: string | null
+  businessId: string | null
+  hospitalId: string | null
+  channel: 'email' | 'line'
+  recipient: string
+  subject: string
+  message: string
+  result: SendResult
+}) {
+  const { error } = await supabase.from('notification_log').insert({
+    user_id: entry.userId,
+    business_id: entry.businessId,
+    hospital_id: entry.hospitalId,
+    channel: entry.channel,
+    recipient: entry.recipient,
+    subject: entry.subject,
+    message: entry.message,
+    status: entry.result.ok ? 'sent' : 'failed',
+    error: entry.result.error ?? null,
+  })
+  if (error) console.error('[notify/log] insert failed:', error.message)
+}
+
+// 直近失敗分の再送（cron から { retry: true } で呼ばれる）
+async function retryFailed() {
+  const since = new Date(Date.now() - RETRY_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
+  const { data: rows, error } = await supabase
+    .from('notification_log')
+    .select('id, channel, recipient, subject, message, retry_count')
+    .eq('status', 'failed')
+    .lt('retry_count', MAX_RETRY)
+    .gte('created_at', since)
+    .order('created_at', { ascending: true })
+    .limit(100)
+
+  if (error) { console.error('[notify/retry] query error:', error); return { retried: 0, succeeded: 0 } }
+  if (!rows || rows.length === 0) return { retried: 0, succeeded: 0 }
+
+  let succeeded = 0
+  for (const row of rows) {
+    const result = row.channel === 'email'
+      ? await sendEmail(row.recipient, row.subject, row.message)
+      : await sendLinePush(row.recipient, row.subject, row.message)
+
+    await supabase.from('notification_log').update({
+      status: result.ok ? 'sent' : 'failed',
+      error: result.ok ? null : (result.error ?? null),
+      retry_count: row.retry_count + 1,
+      updated_at: new Date().toISOString(),
+    }).eq('id', row.id)
+
+    if (result.ok) succeeded++
+  }
+  return { retried: rows.length, succeeded }
 }
 
 Deno.serve(async (req) => {
@@ -67,7 +140,14 @@ Deno.serve(async (req) => {
   if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) return json({ error: 'forbidden' }, 403)
 
   try {
-    const { user_id, business_id, hospital_id, subject, text } = await req.json()
+    const body = await req.json()
+
+    if (body?.retry === true) {
+      const result = await retryFailed()
+      return json({ ok: true, ...result })
+    }
+
+    const { user_id, business_id, hospital_id, subject, text } = body
     if (!subject || !text || (!user_id && !business_id && !hospital_id)) {
       return json({ error: 'subject, text and one of user_id/business_id/hospital_id are required' }, 400)
     }
@@ -119,7 +199,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 重複排除しつつ配信
+    // 重複排除しつつ配信・記録
     const sentEmails = new Set<string>()
     const sentLine = new Set<string>()
     const fired = { email: 0, line: 0 }
@@ -127,11 +207,21 @@ Deno.serve(async (req) => {
     for (const ep of endpoints) {
       if (ep.email && ep.notifyEmail && !sentEmails.has(ep.email)) {
         sentEmails.add(ep.email)
-        if (await sendEmail(ep.email, subject, text)) fired.email++
+        const result = await sendEmail(ep.email, subject, text)
+        if (result.ok) fired.email++
+        await logSend({
+          userId: user_id ?? null, businessId: orgBusinessId, hospitalId: orgHospitalId,
+          channel: 'email', recipient: ep.email, subject, message: text, result,
+        })
       }
       if (ep.lineUserId && ep.notifyLine && !sentLine.has(ep.lineUserId)) {
         sentLine.add(ep.lineUserId)
-        if (await sendLinePush(ep.lineUserId, subject, text)) fired.line++
+        const result = await sendLinePush(ep.lineUserId, subject, text)
+        if (result.ok) fired.line++
+        await logSend({
+          userId: user_id ?? null, businessId: orgBusinessId, hospitalId: orgHospitalId,
+          channel: 'line', recipient: ep.lineUserId, subject, message: text, result,
+        })
       }
     }
 

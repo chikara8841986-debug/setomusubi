@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { MonthFilter } from '../../components/MonthFilter'
 import { jstMonthStr } from '../../lib/jst'
 import { filterReservationsByMonth, sortReservationsNewestFirst } from '../../lib/reservationView'
+import { invokeNotifyWithRetry } from '../../lib/notifyInvoke'
 import type { Reservation } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -147,7 +148,8 @@ export default function MswReservations() {
     }
     // 確定済みキャンセルは事業所へメール通知
     if (r.status === 'confirmed') {
-      supabase.functions.invoke('send-cancellation', { body: { reservation_id: r.id } }).catch(() => {})
+      invokeNotifyWithRetry('send-cancellation', { reservation_id: r.id })
+        .then((ok) => { if (!ok) showToast('キャンセルされましたが、通知メールの送信に失敗しました。事業所へ直接ご連絡ください。', 'error') })
     }
     setCancelling(false)
     setSelected(null)

@@ -12,6 +12,7 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **A2**: MSWアカウントでログイン→車椅子で検索→事業所選択後の申請フォームで機材ボタンが押せない（表示専用）ことを確認。「条件を変えて再検索」リンクが検索画面(step1)に正しく戻ることを確認。
 - [ ] **D2**: 実ブラウザ（特にPWAとしてインストールした状態）でログイン→予約データ閲覧→DevTools Application→Cache Storageに `supabase-api` が無いことを確認。ログアウト後にCache Storageが空になることも確認。
 - [ ] **E3**: 本番デプロイ直後にブラウザを開きっぱなしの状態で画面遷移し、白画面にならず自動で復帰することを確認（例: デプロイ前後でタブを開いたまま別ページに遷移してみる）。
+- [ ] **B1/B2**: 実際に予約の承認・お断り・キャンセル・電話予約・MSW申請を一通り操作し、通知メールが届くこと、`notification_log`テーブルに記録が残ることを確認。可能であれば一時的にResend APIキーを無効化するなどして送信失敗させ、フロントに失敗トーストが出ること／`send-reminder`の次回cronでリトライされ`notification_log.status`が`sent`に変わることを確認。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -68,16 +69,18 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 
 ## 🟠 B. 通知の信頼性
 
-### [ ] B1. 通知の送信記録・リトライがない（outbox未整備）
+### [x] B1. 通知の送信記録・リトライがない（outbox未整備）— 対応済み 2026-07-02
 - **事象**: `notify` の送信失敗は console.error のみ。Resend/LINE障害中の通知は消失し、消えた証跡も残らない（「聞いてない」紛争時に反証不能）。
-- **修正方針**: `notification_log` テーブル（id, user_id/recipient, channel, subject, status sent/failed, error, created_at）を作成し、notify が送信ごとに記録。失敗分を send-reminder cron の第5パスで再送（最大3回）。
-- **該当**: `supabase/functions/notify/index.ts`
+- **該当**: `supabase/functions/notify/index.ts`、`supabase/functions/send-reminder/index.ts`
+- **対応内容**: `notification_log` テーブル（user_id, business_id, hospital_id, channel, recipient, subject, message, status sent/failed, error, retry_count, created_at/updated_at）を新設（RLS有効・ポリシー0でservice_role専用、webhook_debug等と同方式）。`notify` は送信の都度このテーブルに記録するよう改修（v3としてデプロイ）。`notify` に `{ retry: true }` で呼べる再送パスを追加（直近24時間・retry_count<3の失敗分を再送）。`send-reminder`（v16）に第4パスとして `retryFailedNotifications()` を追加し、毎時cronで自動的に失敗分を再送する。
+- **検証**: `curl -X POST .../functions/v1/send-reminder` を実叩きし `{"reminded":0,"expired":0,"nudged":0,"retried":0,"retrySucceeded":0}` を確認（対象データなしのため0件だが新フィールドが正しく返ることを確認）。Edge Functionログで send-reminder→notify の内部呼び出しが200 OKであることを確認。実際に送信失敗を発生させてのリトライ動作（例: Resend APIキーを一時的に無効化して確認）は未実施 → 人間チェックリストに追加。
 
-### [ ] B2. フロントからの通知呼び出しが fire-and-forget
+### [x] B2. フロントからの通知呼び出しが fire-and-forget — 暫定対応済み 2026-07-02
 - **事象**: `supabase.functions.invoke('send-*').catch(() => {})` がフロント各所にあり、タブ即閉じ・関数コールドスタート失敗で通知が飛ばない。
 - **該当**: `src/pages/business/Calendar.tsx`(approve/reject/cancel), `src/pages/business/Reservations.tsx`, `src/pages/msw/Search.tsx`, `src/pages/msw/Reservations.tsx`, `src/pages/admin/Approvals.tsx`
-- **修正方針（本命）**: 通知トリガをDB側へ移す。reservations の status遷移 AFTER UPDATE/INSERT トリガから `pg_net.http_post` で該当 send-* を叩く（cronで実績あり）。フロントの invoke は撤去。B1のoutboxと合わせると堅牢。
-- **暫定**: invoke の失敗時に1回リトライ＋失敗トーストだけでも改善。
+- **対応内容（暫定案を採用）**: `src/pages/admin/Approvals.tsx` は元々 await＋失敗トースト済みで対応不要。他5箇所の fire-and-forget invoke を `src/lib/notifyInvoke.ts` の `invokeNotifyWithRetry`（1回だけ自動リトライ→それでも失敗ならcaller側でトースト表示）に置換。DB更新自体は既に成功している前提で「通知だけ失敗した」ことを利用者に伝える文言にした。
+- **本命は未着手**: `reservations` の status遷移トリガから `pg_net.http_post` で通知するDB側集約への全面移行は、承認/却下/完了/キャンセル/電話予約の全RPCに関わる大きめのアーキテクチャ変更でリスクが高いため、今回は着手しなかった。B1のoutbox(notification_log)と組み合わせれば本命への移行余地は残っている。着手する場合は必ずユーザー確認のうえ、全経路の回帰テストとセットで行うこと。
+- **検証**: `npm.cmd run build` 成功。プレビューでコンソールエラーなし確認。実ログインでの通知失敗シナリオ（Edge Function呼び出し自体を強制的に失敗させてトーストが出るか）は未実施 → 人間チェックリストに追加。
 
 ### [ ] B3. Resend 無料枠 100通/日
 - **事象**: notification_recipients による複数スタッフ配信を使い始めると1イベント×N人で消費が加速。超過分は静かに失敗（B1未対応だと記録もない）。

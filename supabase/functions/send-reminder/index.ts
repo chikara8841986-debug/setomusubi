@@ -3,6 +3,7 @@
 // 1) 確定予約の1時間前リマインド
 // 2) 期限切れ pending（乗車時刻を過ぎた申請）の自動失効＋MSWへ通知
 // 3) 放置 pending（一定時間未対応）の事業者へのナッジ
+// 4) notification_log の失敗分の再送（B1: outboxリトライ、最大3回・直近24時間）
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -207,11 +208,33 @@ ${APP_URL}/business/reservations
   return nudged
 }
 
+// ── 4) notification_log の失敗分の再送 ──
+async function retryFailedNotifications(): Promise<{ retried: number; succeeded: number }> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/notify`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ retry: true }),
+    })
+    if (!res.ok) { console.error('[retry] notify returned', res.status); return { retried: 0, succeeded: 0 } }
+    const data = await res.json()
+    return { retried: data.retried ?? 0, succeeded: data.succeeded ?? 0 }
+  } catch (e) {
+    console.error('[retry] request failed', e)
+    return { retried: 0, succeeded: 0 }
+  }
+}
+
 Deno.serve(async () => {
   const now = new Date()
-  const result = { reminded: 0, expired: 0, nudged: 0 }
+  const result = { reminded: 0, expired: 0, nudged: 0, retried: 0, retrySucceeded: 0 }
   try { result.reminded = await sendConfirmedReminders(now) } catch (e) { console.error('reminder pass failed', e) }
   try { result.expired = await expireStalePending(now) } catch (e) { console.error('expire pass failed', e) }
   try { result.nudged = await nudgePendingBusiness(now) } catch (e) { console.error('nudge pass failed', e) }
+  try {
+    const retry = await retryFailedNotifications()
+    result.retried = retry.retried
+    result.retrySucceeded = retry.succeeded
+  } catch (e) { console.error('retry pass failed', e) }
   return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } })
 })

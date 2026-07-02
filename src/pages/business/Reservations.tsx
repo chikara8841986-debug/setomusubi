@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { MonthFilter } from '../../components/MonthFilter'
 import { isTodayJST, jstMonthStr, jstTodayStr } from '../../lib/jst'
 import { filterReservationsByMonth, sortReservationsNewestFirst } from '../../lib/reservationView'
+import { invokeNotifyWithRetry } from '../../lib/notifyInvoke'
 import type { Reservation, Vehicle } from '../../types/database'
 
 function mapsUrl(address: string) {
@@ -217,7 +218,8 @@ export default function BusinessReservations() {
       return
     }
     const autoRejectedCount: number = typeof data === 'number' ? data : 0
-    supabase.functions.invoke('send-confirmation', { body: { reservation_id: r.id } }).catch(() => {})
+    invokeNotifyWithRetry('send-confirmation', { reservation_id: r.id })
+      .then((ok) => { if (!ok) showToast('承認しましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
 
     closeModal()
     setProcessing(false)
@@ -238,7 +240,8 @@ export default function BusinessReservations() {
       setProcessing(false)
       return
     }
-    supabase.functions.invoke('send-rejection', { body: { reservation_id: r.id } }).catch(() => {})
+    invokeNotifyWithRetry('send-rejection', { reservation_id: r.id })
+      .then((ok) => { if (!ok) showToast('お断りしましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
     closeModal()
     setProcessing(false)
     showToast('申請をお断りしました', 'error')
