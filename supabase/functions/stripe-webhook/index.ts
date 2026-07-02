@@ -675,6 +675,22 @@ Deno.serve(async (req) => {
             .or('last_cancelled_subscription_id.is.null,last_cancelled_subscription_id.neq.' + sub.id)
           if (phaseBErr) throw phaseBErr
         }
+
+        // C3: past_due_since の管理。past_due に入った最初の時刻を記録し、
+        // 復旧（active/trialing等）したらリセットする。businessIdは上のstale guardで
+        // 既に検証済みなので、ここでは無条件にこのbusinessへ書いてよい。
+        if (subPatch.subscription_status === 'past_due') {
+          const { data: currentBiz } = await supabase
+            .from('businesses')
+            .select('past_due_since')
+            .eq('id', businessId)
+            .maybeSingle()
+          if (!currentBiz?.past_due_since) {
+            await supabase.from('businesses').update({ past_due_since: new Date().toISOString() }).eq('id', businessId)
+          }
+        } else {
+          await supabase.from('businesses').update({ past_due_since: null }).eq('id', businessId)
+        }
         break
       }
 
@@ -700,6 +716,7 @@ Deno.serve(async (req) => {
             trial_ends_at: null,
             stripe_subscription_id: null,
             stripe_vehicle_item_id: null,
+            past_due_since: null,
             // Tombstone: record the cancelled sub ID so late-arriving events
             // (subscription.updated, invoice.*) for this sub cannot resurrect
             // the cancelled state after stripe_subscription_id has been nulled.
@@ -770,10 +787,11 @@ Deno.serve(async (req) => {
 
         // Stale guard: skip invoices from non-current or tombstoned subscriptions.
         // Fail-closed on DB error to prevent stale writes.
+        let currentPastDueSince: string | null = null
         if (invoice.subscription) {
           const { data: storedBiz, error: storedBizErr } = await supabase
             .from('businesses')
-            .select('stripe_subscription_id, last_cancelled_subscription_id')
+            .select('stripe_subscription_id, last_cancelled_subscription_id, past_due_since')
             .eq('id', businessId)
             .maybeSingle()
 
@@ -790,6 +808,7 @@ Deno.serve(async (req) => {
             console.log('[stripe-webhook] skipping invoice.payment_failed for tombstoned sub:', invoice.subscription)
             break
           }
+          currentPastDueSince = storedBiz?.past_due_since ?? null
         }
 
         await upsertSubscriptionBillingEvent({
@@ -803,10 +822,14 @@ Deno.serve(async (req) => {
         // Conditional status update: only mark past_due if the subscription is still
         // actively stored (prevents resurrecting past_due status after cancellation).
         // stripe_subscription_id is intentionally NOT written here (same reason as invoice.paid).
+        // C3: past_due_since は初回のみ記録する（COALESCE相当。既にあれば上書きしない）。
         if (invoice.subscription) {
           const { error: pastDueErr } = await supabase
             .from('businesses')
-            .update({ subscription_status: 'past_due' })
+            .update({
+              subscription_status: 'past_due',
+              past_due_since: currentPastDueSince ?? new Date().toISOString(),
+            })
             .eq('id', businessId)
             .eq('stripe_subscription_id', invoice.subscription as string)
           if (pastDueErr) throw pastDueErr

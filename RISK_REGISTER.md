@@ -13,6 +13,7 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **D2**: 実ブラウザ（特にPWAとしてインストールした状態）でログイン→予約データ閲覧→DevTools Application→Cache Storageに `supabase-api` が無いことを確認。ログアウト後にCache Storageが空になることも確認。
 - [ ] **E3**: 本番デプロイ直後にブラウザを開きっぱなしの状態で画面遷移し、白画面にならず自動で復帰することを確認（例: デプロイ前後でタブを開いたまま別ページに遷移してみる）。
 - [ ] **B1/B2**: 実際に予約の承認・お断り・キャンセル・電話予約・MSW申請を一通り操作し、通知メールが届くこと、`notification_log`テーブルに記録が残ることを確認。可能であれば一時的にResend APIキーを無効化するなどして送信失敗させ、フロントに失敗トーストが出ること／`send-reminder`の次回cronでリトライされ`notification_log.status`が`sent`に変わることを確認。
+- [ ] **C3**: Stripeテストモードで決済失敗を再現（テストカード4000000000000341等）→ businesses.subscription_status='past_due'・past_due_since が記録されることを確認 → MSW検索にその事業所が引き続き表示されることを確認。あわせて stripe-webhook v23 の差分について、C1のCodex再レビュー時に一緒に見てもらうこと。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -101,9 +102,11 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **事象**: チェックアウト・webhook・sync が毎回 ephemeral Product を生成（動作はする。ダッシュボード汚染と価格管理の分散）。
 - **修正方針**: Stripeダッシュボードで正規 Product/Price（¥3,850月額・¥1,650月額）を作成し、Supabase secrets に2つのIDを設定。既存サブスクは sync-vehicle-billing が次回同期時に寄せる設計になっているか要確認。
 
-### [ ] C3. past_due で即・検索非表示（猶予なし）
+### [x] C3. past_due で即・検索非表示（猶予なし）— 対応済み 2026-07-02
 - **事象**: 初回決済失敗の瞬間に MSW 検索から消える（`src/pages/msw/Search.tsx` 332行付近: subStatus が active/trialing 以外を除外）。カード期限切れ1回で売上停止はクレーム必至。
-- **修正方針**: `past_due` も検索に含め続け（Stripeの自動リトライ期間中）、`businesses.past_due_since timestamptz` を webhook で記録。past_due_since から14日超えたら除外。事業者向けバナー（Layout.tsx に既存）はそのまま。
+- **該当**: `src/pages/msw/Search.tsx`、`supabase/functions/stripe-webhook/index.ts`、`src/types/database.ts`
+- **対応内容**: `businesses.past_due_since timestamptz` を追加。`stripe-webhook`（v23）で past_due に入った最初の時刻のみ記録し（COALESCE相当、重複failedイベントで上書きしない）、active/trialing等に復旧または解約されたら null にリセットするようにした（`customer.subscription.updated`／`invoice.payment_failed`／`customer.subscription.deleted`の3箇所）。フロント `Search.tsx` は `subscription_status==='past_due'` かつ `past_due_since` から14日以内なら検索結果に含め続けるよう変更。事業者向けバナー（Layout.tsx）は既存のまま変更なし。
+- **検証**: `npm.cmd run build` 成功。プレビューでコンソールエラーなし確認。stripe-webhook は既存の厳格なTOCTOU対策（atomic claim/tombstone guard）に触れず、past_due_since管理は既存ガード確定後の追加書き込みとして実装したことをコードレビューで確認。実際にStripeでカード決済を失敗させて14日猶予・検索復帰を確認する統合テストは未実施 → 人間チェックリストに追加。C1（stripe-webhookの外部レビュー最終GO）は今回の変更を含めて改めて必要。
 
 ### [ ] C4. 返金・日割り・解約タイミングのポリシー未定義
 - **修正方針**: 規約ページ（利用規約/特商法表記）を作り、解約は期末まで有効・日割返金なし等を明文化。コードより先に文書。

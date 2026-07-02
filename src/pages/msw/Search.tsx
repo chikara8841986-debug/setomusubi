@@ -329,9 +329,16 @@ export default function MswSearch() {
     for (const vehicle of ((rawVehicles as unknown as VehicleWithBusiness[] | null) ?? [])) {
       const business = vehicle.businesses
       if (!business || !business.approved) continue
-      // プランに未登録・解約済みの事業所は検索結果から除外
+      // プランに未登録・解約済みの事業所は検索結果から除外。
+      // past_due（決済失敗）はStripeの自動リトライ期間中とみなし、
+      // past_due_since から14日以内は検索に含め続ける（カード期限切れ1回での即売上停止を避ける）。
       const subStatus = business.subscription_status ?? 'none'
-      if (subStatus !== 'active' && subStatus !== 'trialing') continue
+      const isWithinPastDueGrace = subStatus === 'past_due' && (() => {
+        if (!business.past_due_since) return true
+        const daysSince = (Date.now() - new Date(business.past_due_since).getTime()) / (1000 * 60 * 60 * 24)
+        return daysSince <= 14
+      })()
+      if (subStatus !== 'active' && subStatus !== 'trialing' && !isWithinPastDueGrace) continue
       if (areas.length > 0 && !areas.some(a => business.service_areas?.includes(a))) continue
       // 使用機材に対応した車両のみを空き候補とする
       const equipField = searchEquipment === 'wheelchair' ? 'has_wheelchair'
