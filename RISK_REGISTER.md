@@ -18,11 +18,14 @@
 
 ## 🔴 A. 予約整合性（ダブルブッキング・搬送事故に直結）
 
-### [ ] A1. 電話予約が車両を塞がない（最優先）
+### [x] A1. 電話予約が車両を塞がない（最優先）— 対応済み 2026-07-02
 - **事象**: 予約管理ページの「電話予約を記録」は旧方式の RPC `create_phone_reservation` を呼ぶ。この関数は旧 `availability_slots` にINSERTし、`vehicle_id` を設定しない → トリガが発火せず **occupied_slot が作られない** → MSW検索でその時間帯が空きのまま → ダブルブッキング。
 - **該当**: `src/pages/business/Reservations.tsx` の `handlePhoneSubmit`（`supabase.rpc('create_phone_reservation', ...)`）、DB関数 `public.create_phone_reservation`
-- **修正方針**: RPCを新方式に改修。(1) 引数に `p_vehicle_id uuid` を追加し、フォームに車両セレクタを追加（事業所の vehicles から選択・必須）。(2) RPC内で `availability_slots` ではなく `occupied_slots` にINSERT（またはreservationsに vehicle_id を入れてトリガに任せる。ただし status='confirmed' の INSERT でトリガは発火する設計を確認済み）。(3) GiST制約違反（既に埋まっている）の except を捕捉して 'phone_reservation_slot_conflict' を返し、フロントで「その車両のその時間は既に埋まっています」を表示。
-- **検証**: 電話予約を記録 → MSW検索（同日時・同機材）でその車両が候補から消えること。
+- **対応内容**:
+  - DB関数 `public.create_phone_reservation` に `p_vehicle_id uuid`（必須）を追加。旧シグネチャは `drop function` 済み。事業所配下のアクティブ車両かをチェックし、`pg_advisory_xact_lock` で同一車両への同時登録をシリアライズしたうえで `occupied_slots` の重複を明示チェック（`phone_reservation_slot_conflict` を送出）。GiST排他制約違反もバックストップとして捕捉。`availability_slots` へのINSERTは廃止し、`reservations.vehicle_id` をセットして既存トリガ `auto_create_occupied_slot` に占有作成を委譲。
+  - マイグレーション: `supabase/migrations/20260702214409_create_phone_reservation_vehicle_required.sql`（適用済み、repoにも保存）。
+  - フロント: `src/pages/business/Reservations.tsx` に車両セレクタ（アクティブ車両を`vehicles`から取得）を追加し必須化。車両0台なら送信ボタン無効化＋案内文。`phone_reservation_slot_conflict` / `phone_reservation_invalid_vehicle` エラーを個別メッセージで表示。
+- **検証**: `npm.cmd run build` 成功。本番DB上でトランザクション内テスト（ロールバック、残留データなし）を実施し、(1) 車両込みで電話予約RPCが成功し `occupied_slots` が作成されること、(2) 同一車両・重複時間帯の2件目が `phone_reservation_slot_conflict` で正しく拒否されることを確認。ブラウザでの実ログインE2E確認は未実施（本番アカウントの認証情報を保有していないため）。次回、実アカウントでログインしてUI経由の電話予約→MSW検索での消込みを確認すること。
 
 ### [ ] A2. 申請フォームで機材を変えると「車両なし予約」ができる
 - **事象**: MSWが検索時と違う機材をフォームで選ぶと、`availableVehicles` に該当車両がなく `vehicleId = null` のまま申請成立（`src/pages/msw/Search.tsx` handleSubmitRequest, 409-413行付近）。vehicle_id null なので占有されず、承認時の重複チェック（approve_reservation内、vehicle_id NOT NULL時のみ）もスキップ → ダブルブッキング。さらに車両なし確定はカレンダーのタイムラインに表示されない。

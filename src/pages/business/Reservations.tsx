@@ -8,7 +8,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { MonthFilter } from '../../components/MonthFilter'
 import { isTodayJST, jstMonthStr, jstTodayStr } from '../../lib/jst'
 import { filterReservationsByMonth, sortReservationsNewestFirst } from '../../lib/reservationView'
-import type { Reservation } from '../../types/database'
+import type { Reservation, Vehicle } from '../../types/database'
 
 function mapsUrl(address: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
@@ -30,6 +30,7 @@ type PhoneForm = {
   callerName: string
   callerPhone: string
   notes: string
+  vehicleId: string
 }
 
 const EMPTY_PHONE_FORM: PhoneForm = {
@@ -44,6 +45,7 @@ const EMPTY_PHONE_FORM: PhoneForm = {
   callerName: '',
   callerPhone: '',
   notes: '',
+  vehicleId: '',
 }
 
 const EQUIPMENT_LABELS: Record<string, string> = {
@@ -74,6 +76,21 @@ export default function BusinessReservations() {
   const [phoneForm, setPhoneForm] = useState<PhoneForm>({ ...EMPTY_PHONE_FORM, date: jstTodayStr() })
   const [phoneSaving, setPhoneSaving] = useState(false)
   const [phoneError, setPhoneError] = useState('')
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+
+  const fetchVehicles = useCallback(async () => {
+    if (!businessId) return
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
+    if (error) return
+    setVehicles((data as Vehicle[]) ?? [])
+  }, [businessId])
+
+  useEffect(() => { fetchVehicles() }, [fetchVehicles])
 
   const fetchReservations = useCallback(async () => {
     if (!businessId) return
@@ -251,10 +268,11 @@ export default function BusinessReservations() {
     if (!f.patientName.trim()) { setPhoneError('患者氏名を入力してください'); return }
     if (!f.patientAddress.trim()) { setPhoneError('乗車地を入力してください'); return }
     if (!f.destination.trim()) { setPhoneError('目的地を入力してください'); return }
+    if (!f.vehicleId) { setPhoneError('使用する車両を選択してください'); return }
 
     setPhoneSaving(true); setPhoneError('')
 
-    // create_phone_reservation RPC: スロット作成と予約作成をトランザクションで実行
+    // create_phone_reservation RPC: 車両を指定し、occupied_slotsトリガ経由で占有登録
     const { error } = await supabase.rpc('create_phone_reservation', {
       p_date: f.date,
       p_start_time: f.startTime + ':00',
@@ -267,10 +285,20 @@ export default function BusinessReservations() {
       p_equipment: f.equipment as 'wheelchair' | 'reclining_wheelchair' | 'stretcher',
       p_equipment_rental: f.equipmentRental,
       p_notes: f.notes,
+      p_vehicle_id: f.vehicleId,
     })
 
     setPhoneSaving(false)
     if (error) {
+      if (error.message?.includes('phone_reservation_slot_conflict')) {
+        setPhoneError('その車両のその時間帯は既に予約が入っています。')
+        return
+      }
+      if (error.message?.includes('phone_reservation_invalid_vehicle')) {
+        setPhoneError('選択した車両が無効です。再度選択してください。')
+        fetchVehicles()
+        return
+      }
       setPhoneError('予約の登録に失敗しました。再試行してください。')
       return
     }
@@ -796,6 +824,23 @@ export default function BusinessReservations() {
                   onChange={e => setPhoneForm(f => ({ ...f, destination: e.target.value }))} />
               </div>
 
+              {/* 車両 */}
+              <div>
+                <label className="label">使用車両<span className="text-red-500 ml-0.5">*</span></label>
+                {vehicles.length === 0 ? (
+                  <p className="text-xs text-red-600">稼働中の車両がありません。先に「車両管理」から車両を登録してください。</p>
+                ) : (
+                  <select className="input-base"
+                    value={phoneForm.vehicleId}
+                    onChange={e => setPhoneForm(f => ({ ...f, vehicleId: e.target.value }))}>
+                    <option value="">選択してください</option>
+                    {vehicles.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
               {/* 機材 */}
               <div>
                 <label className="label">使用機材<span className="text-red-500 ml-0.5">*</span></label>
@@ -838,7 +883,7 @@ export default function BusinessReservations() {
               <button onClick={() => { setShowPhoneModal(false); setPhoneError('') }} className="btn-secondary flex-1">
                 キャンセル
               </button>
-              <button onClick={handlePhoneSubmit} disabled={phoneSaving} className="btn-primary flex-1">
+              <button onClick={handlePhoneSubmit} disabled={phoneSaving || vehicles.length === 0} className="btn-primary flex-1">
                 {phoneSaving ? '保存中...' : '記録する'}
               </button>
             </div>
