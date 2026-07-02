@@ -1,0 +1,1 @@
+ALTER TABLE public.webhook_debug ENABLE ROW LEVEL SECURITY;

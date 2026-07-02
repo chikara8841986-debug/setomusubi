@@ -142,9 +142,10 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **事象**: ダッシュボードに FREE 表示（org: sakura-en-dev）。バックアップ7日・リソース制約・長期不活性時の停止リスク。
 - **修正方針**: ローンチ前に Pro（$25/月）へ。ユーザーの決済作業。
 
-### [ ] E2. リポジトリとDBのドリフト（復旧不能リスク）
+### [x] E2. リポジトリとDBのドリフト（復旧不能リスク）— 対応済み 2026-07-02
 - **事象**: (1) MCP `apply_migration` で当てたマイグレーション群（phone_digits, pending_reminder_sent＋approve修正, notification_channels, notification_recipients 等）が repo の `supabase/migrations/` に存在しない。(2) `admin-reject-business` のソースが repo に無い（デプロイ済みv4のみ。`mcp get_edge_function` で取得可能）。
-- **修正方針**: `supabase/migrations/` に適用済みSQLを日付付きで書き出してコミット。`admin-reject-business/index.ts` を `get_edge_function` で吸い出して repo に保存。以後「デプロイしたら必ずrepoにも書く」を徹底（このセッション後半は遵守済み）。
+- **対応内容**: `supabase_migrations.schema_migrations`（`statements`列）から本番DBに適用済みの全16マイグレーション＋A1対応時の1件（計17件）を復元し、`supabase/migrations/` にDB上のバージョン番号をファイル名として書き出し。`admin-reject-business/index.ts` を `get_edge_function` で取得し `supabase/functions/admin-reject-business/index.ts` として保存。あわせて、A1修正時に誤って実際のDBバージョン(`20260702124356`)と異なるファイル名(`20260702214409`)で保存していたのを修正（リネーム）。
+- **今後の運用**: 以後「`apply_migration`／`deploy_edge_function` でデプロイしたら必ずrepoにも同じ内容を書く」を徹底する。
 
 ### [ ] E3. デプロイ直後の ChunkLoadError 対策なし
 - **事象**: lazy import のチャンクハッシュがデプロイで変わり、滞在中ユーザーの画面遷移が白画面/読込失敗になりうる（PWAのautoUpdateは緩和するが保証なし）。
