@@ -11,3 +11,4 @@ Required startup sequence:
 3. Read the central Setomusubi current-state note before coding.
 4. Read `RUNTIME_STATUS.md` and confirm the live runtime and deployment surfaces before editing.
 5. Before making code changes, state the exact files to edit, why they are on the live path, and what validation will prove the change.
+6. When fixing bugs or hardening the system, consult `RISK_REGISTER.md` (verified risk backlog with file paths and fix plans). Update its checkboxes and append the commit hash when an item is resolved.
