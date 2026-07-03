@@ -69,10 +69,19 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
   - `approve_reservation` RPC: 二重承認ガードの重複判定にも同じバッファを適用（`make_interval(mins => buffer_minutes)`で前後を広げる）。
 - **検証**: `npm.cmd run build` 成功。本番DBで実データを使い検証（テスト後に削除済み）：(1) buffer_minutes=30の事業所で09:00-10:00確定済み・10:00-11:00申請中の組み合わせに対しapprove_reservationを実行→`reservation_conflict`で正しく拒否されることを確認。(2) buffer_minutes=0（デフォルト）に戻すと同じ組み合わせが従来どおり承認できることを確認（既存事業所への影響なしを確認）。実ログインでのProfile.tsx UIの見た目・Search.tsxの検索結果からの除外は未確認 → 人間チェックリストに追加。
 
-### [ ] A5. guard_reservation_columns の NULL すり抜け（設計負債）
-- **事象**: status変更ガードは `current_setting('app.rpc_context', true)` がNULLだと `NOT IN` がNULL評価→例外にならず素通り。**complete_reservation・cancel_reservation_by_msw・send-reminderの失効処理・Calendarの直接update等がこの穴に依存して動いている**。
-- **修正方針**: 全status変更をRPC経由に統一してからガードを `COALESCE(v_rpc_ctx,'') NOT IN (...)` に厳格化。依存箇所の洗い出しが必要な**大きめ案件**。単独で塞ぐと本番が壊れるため、必ず全経路（business Calendar cancel / send-reminder expire / complete / msw cancel）をRPC化 or rpc_context設定してから。
-- **検証**: 各キャンセル・完了・失効フローの回帰テスト必須。
+### [ ] A5. guard_reservation_columns の NULL すり抜け（設計負債）— 調査完了・未着手 2026-07-03
+- **事象**: status変更ガードは `current_setting('app.rpc_context', true)` がNULLだと `NOT IN` がNULL評価→例外にならず素通り。
+- **ユーザー判断**: まず調査だけ実施し、実際に塞ぐのは影響範囲を把握してから判断する方針。
+- **調査結果（本番DBの実際のトリガー定義とrepoの全direct-update呼び出しを確認済み）**:
+  - **repoの`supabase/schema.sql`が本番と食い違っている**（別の設計負債）。schema.sqlには`v_is_admin`分岐入りの新しそうな`guard_reservation_columns`が書かれているが、本番で実際に動いているのはこのRISK_REGISTER記載どおりの`app.rpc_context`版。schema.sqlは実体を反映しておらず、参照する際は要注意（E2の続きとして別途repo同期が必要）。
+  - **NULLすり抜けに依存して動いている箇所（本番DBの関数定義で確認）**:
+    - `complete_reservation` RPC — `set_config('app.rpc_context', ...)` を一切呼んでいない。NULLすり抜けが無いと`status='completed'`への更新が例外で弾かれる。
+    - `cancel_reservation_by_msw` RPC — 同様に`set_config`を呼んでいない。
+    - `src/pages/business/Calendar.tsx:615`付近 — `handleCancelReservation`のUPDATE（`status:'cancelled'`）。`.eq('status', ...)`によるガードなし（completed行を誤ってcancelledに戻せる余地あり）。
+    - `src/pages/admin/Reservations.tsx:130`付近 — 管理者用ステータス上書きUI。ガードなし。
+    - `supabase/functions/send-reminder/index.ts`の期限切れ失効処理 — `.eq('status', 'pending')`でガード済み（他3つより安全）。
+  - **一方で`approve_reservation`・`reject_reservation`は既に`set_config('app.rpc_context', ...)`を呼んでおり正規経路。**
+- **今後厳格化する場合に必要な作業（未実施）**: (1) `complete_reservation`・`cancel_reservation_by_msw`にも`set_config`呼び出しを追加、(2) `Calendar.tsx`の直接キャンセルUPDATEと管理者のステータス上書きUIをRPC化（クライアントから`set_config`を安全に呼ぶ手段はないため）、(3) 全経路変更後にキャンセル・完了・失効の回帰テストを行ってからガードを`COALESCE(v_rpc_ctx,'') NOT IN (...)`に厳格化。単独でガードだけ厳格化すると上記4経路が本番で壊れるため、着手する場合は上記3点をワンセットで行うこと。
 
 ### [x] A6. 事業者がpendingを「キャンセル」経路で消すとMSW無通知 — 対応済み 2026-07-02
 - **事象**: 正規の「お断り」ボタンは send-rejection でMSWへ通知するが、`handleCancelReservation`（`src/pages/business/Calendar.tsx`）を pending に使った場合は通知なし（wasConfirmed=false のため）。
