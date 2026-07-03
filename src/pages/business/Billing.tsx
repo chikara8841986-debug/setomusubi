@@ -3,11 +3,8 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import { DEFAULT_BASE_FEE, DEFAULT_PER_VEHICLE_FEE, FREE_VEHICLES } from '../../lib/constants'
 import type { SubscriptionStatus } from '../../types/database'
-
-const DEFAULT_BASE_FEE = 3_850
-const DEFAULT_PER_VEHICLE_FEE = 1_650
-const FREE_VEHICLES = 2
 
 const STATUS_CONFIG: Record<SubscriptionStatus, { label: string; pill: string }> = {
   none: { label: '未登録', pill: 'bg-slate-100 text-slate-600' },

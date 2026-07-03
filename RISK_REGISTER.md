@@ -17,6 +17,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **A3**: pendingの reservation_date/start_time を意図的に24時間以内・当日は3時間以内に設定したテストデータで send-reminder を実叩きし、`warned` が1以上になりMSWへ警告メールが届くこと、`msw_unconfirmed_warning_sent` がtrueになり再送されないことを確認。
 - [ ] **A6**: 業者アカウントで確定済み予約を「予約詳細」パネルの「予約をキャンセル」ボタン（カレンダーのタイムラインからではなく、一覧パネル経由）でキャンセルし、MSW側にキャンセル通知メールが届くことを確認。
 
+- [ ] **D4**: 実際にDBの`audit_log`テーブルを管理者権限で閲覧し、承認/却下/完了/キャンセル操作それぞれで正しい`action`・`actor_id`が記録されることを一通り確認。
+- [ ] **F2**: 業者アカウントでログイン→「プロフィール」で車両を3台目まで追加→追加ボタンの下に料金加算の注意書きが出ることを目視確認。
+
 <!-- 新しい項目はこの下に追記していく -->
 
 ## 前提（システム構成の要点）
@@ -144,9 +147,10 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **事象**: Supabase セッションが localStorage 永続、自動ログアウトなし。病院共用端末で放置ログインが起きうる。
 - **修正方針（案）**: MSWロールのみ「共用PCモード」（sessionStorage保存 or 8時間で強制再ログイン）。supabase-js の `auth.storage` オプションで切替可能。仕様判断が要るためユーザー確認。
 
-### [ ] D4. 監査ログなし
+### [x] D4. 監査ログなし — 対応済み 2026-07-03
 - **事象**: 誰がいつ承認/却下/キャンセルしたか記録がなく、紛争時に証跡がない。
-- **修正方針**: `audit_log`（actor_id, action, reservation_id, detail jsonb, created_at）を各RPC内で1行INSERT。RPC集約（A5）とセットでやると効率的。
+- **対応内容**: `audit_log`（actor_id, action, reservation_id, detail jsonb, created_at）を追加。RLS有効・SELECTは管理者(`is_admin()`)のみ。書き込み専用ヘルパー`log_audit()`（SECURITY DEFINER、actor_idはauth.uid()から自動取得しなりすまし不可）を新設し、`approve_reservation`・`reject_reservation`・`complete_reservation`・`cancel_reservation_by_msw`の4RPC末尾に1行ずつ追加した。A5（RPC集約）は仕様判断待ちのため未着手だが、既存RPCへの追記だけで独立して対応可能だったため先行実施。
+- **検証**: 実際にハコビテ事業所の予約を作成→`approve_reservation`を実行→`audit_log`に`action='approve_reservation'`の行が正しい`actor_id`・`reservation_id`・`detail`で記録されることを確認。確認後、テストデータ（予約・occupied_slot・audit_logの各行）は削除済み。閲覧用の管理画面UIはまだ無い（DBに記録が残るのみ）。
 
 ---
 
@@ -178,8 +182,10 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **確認結果**: `src/components/ProtectedRoute.tsx` の `PendingApproval` コンポーネントが既に実装済み。未承認(`businessApproved=false`)のbusinessロールは `/business/calendar` 等どのページへ行っても「⏳ 承認待ちです」画面に置き換えられ、管理者が承認すると Supabase Realtime（`businesses`テーブルのUPDATE購読）で自動的に `window.location.reload()` して切り替わる。追加改修は不要と判断。
 - **未実施**: 実際に未承認アカウントでログインしての目視確認（本番に未承認テストアカウントを作る必要があるため）→ 人間チェックリストに追加。
 
-### [ ] F2. 料金のオンボーディング説明不足
-- 車両追加で自動増額（3台目〜¥1,650/台）と初月の二段請求（初期費用→翌月から月額）を、チェックアウト前画面と車両追加時の確認ダイアログで明示。
+### [x] F2. 料金のオンボーディング説明不足 — 対応済み 2026-07-03
+- **調査結果**: チェックアウト前画面（`src/pages/business/Billing.tsx`）は既に料金内訳・初回請求（当月半額/1か月分）の説明が実装済みだった。不足していたのは車両追加画面（`src/pages/business/Profile.tsx`）側で、車両を追加しても料金への影響が一切表示されないままStripeに自動反映（`sync-vehicle-billing`）されていた。
+- **対応内容**: 料金定数（`DEFAULT_BASE_FEE`/`DEFAULT_PER_VEHICLE_FEE`/`FREE_VEHICLES`）を`Billing.tsx`のプライベート定数から`src/lib/constants.ts`に切り出して共有化。`Profile.tsx`の車両追加フォームに、稼働車両が2台（無料枠）以上のときだけ「この車両を追加すると3台目以降として月額¥1,650/台が加算されます（翌月分から請求）」という注意書きと「料金・契約」ページへのリンクを表示するようにした。フルの確認ダイアログ（クリックを一段階増やす）ではなく、通常操作を妨げないインライン警告を採用（無料枠内の1〜2台目追加時は注意書き自体を表示せず、操作感を変えない）。
+- **検証**: `npm.cmd run build` 成功。プレビューでコンソールエラーなし確認。実ログインで実際に3台目を追加した際の表示・文言の見た目チェックは未実施 → 人間チェックリストに追加。
 
 ### [ ] F3. LINE通知（着手予定・土台完成済み）
 - 残作業: LINE公式アカウント作成（ユーザー作業）→ `LINE_CHANNEL_ACCESS_TOKEN` secret設定 → 友だち連携フロー（連携コード発行UI＋LINE Webhook Edge Function で `profiles.line_user_id` 保存）→ 通知設定画面（自分のLINE連携＋notification_recipients のスタッフ管理UI）。

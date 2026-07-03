@@ -1,4 +1,38 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git branch)",
+      "Bash(git branch *)",
+      "Bash(git show *)",
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Bash(rg *)",
+      "Bash(grep *)",
+      "Bash(npm.cmd run build)",
+      "Bash(npm.cmd run lint)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "PowerShell(git status)",
+      "PowerShell(git status *)",
+      "PowerShell(git log)",
+      "PowerShell(git log *)",
+      "PowerShell(git diff)",
+      "PowerShell(git diff *)",
+      "PowerShell(git branch)",
+      "PowerShell(git branch *)",
+      "PowerShell(git show *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(ls *)",
+      "PowerShell(npm.cmd run build)",
+      "PowerShell(npm.cmd run lint)"
+    ]
+  },
   "hooks": {
     "Stop": [
       {

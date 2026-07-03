@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import type { Business, Vehicle } from '../../types/database'
-import { SERVICE_AREAS } from '../../lib/constants'
+import { SERVICE_AREAS, DEFAULT_PER_VEHICLE_FEE, FREE_VEHICLES } from '../../lib/constants'
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -691,6 +691,11 @@ export default function BusinessProfile() {
               {addingVehicle ? '追加中...' : '車両追加'}
             </button>
           </div>
+          {vehicles.length >= FREE_VEHICLES && (
+            <p className="text-xs text-amber-600 mt-2">
+              ⚠️ {FREE_VEHICLES}台目までは基本料に含まれます。この車両を追加すると{FREE_VEHICLES + 1}台目以降として月額¥{DEFAULT_PER_VEHICLE_FEE.toLocaleString()}/台が加算されます（翌月分から請求）。詳しくは<Link to="/business/billing" className="underline">料金・契約</Link>ページをご確認ください。
+            </p>
+          )}
           <p className="text-xs text-slate-400 mt-2">occupied slot がある車両は削除できません</p>
         </div>
       </div>
