@@ -25,6 +25,30 @@ function fmtDate(dateStr: string) {
   return format(parseISO(dateStr), 'M月d日（E）', { locale: ja })
 }
 
+// A4: 予約と予約の間の回送(移動)バッファ。事業所ごとに businesses.buffer_minutes（0〜120分）で設定できる。
+// DB問い合わせ自体は「ありうる最大バッファ」で広めに取得し、実際の busy 判定は事業所ごとのバッファで行う。
+const MAX_BUFFER_MINUTES = 120
+
+function toMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + (m ?? 0)
+}
+
+function minutesToTime(totalMinutes: number): string {
+  const clamped = Math.max(0, Math.min(24 * 60, totalMinutes))
+  const h = Math.floor(clamped / 60)
+  const m = clamped % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
+}
+
+function overlapsWithBuffer(slotStart: string, slotEnd: string, reqStart: string, reqEnd: string, bufferMinutes: number): boolean {
+  const s = toMinutes(slotStart)
+  const e = toMinutes(slotEnd)
+  const rs = toMinutes(reqStart) - bufferMinutes
+  const re = toMinutes(reqEnd) + bufferMinutes
+  return s < re && e > rs
+}
+
 type FavoriteEntry = { business_id: string }
 
 type SearchResult = Business & {
@@ -295,12 +319,13 @@ export default function MswSearch() {
     sessionStorage.setItem(lsKey('start_time'), startTime)
     sessionStorage.setItem(lsKey('end_time'), endTime)
 
+    // A4: 事業所ごとのバッファ(最大120分)を後で加味できるよう、広めの時間帯で occupied_slots を取得しておく
     const { data: busySlots, error: busyError } = await supabase
       .from('occupied_slots')
-      .select('vehicle_id')
+      .select('vehicle_id, start_time, end_time')
       .eq('date', date)
-      .lt('start_time', endTime)
-      .gt('end_time', startTime)
+      .lt('start_time', minutesToTime(toMinutes(endTime) + MAX_BUFFER_MINUTES))
+      .gt('end_time', minutesToTime(toMinutes(startTime) - MAX_BUFFER_MINUTES))
 
     if (busyError) {
       setSearchError('検索に失敗しました。しばらくしてから再度お試しください。')
@@ -308,16 +333,19 @@ export default function MswSearch() {
       return
     }
 
-    const busyVehicleIds = Array.from(
-      new Set(((busySlots ?? []) as Array<{ vehicle_id: string | null }>).map((slot) => slot.vehicle_id).filter(Boolean)),
-    ) as string[]
-
-    let vehicleQuery = supabase.from('vehicles').select('*, businesses(*)').eq('active', true)
-    if (busyVehicleIds.length > 0) {
-      vehicleQuery = vehicleQuery.not('id', 'in', `(${busyVehicleIds.join(',')})`)
+    const busySlotsByVehicle = new Map<string, Array<{ start_time: string; end_time: string }>>()
+    for (const slot of (busySlots ?? []) as Array<{ vehicle_id: string | null; start_time: string; end_time: string }>) {
+      if (!slot.vehicle_id) continue
+      const list = busySlotsByVehicle.get(slot.vehicle_id) ?? []
+      list.push({ start_time: slot.start_time, end_time: slot.end_time })
+      busySlotsByVehicle.set(slot.vehicle_id, list)
     }
 
-    const { data: rawVehicles, error: vehicleError } = await vehicleQuery.order('sort_order', { ascending: true })
+    const { data: rawVehicles, error: vehicleError } = await supabase
+      .from('vehicles')
+      .select('*, businesses(*)')
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
 
     if (vehicleError) {
       setSearchError('検索に失敗しました。しばらくしてから再度お試しください。')
@@ -348,6 +376,12 @@ export default function MswSearch() {
       if (needFemale && !business.has_female_caregiver) continue
       if (needLongDistance && !business.long_distance) continue
       if (needSameDay && !business.same_day) continue
+      // A4: 事業所が設定した回送バッファ分の余裕がない車両は空き候補から外す
+      const bufferMinutes = business.buffer_minutes ?? 0
+      const isBusy = (busySlotsByVehicle.get(vehicle.id) ?? []).some((slot) =>
+        overlapsWithBuffer(slot.start_time, slot.end_time, startTime, endTime, bufferMinutes),
+      )
+      if (isBusy) continue
 
       const existing = grouped.get(business.id)
       if (existing) {

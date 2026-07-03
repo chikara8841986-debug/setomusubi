@@ -64,6 +64,7 @@ export type Database = {
           custom_per_vehicle_price: number | null
           stripe_coupon_id: string | null
           past_due_since: string | null
+          buffer_minutes: number
           created_at: string
         }
         Insert: {
@@ -103,6 +104,7 @@ export type Database = {
           custom_per_vehicle_price?: number | null
           stripe_coupon_id?: string | null
           past_due_since?: string | null
+          buffer_minutes?: number
         }
         Update: {
           id?: string
@@ -141,6 +143,7 @@ export type Database = {
           custom_per_vehicle_price?: number | null
           stripe_coupon_id?: string | null
           past_due_since?: string | null
+          buffer_minutes?: number
         }
         Relationships: []
       }

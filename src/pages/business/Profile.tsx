@@ -79,6 +79,7 @@ export default function BusinessProfile() {
     qualifications: '',
     pricing: '',
     cancel_phone: '',
+    buffer_minutes: 0,
   })
 
   const fetchProfile = async () => {
@@ -213,6 +214,7 @@ export default function BusinessProfile() {
         qualifications: form.qualifications,
         pricing: form.pricing,
         cancel_phone: form.cancel_phone,
+        buffer_minutes: form.buffer_minutes ?? 0,
       })
       .eq('user_id', user.id)
     setSaving(false)
@@ -501,6 +503,37 @@ export default function BusinessProfile() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div className="card space-y-3">
+          <div className="border-b pb-2">
+            <h2 className="text-lg font-bold text-slate-700">回送の余裕時間（移動バッファ）</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              予約と予約の間に、車が次の現場へ移動するための時間を確保します。0分のままだと連続予約が隙間なく入り、回送が間に合わない可能性があります。
+            </p>
+          </div>
+          {(form.buffer_minutes ?? 0) === 0 && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              ⚠️ 現在0分（余裕なし）に設定されています。現場が続けて入り回送が間に合わない、というお困りがあれば設定をおすすめします。
+            </p>
+          )}
+          <div className="w-40">
+            <label className="label">余裕時間（分）</label>
+            <input
+              type="number"
+              min={0}
+              max={120}
+              step={5}
+              className="input-base"
+              value={form.buffer_minutes ?? 0}
+              onChange={(e) => {
+                const raw = Number(e.target.value)
+                const clamped = Number.isFinite(raw) ? Math.min(120, Math.max(0, raw)) : 0
+                setForm((current) => ({ ...current, buffer_minutes: clamped }))
+              }}
+            />
+            <p className="text-xs text-slate-400 mt-1">0〜120分の範囲で設定できます</p>
           </div>
         </div>
 

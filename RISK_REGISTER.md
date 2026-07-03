@@ -19,6 +19,7 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 
 - [ ] **D4**: 実際にDBの`audit_log`テーブルを管理者権限で閲覧し、承認/却下/完了/キャンセル操作それぞれで正しい`action`・`actor_id`が記録されることを一通り確認。
 - [ ] **F2**: 業者アカウントでログイン→「プロフィール」で車両を3台目まで追加→追加ボタンの下に料金加算の注意書きが出ることを目視確認。
+- [ ] **A4**: 業者アカウントでログイン→「プロフィール」で移動バッファを30分などに設定→保存→MSW検索で、その事業所の車両が「バッファ分の余裕がない時間帯」の検索から正しく除外されることを目視確認。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -57,10 +58,14 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **対応内容**: `reservations.msw_unconfirmed_warning_sent boolean default false` を追加。send-reminder（v17）に第4パス `warnMswUnconfirmed` を追加し、乗車24時間前（申請日=乗車日の当日申請は3時間前）時点でまだpendingならMSWへ「まだ承認されていません。別の事業所もご検討ください」を1回だけ通知するようにした。乗車時刻を過ぎたものはexpireStalePendingに任せて二重通知しない。
 - **検証**: `curl -X POST .../functions/v1/send-reminder` 実叩きで `{"reminded":0,"expired":0,"nudged":0,"warned":0,"retried":0,"retrySucceeded":0}` を確認（対象データなしのため0件だが新フィールドが正しく返ることを確認）。実際に閾値に達したpendingでの警告送信・重複防止は未実施 → 人間チェックリストに追加。
 
-### [ ] A4. 予約間の移動バッファがない
+### [x] A4. 予約間の移動バッファがない — 対応済み 2026-07-03
 - **事象**: 10:00-11:00の直後に11:00-12:00が別現場で確定でき、回送時間が確保されない（クレーム由来: 現場が回らない）。
-- **修正方針（案）**: businesses に `buffer_minutes int default 0` を追加し、MSW検索の重複判定とGiST用 `slot_tsrange` 生成側 or 検索クエリ側で前後バッファを加味。DB制約まで入れると電話予約と衝突しやすいので、まずは**検索側フィルタ＋承認時チェックのみ**に留めるのが現実的。プロフィール設定にUI追加。
-- **備考**: 仕様判断が要るのでユーザー確認してから着手。
+- **ユーザー判断**: 事業所ごとに分単位で設定できるようにし、設定を促す導線もつける方針（プロフィール画面での設定＋未設定時のナッジ表示）を確認済み。
+- **対応内容**: `businesses.buffer_minutes int default 0 check (0〜120)` を追加。DB制約（GiST排他）には反映せず、**検索側フィルタ＋承認時チェックのみ**に留めた（方針どおり、電話予約との衝突を避けるため）。
+  - `src/pages/business/Profile.tsx`: 「回送の余裕時間（移動バッファ）」欄を追加。0分のままだと「⚠️ 現在0分（余裕なし）」というナッジを表示。
+  - `src/pages/msw/Search.tsx`: 空き車両判定を「厳密な重複」から「事業所のbuffer_minutes分の余裕を含めた重複」に変更。料金定数と同様に`src/lib/constants.ts`は使わず、Search.tsx内にヘルパー関数（`overlapsWithBuffer`等）を追加。
+  - `approve_reservation` RPC: 二重承認ガードの重複判定にも同じバッファを適用（`make_interval(mins => buffer_minutes)`で前後を広げる）。
+- **検証**: `npm.cmd run build` 成功。本番DBで実データを使い検証（テスト後に削除済み）：(1) buffer_minutes=30の事業所で09:00-10:00確定済み・10:00-11:00申請中の組み合わせに対しapprove_reservationを実行→`reservation_conflict`で正しく拒否されることを確認。(2) buffer_minutes=0（デフォルト）に戻すと同じ組み合わせが従来どおり承認できることを確認（既存事業所への影響なしを確認）。実ログインでのProfile.tsx UIの見た目・Search.tsxの検索結果からの除外は未確認 → 人間チェックリストに追加。
 
 ### [ ] A5. guard_reservation_columns の NULL すり抜け（設計負債）
 - **事象**: status変更ガードは `current_setting('app.rpc_context', true)` がNULLだと `NOT IN` がNULL評価→例外にならず素通り。**complete_reservation・cancel_reservation_by_msw・send-reminderの失効処理・Calendarの直接update等がこの穴に依存して動いている**。
