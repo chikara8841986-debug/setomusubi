@@ -612,10 +612,8 @@ export default function BusinessCalendar() {
     setCancelPendingConfirmId(null)
     setCancellingId(reservationId)
 
-    const { error: reservationError } = await supabase
-      .from('reservations')
-      .update({ status: 'cancelled' })
-      .eq('id', reservationId)
+    // cancel_reservation_by_business RPC: 確定済み予約のキャンセル（A5: 直接UPDATEを廃止しRPC経由に統一）
+    const { error: reservationError } = await supabase.rpc('cancel_reservation_by_business', { p_reservation_id: reservationId })
 
     if (reservationError) {
       setCancellingId(null)

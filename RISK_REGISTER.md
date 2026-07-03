@@ -22,6 +22,8 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **A4**: 業者アカウントでログイン→「プロフィール」で移動バッファを30分などに設定→保存→MSW検索で、その事業所の車両が「バッファ分の余裕がない時間帯」の検索から正しく除外されることを目視確認。
 - [ ] **D3**: MSWアカウントでログイン→DevTools ApplicationでlocalStorageに`setomusubi-auth-token`が無く`sessionStorage`にあることを確認→ブラウザを完全に閉じて再度開き、ログインし直しが必要になることを確認。business/adminアカウントは今まで通り閉じても再ログイン不要なことも確認。
 - [ ] **D1**: 実際に予約の確定・電話予約・キャンセル等を行い、届いたメール本文に患者氏名だけが残り、乗車地住所・目的地が入っていない（「アプリでご確認ください」の案内文になっている）ことを目視確認。
+- [ ] **A5**: 業者アカウントでログインし、カレンダーから確定済み予約を実際にキャンセルして正常に動作すること、完了操作・MSW側キャンセルも問題なく動くことを一通り確認。
+- [ ] **C4**: `/terms` ページの第7条に追記した解約・返金・支払い遅延の文面を実際に開いて確認。将来的に特定商取引法の表記ページも別途必要。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -69,9 +71,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
   - `approve_reservation` RPC: 二重承認ガードの重複判定にも同じバッファを適用（`make_interval(mins => buffer_minutes)`で前後を広げる）。
 - **検証**: `npm.cmd run build` 成功。本番DBで実データを使い検証（テスト後に削除済み）：(1) buffer_minutes=30の事業所で09:00-10:00確定済み・10:00-11:00申請中の組み合わせに対しapprove_reservationを実行→`reservation_conflict`で正しく拒否されることを確認。(2) buffer_minutes=0（デフォルト）に戻すと同じ組み合わせが従来どおり承認できることを確認（既存事業所への影響なしを確認）。実ログインでのProfile.tsx UIの見た目・Search.tsxの検索結果からの除外は未確認 → 人間チェックリストに追加。
 
-### [ ] A5. guard_reservation_columns の NULL すり抜け（設計負債）— 調査完了・未着手 2026-07-03
+### [x] A5. guard_reservation_columns の NULL すり抜け（設計負債）— 対応済み 2026-07-03
 - **事象**: status変更ガードは `current_setting('app.rpc_context', true)` がNULLだと `NOT IN` がNULL評価→例外にならず素通り。
-- **ユーザー判断**: まず調査だけ実施し、実際に塞ぐのは影響範囲を把握してから判断する方針。
+- **ユーザー判断**: まず調査だけ実施し、依存箇所を洗い出した後、そのまま厳格化まで実施する方針に確定。
 - **調査結果（本番DBの実際のトリガー定義とrepoの全direct-update呼び出しを確認済み）**:
   - **repoの`supabase/schema.sql`が本番と食い違っている**（別の設計負債）。schema.sqlには`v_is_admin`分岐入りの新しそうな`guard_reservation_columns`が書かれているが、本番で実際に動いているのはこのRISK_REGISTER記載どおりの`app.rpc_context`版。schema.sqlは実体を反映しておらず、参照する際は要注意（E2の続きとして別途repo同期が必要）。
   - **NULLすり抜けに依存して動いている箇所（本番DBの関数定義で確認）**:
@@ -81,7 +83,19 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
     - `src/pages/admin/Reservations.tsx:130`付近 — 管理者用ステータス上書きUI。ガードなし。
     - `supabase/functions/send-reminder/index.ts`の期限切れ失効処理 — `.eq('status', 'pending')`でガード済み（他3つより安全）。
   - **一方で`approve_reservation`・`reject_reservation`は既に`set_config('app.rpc_context', ...)`を呼んでおり正規経路。**
-- **今後厳格化する場合に必要な作業（未実施）**: (1) `complete_reservation`・`cancel_reservation_by_msw`にも`set_config`呼び出しを追加、(2) `Calendar.tsx`の直接キャンセルUPDATEと管理者のステータス上書きUIをRPC化（クライアントから`set_config`を安全に呼ぶ手段はないため）、(3) 全経路変更後にキャンセル・完了・失効の回帰テストを行ってからガードを`COALESCE(v_rpc_ctx,'') NOT IN (...)`に厳格化。単独でガードだけ厳格化すると上記4経路が本番で壊れるため、着手する場合は上記3点をワンセットで行うこと。
+- **対応内容**:
+  1. `complete_reservation`・`cancel_reservation_by_msw` RPCに `set_config('app.rpc_context', ...)` 呼び出しを追加。
+  2. 直接UPDATEしていた2経路を新規RPC化: `cancel_reservation_by_business`（`src/pages/business/Calendar.tsx`の事業所側確定予約キャンセル用）、`expire_reservation`（`supabase/functions/send-reminder/index.ts`のpending失効処理用）。それぞれ呼び出し元を`.rpc(...)`経由に置き換え。
+  3. `guard_reservation_columns` を `COALESCE(v_rpc_ctx,'') NOT IN (...)` に厳格化し、許可リストに上記6つのRPC名を登録。管理者(`v_is_admin`)は従来どおり無条件バイパスのため、`src/pages/admin/Reservations.tsx`のステータス上書きUIは影響を受けない（調査時点の懸念は解消済み）。
+  - `src/types/database.ts` のRPC型定義に新設RPCを追加。あわせて`create_phone_reservation`の型定義に漏れていた`p_vehicle_id`引数も追記（A1対応時の記載漏れ）。
+- **検証**: `npm.cmd run build` 成功。本番DB上で実データを使った回帰テストを実施（テスト後にデータは削除済み）:
+  - `cancel_reservation_by_msw` → `cancelled` に正しく遷移
+  - `cancel_reservation_by_business` → `cancelled` に正しく遷移
+  - `complete_reservation` → `completed` に正しく遷移
+  - `expire_reservation` → `cancelled` に正しく遷移
+  - RPCを介さない生の直接UPDATE（独立したトランザクションで実行）→ `reservation_status_change_via_rpc_only` で正しく拒否されることを確認（NULLすり抜けが塞がれたことを実証）。
+  - `send-reminder`（v19）を実叩きしエラーなく動作することを確認。
+  - 実ログインでのUI操作（事業所カレンダーからの確定予約キャンセル）による確認は未実施 → 人間チェックリストに追加。
 
 ### [x] A6. 事業者がpendingを「キャンセル」経路で消すとMSW無通知 — 対応済み 2026-07-02
 - **事象**: 正規の「お断り」ボタンは send-rejection でMSWへ通知するが、`handleCancelReservation`（`src/pages/business/Calendar.tsx`）を pending に使った場合は通知なし（wasConfirmed=false のため）。
@@ -131,8 +145,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **対応内容**: `businesses.past_due_since timestamptz` を追加。`stripe-webhook`（v23）で past_due に入った最初の時刻のみ記録し（COALESCE相当、重複failedイベントで上書きしない）、active/trialing等に復旧または解約されたら null にリセットするようにした（`customer.subscription.updated`／`invoice.payment_failed`／`customer.subscription.deleted`の3箇所）。フロント `Search.tsx` は `subscription_status==='past_due'` かつ `past_due_since` から14日以内なら検索結果に含め続けるよう変更。事業者向けバナー（Layout.tsx）は既存のまま変更なし。
 - **検証**: `npm.cmd run build` 成功。プレビューでコンソールエラーなし確認。stripe-webhook は既存の厳格なTOCTOU対策（atomic claim/tombstone guard）に触れず、past_due_since管理は既存ガード確定後の追加書き込みとして実装したことをコードレビューで確認。実際にStripeでカード決済を失敗させて14日猶予・検索復帰を確認する統合テストは未実施 → 人間チェックリストに追加。C1（stripe-webhookの外部レビュー最終GO）は今回の変更を含めて改めて必要。
 
-### [ ] C4. 返金・日割り・解約タイミングのポリシー未定義
-- **修正方針**: 規約ページ（利用規約/特商法表記）を作り、解約は期末まで有効・日割返金なし等を明文化。コードより先に文書。
+### [x] C4. 返金・日割り・解約タイミングのポリシー未定義 — 対応済み 2026-07-04
+- **対応内容**: `src/pages/Terms.tsx` の第7条（料金・支払い）に3段落を追記。(1)解約はStripeポータルからいつでも可能で、効力は現在の請求期間の末日に発生（それまでは利用継続可）、(2)日割り返金は行わない・初期費用も返金対象外、(3)カード決済失敗時も原則14日間は利用継続（C3のpast_due猶予と整合）。文面は事前にユーザーへ提示し、内容の承認を得たうえで反映した。
+- **未実施**: 特定商取引法に基づく表記ページの新設、および実際のStripe Billing Portalの設定（解約タイミング・返金不可の運用を規約と一致させる設定）はC7（本番切替チェックリスト）側の作業として残っている。
 
 ### [ ] C5. 適格請求書（インボイス）未対応
 - **修正方針**: Stripe の Customer Tax ID ＋ 請求書PDFに登録番号を載せる設定を調査。ローンチ後でも可。

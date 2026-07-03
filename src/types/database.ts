@@ -460,6 +460,14 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: void
       }
+      cancel_reservation_by_business: {
+        Args: { p_reservation_id: string }
+        Returns: void
+      }
+      expire_reservation: {
+        Args: { p_reservation_id: string }
+        Returns: void
+      }
       create_phone_reservation: {
         Args: {
           p_date: string
@@ -473,6 +481,7 @@ export type Database = {
           p_equipment: Equipment
           p_equipment_rental: boolean
           p_notes: string
+          p_vehicle_id: string
         }
         Returns: string
       }

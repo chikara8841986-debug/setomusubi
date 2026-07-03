@@ -126,9 +126,9 @@ async function expireStalePending(now: Date): Promise<number> {
 
   let expired = 0
   for (const res of rows) {
-    // status を cancelled にすると auto_delete_occupied_slot で車両枠が解放される
-    const { error: upErr } = await supabase
-      .from('reservations').update({ status: 'cancelled' }).eq('id', res.id).eq('status', 'pending')
+    // expire_reservation RPC: status を cancelled にすると auto_delete_occupied_slot で車両枠が解放される
+    // （A5: 直接UPDATEを廃止しRPC経由に統一。guard_reservation_columnsのrpc_contextチェックに対応）
+    const { error: upErr } = await supabase.rpc('expire_reservation', { p_reservation_id: res.id })
     if (upErr) { console.error('expire update error:', upErr); continue }
 
     const hosp = res.hospitals as { name: string; user_id: string } | null
