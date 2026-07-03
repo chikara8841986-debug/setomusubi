@@ -62,7 +62,7 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
   const { data: reservations, error } = await supabase
     .from('reservations')
     .select(`
-      id, contact_name, patient_name, patient_address, destination,
+      id, contact_name, patient_name,
       reservation_date, start_time, end_time,
       businesses!inner(name, cancel_phone, user_id),
       hospitals!inner(name, user_id)
@@ -90,9 +90,8 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
 病院: ${hosp.name}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
-乗車地: ${res.patient_address}
-目的地: ${res.destination}
 ━━━━━━━━━━━━━━━━
+乗車地・目的地はアプリでご確認ください。
 
 せとむすび
 `

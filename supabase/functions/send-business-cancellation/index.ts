@@ -71,8 +71,6 @@ Deno.serve(async (req) => {
 事業所: ${biz?.name ?? ''}
 担当者: ${res.contact_name ?? ''}
 患者: ${res.patient_name ?? ''}
-乗車地: ${res.patient_address ?? ''}
-目的地: ${res.destination ?? ''}
 使用機材: ${EQUIPMENT_LABELS[res.equipment] ?? res.equipment ?? ''}
 ━━━━━━━━━━━━━━━━
 

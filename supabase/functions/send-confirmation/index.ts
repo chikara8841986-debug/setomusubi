@@ -73,12 +73,10 @@ Deno.serve(async (req) => {
 病院: ${res.hospitals?.name}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
-乗車地: ${res.patient_address}
-目的地: ${res.destination}
 使用機材: ${EQUIPMENT_LABELS[res.equipment] ?? res.equipment}
 機材貸出: ${res.equipment_rental ? 'あり' : 'なし'}
-${res.notes ? `備考: ${res.notes}` : ''}
 ━━━━━━━━━━━━━━━━━━
+乗車地・目的地・備考などの詳細はアプリでご確認ください。
 
 キャンセルの場合は事業所へ直接ご連絡ください。
 ${res.businesses?.cancel_phone ? `キャンセル連絡先: ${res.businesses.cancel_phone}` : ''}
