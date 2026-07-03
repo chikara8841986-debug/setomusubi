@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { supabase, AUTH_STORAGE_KEY } from '../lib/supabase'
+import { switchAuthToSessionOnly, resetAuthStorageMode } from '../lib/authStorage'
 import type { UserRole } from '../types/database'
 
 type AuthContextType = {
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(profile.role)
 
     if (profile.role === 'business') {
+      resetAuthStorageMode()
       const { data } = await supabase
         .from('businesses')
         .select('id, approved, name')
@@ -62,6 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBusinessName(data?.name ?? null)
       setBusinessApproved(data?.approved ?? false)
     } else if (profile.role === 'msw') {
+      // D3対策: 病院の共用PC想定。MSWだけセッションをsessionStorage限定にし、
+      // ブラウザ/タブを閉じたらログイン情報が残らないようにする。
+      switchAuthToSessionOnly(AUTH_STORAGE_KEY)
       const { data } = await supabase
         .from('hospitals')
         .select('id, name')
@@ -69,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
       setHospitalId(data?.id ?? null)
       setHospitalName(data?.name ?? null)
+    } else {
+      resetAuthStorageMode()
     }
   }
 
@@ -108,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    resetAuthStorageMode()
     // 共用PC対策: ログアウト時にService WorkerのCacheStorageを掃除しておく
     if ('caches' in window) {
       const keys = await caches.keys()

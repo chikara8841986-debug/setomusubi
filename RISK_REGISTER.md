@@ -20,6 +20,7 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **D4**: 実際にDBの`audit_log`テーブルを管理者権限で閲覧し、承認/却下/完了/キャンセル操作それぞれで正しい`action`・`actor_id`が記録されることを一通り確認。
 - [ ] **F2**: 業者アカウントでログイン→「プロフィール」で車両を3台目まで追加→追加ボタンの下に料金加算の注意書きが出ることを目視確認。
 - [ ] **A4**: 業者アカウントでログイン→「プロフィール」で移動バッファを30分などに設定→保存→MSW検索で、その事業所の車両が「バッファ分の余裕がない時間帯」の検索から正しく除外されることを目視確認。
+- [ ] **D3**: MSWアカウントでログイン→DevTools ApplicationでlocalStorageに`setomusubi-auth-token`が無く`sessionStorage`にあることを確認→ブラウザを完全に閉じて再度開き、ログインし直しが必要になることを確認。business/adminアカウントは今まで通り閉じても再ログイン不要なことも確認。
 
 <!-- 新しい項目はこの下に追記していく -->
 
@@ -148,9 +149,11 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **対応内容**: `vite.config.ts` の `supabase.co` runtimeCaching エントリを削除（NetworkOnly相当）。ビルド後の `dist/sw.js` から `supabase-api` キャッシュ名が消えたことを確認。あわせて `AuthContext.tsx` の `signOut()` に `caches.delete` を追加し、ログアウト時に既存のCacheStorageも掃除するようにした（共用PC対策の追加防御）。
 - **検証**: `npm.cmd run build` 成功、`dist/sw.js` に `supabase-api` 文字列が含まれないことを確認。precacheエントリ数(56件)は変化なし＝静的アセットのオフライン動作に影響なし。実ブラウザでのオフライン動作確認は未実施 → 人間チェックリストに追加。
 
-### [ ] D3. 共用PCでのセッション永続
+### [x] D3. 共用PCでのセッション永続 — 対応済み 2026-07-03
 - **事象**: Supabase セッションが localStorage 永続、自動ログアウトなし。病院共用端末で放置ログインが起きうる。
-- **修正方針（案）**: MSWロールのみ「共用PCモード」（sessionStorage保存 or 8時間で強制再ログイン）。supabase-js の `auth.storage` オプションで切替可能。仕様判断が要るためユーザー確認。
+- **ユーザー判断**: MSWロールだけ自動ログアウトを導入する方針を確認済み。
+- **対応内容**: `supabase-js` の `auth.storage` をカスタムアダプタ（`src/lib/authStorage.ts`）に差し替え。ロールが`msw`と判明した時点（`AuthContext.tsx`の`loadUserMeta`）で、セッションを`localStorage`から`sessionStorage`へ移し、以後の書き込みも`sessionStorage`限定にする（`switchAuthToSessionOnly`）。これによりMSWはブラウザ/タブを閉じるとログイン情報が消える。business/adminロールは従来どおり`localStorage`永続のまま（`resetAuthStorageMode`で明示的に通常モードに戻す）。ログアウト時にもモードをリセット。
+- **検証**: `npm.cmd run build` 成功。プレビューでコンソールエラーなし、ログイン画面が正常表示されること、初期状態で`localStorage`/`sessionStorage`に余計なキーが残っていないことを確認。実際にMSWアカウントでログイン→ブラウザを閉じて再度開いた際に再ログインが必要になることの実機確認は未実施（テスト用MSWアカウントの認証情報を保有していないため）→ 人間チェックリストに追加。
 
 ### [x] D4. 監査ログなし — 対応済み 2026-07-03
 - **事象**: 誰がいつ承認/却下/キャンセルしたか記録がなく、紛争時に証跡がない。
