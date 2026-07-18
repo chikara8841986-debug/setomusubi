@@ -93,12 +93,17 @@ Deno.serve(async (req) => {
           })
           .eq('id', profile.id)
 
-        if (replyToken) await replyMessage(replyToken, '連携が完了しました。以後、せとむすびの通知がLINEにも届きます。')
+        if (replyToken) {
+          await replyMessage(
+            replyToken,
+            'せとむすびとのLINE連携が完了しました！🎉\n以降、予約の申請・承認・キャンセルなどの通知がLINEにも届くようになります。',
+          )
+        }
       } else {
         if (replyToken) {
           await replyMessage(
             replyToken,
-            'コードが正しくないか、有効期限が切れています。アプリの通知設定からコードを再発行してください。',
+            'あれ、コードが違うようです🙏\nコードが正しくないか、有効期限（10分）が切れている可能性があります。お手数ですが、アプリの「通知設定」からコードを再発行してお試しください。',
           )
         }
       }
