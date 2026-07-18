@@ -138,6 +138,7 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 ### [ ] C1. stripe-webhook v20 の外部レビュー最終GO未取得
 - **経緯**: Codexレビューを繰り返しTOCTOU等を修正（v20）したが、Codexの使用制限で最終GO判定が取れていない。
 - **修正方針**: `/codex:rescue` で v20（現デプロイv22表記だがソースはv20系）を再レビュー依頼。指摘ゼロならクローズ。
+- **2026-07-18 試行結果**: ユーザー許可のもと例外的にAgentツール(codex:codex-rescue)経由でレビューを依頼したが、`Codex error: The 'gpt-5.6-sol' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.`でCodex CLI側が実行不能（バージョンが古くデフォルトモデルに対応していない）。**Codex CLI/アプリの更新待ち**。ユーザーが更新後、再度レビュー依頼が必要。
 
 ### [ ] C2. STRIPE_BASE_PRICE_ID / STRIPE_PER_VEHICLE_PRICE_ID 未設定
 - **事象**: チェックアウト・webhook・sync が毎回 ephemeral Product を生成（動作はする。ダッシュボード汚染と価格管理の分散）。
