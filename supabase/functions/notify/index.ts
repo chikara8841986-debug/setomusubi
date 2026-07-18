@@ -59,9 +59,12 @@ async function sendEmail(to: string, subject: string, text: string): Promise<Sen
   return { ok: true }
 }
 
-async function sendLinePush(lineUserId: string, subject: string, text: string): Promise<SendResult> {
+async function sendLinePush(lineUserId: string, _subject: string, text: string): Promise<SendResult> {
   if (!LINE_TOKEN) return { ok: false, error: 'LINE_CHANNEL_ACCESS_TOKEN not configured' }
-  const message = `【${subject}】\n\n${text}`.slice(0, 4900)
+  // textは呼び出し元(各send-*関数)が組み立てる時点ですでに「【せとむすび】〇〇」の見出し行を
+  // 自身で含んでいる。ここでさらにsubjectを【】で囲んで前置すると見出しが二重表示になるため、
+  // LINEにはtextをそのまま送る(subjectはメール件名としてのみ使う)。
+  const message = text.trim().slice(0, 4900)
   const res = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${LINE_TOKEN}`, 'Content-Type': 'application/json' },
