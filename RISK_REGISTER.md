@@ -135,10 +135,12 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 
 ## 🟡 C. 課金・Stripe
 
-### [ ] C1. stripe-webhook v20 の外部レビュー最終GO未取得
-- **経緯**: Codexレビューを繰り返しTOCTOU等を修正（v20）したが、Codexの使用制限で最終GO判定が取れていない。
-- **修正方針**: `/codex:rescue` で v20（現デプロイv22表記だがソースはv20系）を再レビュー依頼。指摘ゼロならクローズ。
-- **2026-07-18 試行結果**: ユーザー許可のもと例外的にAgentツール(codex:codex-rescue)経由でレビューを依頼したが、`Codex error: The 'gpt-5.6-sol' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.`でCodex CLI側が実行不能（バージョンが古くデフォルトモデルに対応していない）。**Codex CLI/アプリの更新待ち**。ユーザーが更新後、再度レビュー依頼が必要。
+### [x] C1. stripe-webhook v20 の外部レビュー最終GO — 対応済み 2026-07-18
+- **経緯**: Codexレビューを繰り返しTOCTOU等を修正（v20）したが、Codexの使用制限で最終GO判定が取れていなかった。
+- **2026-07-18 Codex試行**: ユーザー許可のもと例外的にAgentツール(codex:codex-rescue)経由でレビューを2回試行したが、いずれも`Codex error: The 'gpt-5.6-sol' model requires a newer version of Codex. Please upgrade to the latest app or CLI and try again.`でCodex CLI側が実行不能（ユーザーがCLIを更新した後も再現）。CLI側の対応待ちのため、ユーザー判断で代替レビューへ切替。
+- **代替レビュー（fableモデル・ai-corp:security-reviewer）**: `stripe-webhook/index.ts`と`create-checkout-session/index.ts`を読んだ独立レビューを実施。**結論: リリースを止める指摘(High/Critical)はゼロ、リリース可。** 決済金額・事業所IDの不正操作（他事業所への課金付け替え等）の経路なし、署名検証・fail-closed処理は妥当、エラー時500返却によるStripeリトライは冪等設計のため安全、と確認。
+  - 残存リスク（すべて低/情報レベル、悪用不可・対応必須ではないと判断）: (1) `last_cancelled_subscription_id`が直近1件しか保持できず、多段解約＋数日遅延リトライという極めて狭い条件下でのみ古い状態が復活しうる、(2) 同一サブスクの順序逆転イベントで一時的に古い状態が書かれうるが次のイベントで自己修復、(3) `past_due_since`更新ブロック1箇所だけ他と同水準の完全原子チェックが抜けている（ミリ秒単位の窓）、(4) 将来コンビニ払い等の後払い決済を追加する場合は`session.payment_status`の検証追加が必要（現状カード決済のみのため無関係）、(5) `stripe@14`/`supabase-js@2`がesm.sh経由でマイナー版自動追従のため、決済コードとしてはバージョン固定が望ましい。
+- **今後**: 上記5件は必須修正ではなく、対応するなら任意のタイミングでよい。C7（本番切替）時にlive鍵切替と合わせて依存バージョン固定を検討してもよい。
 
 ### [ ] C2. STRIPE_BASE_PRICE_ID / STRIPE_PER_VEHICLE_PRICE_ID 未設定
 - **事象**: チェックアウト・webhook・sync が毎回 ephemeral Product を生成（動作はする。ダッシュボード汚染と価格管理の分散）。
