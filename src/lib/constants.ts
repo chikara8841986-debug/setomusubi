@@ -7,6 +7,11 @@ export const DEFAULT_PER_VEHICLE_FEE = 1_650
 export const FREE_VEHICLES = 2
 
 /**
+ * LINE公式アカウント「せとむすび」の友だち追加リンク（F3: LINE通知連携）
+ */
+export const LINE_FRIEND_URL = 'https://line.me/R/ti/p/@537bqcvu'
+
+/**
  * 香川県全市町村（17市町）
  * 東讃 → 中讃 → 西讃 → 島嶼 の順
  */

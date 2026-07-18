@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import type { Business, Vehicle } from '../../types/database'
 import { SERVICE_AREAS, DEFAULT_PER_VEHICLE_FEE, FREE_VEHICLES } from '../../lib/constants'
+import LineLinkCard from '../../components/LineLinkCard'
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -731,6 +732,10 @@ export default function BusinessProfile() {
           )}
           <p className="text-xs text-slate-400 mt-2">occupied slot がある車両は削除できません</p>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <LineLinkCard />
       </div>
     </div>
   )

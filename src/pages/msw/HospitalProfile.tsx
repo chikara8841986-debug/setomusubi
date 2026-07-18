@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import LineLinkCard from '../../components/LineLinkCard'
 
 export default function HospitalProfile() {
   const { user } = useAuth()
@@ -135,6 +136,10 @@ export default function HospitalProfile() {
           {saving ? '保存中...' : isDirty ? '変更を保存する' : '保存済み'}
         </button>
       </form>
+
+      <div className="mt-6">
+        <LineLinkCard />
+      </div>
     </div>
   )
 }

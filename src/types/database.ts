@@ -13,16 +13,31 @@ export type Database = {
         Row: {
           id: string
           role: UserRole
+          line_user_id: string | null
+          notify_line: boolean
+          notify_email: boolean
+          line_link_code: string | null
+          line_link_code_expires_at: string | null
           created_at: string
         }
         Insert: {
           id: string
           role: UserRole
+          line_user_id?: string | null
+          notify_line?: boolean
+          notify_email?: boolean
+          line_link_code?: string | null
+          line_link_code_expires_at?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           role?: UserRole
+          line_user_id?: string | null
+          notify_line?: boolean
+          notify_email?: boolean
+          line_link_code?: string | null
+          line_link_code_expires_at?: string | null
         }
         Relationships: []
       }
@@ -444,6 +459,10 @@ export type Database = {
     }  // Tables
     Views: Record<string, never>
     Functions: {
+      generate_line_link_code: {
+        Args: Record<string, never>
+        Returns: string
+      }
       approve_reservation: {
         Args: { p_reservation_id: string }
         Returns: number
