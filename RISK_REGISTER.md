@@ -34,9 +34,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - DB/認証/Edge Functions: Supabase project `lcuoeekhnmbhomcdbedi`（**FREEプラン**）
 - 決済: Stripe（テストモード運用中）。webhook v20系。
 - メール: Resend（独自ドメイン `send.hakobite-marugame.com` 認証済み、無料枠100通/日）
-- 通知: 中央ディスパッチ `supabase/functions/notify/index.ts`（user_id→本人＋notification_recipientsの組織スタッフへメール/LINEファンアウト。LINEは `LINE_CHANNEL_ACCESS_TOKEN` 未設定のため現状メールのみ）
+- 通知: 中央ディスパッチ `supabase/functions/notify/index.ts`（user_id→本人＋notification_recipientsの組織スタッフへメール/LINEファンアウト。LINEは `LINE_CHANNEL_ACCESS_TOKEN` 設定済みで、`line_user_id`連携済み＆`notify_line=true`のユーザーへPush配信される→F3）
 - 予約モデル: ネガティブリスト型。事業所は `occupied_slots`（車両×時間の占有）を登録、MSW検索は「占有されていない車両を持つ事業所」を返す。占有は `reservations` INSERT時のトリガ `auto_create_occupied_slot`（**vehicle_id がある場合のみ**）でも作られる。`occupied_slots` には GiST 排他制約 `no_overlap_per_vehicle` あり。
-- 予約status変更: 原則RPC（approve_reservation / reject_reservation / complete_reservation / cancel_reservation_by_msw / create_phone_reservation）。BEFORE UPDATEトリガ `guard_reservation_columns` は `app.rpc_context` 未設定(NULL)だと**素通り**する（→A5）。
+- 予約status変更: 必ずRPC経由（approve / reject / complete / cancel_by_msw / cancel_by_business / expire）。BEFORE UPDATEトリガ `guard_reservation_columns` は `COALESCE(app.rpc_context,'')` の許可リスト照合で**fail-closed**（NULL素通りはA5で解消済み。管理者のみ直接UPDATE可）。
 
 ---
 
@@ -97,6 +97,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
   - RPCを介さない生の直接UPDATE（独立したトランザクションで実行）→ `reservation_status_change_via_rpc_only` で正しく拒否されることを確認（NULLすり抜けが塞がれたことを実証）。
   - `send-reminder`（v19）を実叩きしエラーなく動作することを確認。
   - 実ログインでのUI操作（事業所カレンダーからの確定予約キャンセル）による確認は未実施 → 人間チェックリストに追加。
+- **追補 2026-07-18（実装精査で発見・修正済み）**:
+  - `expire_reservation` のEXECUTE権限が `authenticated` にも付与されていた。関数内に呼び出し元チェックの無いcron専用関数のため、予約UUIDを知る当事者が承認/却下フローを飛ばして申請を握りつぶせる抜け道になっていた。migration `20260718121146_a5_expire_reservation_service_role_only` で `service_role` のみに限定（本番反映済み・権限一覧で `authenticated` が消えたことを確認済み）。
+  - A5当日のデプロイで、本番 `send-reminder` の通知文面に文字化けが混入していた（「仮予約」→「仆予約」「仇予約」。デプロイ時にファイル内容を書き写したのが原因。repo側は正しかった）。repoの内容どおりにv22として再デプロイし、本番文面が「仮予約」に戻ったことを `get_edge_function` の返却内容で照合確認済み。
 
 ### [x] A6. 事業者がpendingを「キャンセル」経路で消すとMSW無通知 — 対応済み 2026-07-02
 - **事象**: 正規の「お断り」ボタンは send-rejection でMSWへ通知するが、`handleCancelReservation`（`src/pages/business/Calendar.tsx`）を pending に使った場合は通知なし（wasConfirmed=false のため）。
@@ -234,8 +237,9 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
   - `line-webhook` Edge Functionを新規作成・デプロイ。`x-line-signature`をLINE_CHANNEL_SECRETでHMAC-SHA256検証し、友だちがコードをトーク送信すると該当profileの`line_user_id`を紐付け、`notify_line`をtrueにする。LINE本文はD1の最小化方針に沿って短い確認/エラーメッセージのみ返信。
   - Webhook URLをLINE側に登録し、LINE Developersコンソールの「検証」機能で署名検証が成功することを確認済み。
   - フロント: 共有コンポーネント`src/components/LineLinkCard.tsx`を新設し、事業所プロフィール(`business/Profile.tsx`)・病院プロフィール(`msw/HospitalProfile.tsx`)の両方に「通知設定」カードとして追加。コード発行→友だち追加案内→連携状況確認→通知ON/OFFトグル→連携解除、まで一通り実装。
+  - **追補 2026-07-18（実装精査での改善。`line-webhook` v4としてデプロイ、本番とrepoの一致を照合済み）**: (1) コード以外の雑談・あいさつにも「コードが違うようです」と誤返信していたのを、メッセージ中に6文字の英数字コードが含まれる場合のみ反応するよう修正（コード以外は無応答＝応答メッセージ機能オフと整合）。(2) DB更新が失敗しても「連携完了」と返す可能性があったのを、更新エラー時は連携失敗の旨を返すよう修正。(3) ブロック(unfollow)で`notify_line`を自動オフ、再追加(follow)で自動オンにするハンドリングを追加（ブロック中の届かないPush送信を止め、再追加だけで通知が復帰する）。
 - **検証**: `npm.cmd run build`成功。プレビューでログイン画面のコンソールエラーなしを確認。本番DBで`generate_line_link_code()`を実際に呼び出し、6桁コードが発行されDBに正しく保存されること・有効期限が未来に設定されることを確認（テストデータは削除済み）。LINE Developersコンソールの「検証」で200が返ることを確認。
-- **未実施**: `notification_recipients`（組織の追加スタッフ管理UI）は今回のスコープ外。実際にLINEアプリから連携コードを送信して`line_user_id`が正しく紐付くエンドツーエンドの確認は未実施（テスト用LINEアカウントでの実地確認が必要）→ 人間チェックリストに追加。
+- **未実施**: `notification_recipients`（組織の追加スタッフ管理UI）は今回のスコープ外。連携コード送信→「連携完了」返信まではユーザー本人のLINEで実地確認済み（2026-07-18時点）。予約の承認・キャンセル等で実際にLINE通知が届くことの確認は未実施 → 人間チェックリストに追加。
 
 ### [ ] F4. 深夜跨ぎ予約（23:00→翌1:00）非対応 — 対応しない方針で確定 2026-07-03
 - 現状 start<end バリデーションで弾かれる。

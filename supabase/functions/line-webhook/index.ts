@@ -68,12 +68,28 @@ Deno.serve(async (req) => {
 
   for (const event of payload.events ?? []) {
     try {
-      if (event.type !== 'message' || event.message?.type !== 'text' || event.source?.type !== 'user') continue
+      const userId = event.source?.userId as string | undefined
+      if (!userId || event.source?.type !== 'user') continue
 
-      const code = String(event.message.text ?? '').trim().toUpperCase()
-      const userId = event.source.userId as string | undefined
+      // ブロック(unfollow): 届かないPush送信を止める。line_user_idは残し、再追加時に自動復帰させる
+      if (event.type === 'unfollow') {
+        await supabase.from('profiles').update({ notify_line: false }).eq('line_user_id', userId)
+        continue
+      }
+      // 再追加(follow): 連携済みのユーザーならLINE通知を自動で再開する
+      if (event.type === 'follow') {
+        await supabase.from('profiles').update({ notify_line: true }).eq('line_user_id', userId)
+        continue
+      }
+
+      if (event.type !== 'message' || event.message?.type !== 'text') continue
       const replyToken = event.replyToken as string | undefined
-      if (!code || !userId) continue
+
+      // メッセージ中の6文字コードにだけ反応する。雑談・あいさつ等には返信しない
+      // （応答メッセージ機能はオフにしてあるため、コード以外は無応答が正しい挙動）
+      const codeMatch = String(event.message.text ?? '').toUpperCase().match(/\b[A-Z0-9]{6}\b/)
+      if (!codeMatch) continue
+      const code = codeMatch[0]
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -83,7 +99,7 @@ Deno.serve(async (req) => {
         .maybeSingle()
 
       if (profile) {
-        await supabase
+        const { error: linkErr } = await supabase
           .from('profiles')
           .update({
             line_user_id: userId,
@@ -92,6 +108,17 @@ Deno.serve(async (req) => {
             line_link_code_expires_at: null,
           })
           .eq('id', profile.id)
+
+        if (linkErr) {
+          console.error('[line-webhook] link update error:', linkErr)
+          if (replyToken) {
+            await replyMessage(
+              replyToken,
+              'ごめんなさい、連携処理でエラーが発生しました🙏\n時間をおいて、もう一度コードを送信してください。',
+            )
+          }
+          continue
+        }
 
         if (replyToken) {
           await replyMessage(
