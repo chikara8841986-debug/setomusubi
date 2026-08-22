@@ -1,0 +1,727 @@
+/*
+ * A4 flyer foundation
+ * Generic page, typography, card, grid, and placeholder rules are kept reusable
+ * so a later consumer-facing flyer can share this stylesheet.
+ */
+
+:root {
+  --ink: #183335;
+  --ink-soft: #3e5557;
+  --teal-900: #154f52;
+  --teal-800: #1b6668;
+  --teal-700: #24787a;
+  --teal-500: #59a8a5;
+  --teal-200: #b9d9d6;
+  --teal-100: #dcecea;
+  --teal-050: #f0f7f6;
+  --sand: #f4f0e8;
+  --paper: #ffffff;
+  --line: #b7c8c7;
+  --placeholder: #fff1b8;
+  --placeholder-line: #7c5d00;
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  color: var(--ink);
+  background: #d9e3e2;
+  font-family: "Noto Sans JP", "Yu Gothic", "游ゴシック", Meiryo, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.65;
+  font-weight: 500;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+h1,
+h2,
+h3,
+p,
+ol,
+ul,
+dl,
+dd {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+}
+
+.flyer {
+  width: 210mm;
+  margin: 0 auto;
+}
+
+.print-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  overflow: hidden;
+  background: var(--paper);
+  page-break-after: always;
+  break-after: page;
+}
+
+.print-page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.page-body {
+  padding-right: 14mm;
+  padding-left: 14mm;
+}
+
+.page-footer {
+  position: absolute;
+  right: 14mm;
+  bottom: 6mm;
+  left: 14mm;
+  display: flex;
+  justify-content: space-between;
+  padding-top: 2.2mm;
+  border-top: 0.35mm solid var(--line);
+  color: #566d6f;
+  font-size: 7.4pt;
+  letter-spacing: 0.03em;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+}
+
+.brand-mark {
+  width: 16mm;
+  height: 16mm;
+  flex: 0 0 auto;
+  border-radius: 4mm;
+  background: #fff;
+  box-shadow: 0 1.2mm 3.4mm rgba(0, 35, 36, 0.2);
+}
+
+.brand-name {
+  font-size: 26pt;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+.eyebrow,
+.section-kicker {
+  font-size: 8.7pt;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.section-kicker {
+  margin-bottom: 1.2mm;
+  color: var(--teal-800);
+}
+
+.section-title {
+  color: var(--ink);
+  font-size: 15pt;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.section-title span {
+  display: inline-block;
+  padding-bottom: 1mm;
+  border-bottom: 1mm solid var(--teal-500);
+}
+
+/* Front page */
+.hero {
+  position: relative;
+  height: 80mm;
+  overflow: hidden;
+  background: var(--teal-900);
+  color: #fff;
+}
+
+.hero-photo,
+.hero-shade {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-photo {
+  background-image: url("../public/setomusubi-bg.jpg");
+  background-position: center 43%;
+  background-size: cover;
+  filter: saturate(0.65) contrast(0.94);
+}
+
+.hero-shade {
+  background:
+    linear-gradient(90deg, rgba(13, 65, 67, 0.96) 0%, rgba(13, 65, 67, 0.86) 49%, rgba(13, 65, 67, 0.36) 100%),
+    linear-gradient(0deg, rgba(9, 40, 41, 0.42), rgba(9, 40, 41, 0.05));
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  width: 140mm;
+  padding: 12mm 0 0 14mm;
+  text-shadow: 0 0.6mm 1.5mm rgba(0, 0, 0, 0.35);
+}
+
+.hero .eyebrow {
+  margin-bottom: 1mm;
+  color: #fff;
+}
+
+.hero h1 {
+  margin-top: 7mm;
+  font-size: 25pt;
+  font-weight: 900;
+  letter-spacing: 0.015em;
+  line-height: 1.36;
+}
+
+.hero h1 span {
+  color: #d8f0ed;
+}
+
+.hero-lead {
+  margin-top: 4mm;
+  font-size: 11.6pt;
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.front-body {
+  padding-top: 8mm;
+}
+
+.intro-band {
+  display: grid;
+  grid-template-columns: 78mm 1fr;
+  column-gap: 9mm;
+  align-items: center;
+  padding: 6mm 7mm;
+  border: 0.45mm solid var(--teal-200);
+  border-left: 2mm solid var(--teal-700);
+  background: var(--teal-050);
+}
+
+.intro-band h2 {
+  font-size: 16.5pt;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.intro-band h2 strong {
+  color: var(--teal-900);
+  font-size: 20pt;
+}
+
+.intro-band > p:last-child {
+  color: var(--ink-soft);
+  font-size: 10pt;
+  line-height: 1.75;
+}
+
+.flow-section {
+  margin-top: 7mm;
+}
+
+.flow-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4mm;
+  margin-top: 4mm;
+  list-style: none;
+}
+
+.flow-list li {
+  position: relative;
+  min-height: 38mm;
+  padding: 5mm 4mm 4mm;
+  border: 0.4mm solid var(--line);
+  border-top: 1.4mm solid var(--teal-700);
+  background: #fff;
+}
+
+.flow-list li:not(:last-child)::after {
+  content: "›";
+  position: absolute;
+  z-index: 2;
+  top: 13mm;
+  right: -4.2mm;
+  width: 5mm;
+  height: 9mm;
+  color: var(--teal-800);
+  background: #fff;
+  font-size: 20pt;
+  font-weight: 900;
+  line-height: 8mm;
+  text-align: center;
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 8mm;
+  height: 8mm;
+  margin-bottom: 2.5mm;
+  border: 0.45mm solid var(--teal-800);
+  border-radius: 50%;
+  color: var(--teal-900);
+  font-size: 10pt;
+  font-weight: 900;
+}
+
+.flow-list strong {
+  display: block;
+  font-size: 11.5pt;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.flow-list small {
+  display: block;
+  margin-top: 2mm;
+  color: var(--ink-soft);
+  font-size: 8.5pt;
+  line-height: 1.65;
+}
+
+.benefits {
+  margin-top: 7mm;
+}
+
+.benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4mm;
+  margin-top: 4mm;
+}
+
+.benefit-card {
+  min-height: 35mm;
+  padding: 4mm;
+  background: var(--sand);
+}
+
+.benefit-index {
+  display: block;
+  color: var(--teal-800);
+  font-size: 8pt;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.benefit-card h3 {
+  margin-top: 1mm;
+  font-size: 10.7pt;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.benefit-card p {
+  margin-top: 1.5mm;
+  color: var(--ink-soft);
+  font-size: 8.3pt;
+  line-height: 1.6;
+}
+
+.notice-box {
+  display: flex;
+  align-items: center;
+  gap: 6mm;
+  margin-top: 6mm;
+  padding: 4mm 5mm;
+  border: 0.55mm solid var(--teal-900);
+  background: #fff;
+}
+
+.notice-box strong {
+  width: 90mm;
+  flex: 0 0 auto;
+  color: var(--teal-900);
+  font-size: 10pt;
+  line-height: 1.55;
+}
+
+.notice-box span {
+  padding-left: 6mm;
+  border-left: 0.4mm solid var(--line);
+  color: var(--ink-soft);
+  font-size: 8.5pt;
+}
+
+/* Back page */
+.back-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 37mm;
+  padding: 0 14mm;
+  border-bottom: 1.2mm solid var(--teal-500);
+  background: var(--teal-900);
+  color: #fff;
+}
+
+.brand-lockup--small .brand-mark {
+  width: 12mm;
+  height: 12mm;
+  border-radius: 3mm;
+}
+
+.brand-lockup--small .brand-name {
+  font-size: 19pt;
+}
+
+.brand-lockup--small .eyebrow {
+  margin-top: 1mm;
+  color: #e2f1ef;
+  font-size: 7.5pt;
+}
+
+.back-header-copy {
+  padding-left: 9mm;
+  border-left: 0.35mm solid rgba(255, 255, 255, 0.65);
+  font-size: 12.5pt;
+  font-weight: 800;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.back-body {
+  padding-top: 7mm;
+}
+
+.heading-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.source-note {
+  color: #617476;
+  font-size: 7pt;
+}
+
+.price-layout {
+  display: grid;
+  grid-template-columns: 1fr 9mm 1fr;
+  align-items: stretch;
+  margin-top: 4mm;
+  border: 0.5mm solid var(--teal-800);
+}
+
+.price-main,
+.price-extra {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 4mm 5mm;
+}
+
+.price-main {
+  background: var(--teal-050);
+}
+
+.price-extra {
+  background: #fff;
+}
+
+.price-label {
+  font-size: 9pt;
+  font-weight: 800;
+}
+
+.price-main strong,
+.price-extra strong {
+  grid-row: span 2;
+  color: var(--teal-900);
+  font-size: 13pt;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.price-main strong span,
+.price-extra strong span {
+  font-size: 28pt;
+  letter-spacing: -0.04em;
+}
+
+/* 月額であることを必ず読み取れるようにする単位表記 */
+.price-main strong small,
+.price-extra strong small {
+  margin-left: 0.5mm;
+  font-size: 10pt;
+  font-weight: 800;
+}
+
+.source-note .placeholder-inline {
+  max-width: 34mm;
+  margin-top: 1.2mm;
+  font-size: 7.4pt;
+  text-align: center;
+}
+
+.price-main p,
+.price-extra p {
+  align-self: start;
+  color: var(--ink-soft);
+  font-size: 8pt;
+}
+
+.price-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--teal-900);
+  font-size: 18pt;
+  font-weight: 700;
+}
+
+.back-columns {
+  display: grid;
+  grid-template-columns: 112mm 1fr;
+  gap: 7mm;
+  margin-top: 7mm;
+}
+
+.back-main-column {
+  min-width: 0;
+}
+
+.area-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2mm;
+  margin-top: 4mm;
+  list-style: none;
+}
+
+.area-list li {
+  padding: 2mm 1mm;
+  border: 0.35mm solid #93afad;
+  background: var(--teal-050);
+  font-size: 8.4pt;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.area-list li:last-child {
+  grid-column: span 2;
+}
+
+.faq {
+  margin-top: 7mm;
+}
+
+.faq-list {
+  margin-top: 4mm;
+}
+
+.faq-list > div {
+  padding: 3mm 0;
+  border-top: 0.35mm solid var(--line);
+}
+
+.faq-list > div:last-child {
+  border-bottom: 0.35mm solid var(--line);
+}
+
+.faq-list dt {
+  font-size: 9.3pt;
+  font-weight: 800;
+}
+
+.faq-list dd {
+  margin-top: 1.2mm;
+  color: var(--ink-soft);
+  font-size: 8.2pt;
+  line-height: 1.65;
+}
+
+.contact-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 139mm;
+  padding: 6mm;
+  border: 0.5mm solid var(--teal-900);
+  background: var(--teal-900);
+  color: #fff;
+}
+
+.section-kicker--light {
+  color: #cce5e2;
+}
+
+.contact-panel h2 {
+  font-size: 17pt;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.contact-lead {
+  margin-top: 3mm;
+  color: #e1eeee;
+  font-size: 8.5pt;
+}
+
+.placeholder-block,
+.placeholder-inline {
+  border: 0.6mm dashed var(--placeholder-line);
+  color: #3d3000;
+  background: var(--placeholder);
+  font-weight: 800;
+}
+
+.qr-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 37mm;
+  height: 37mm;
+  margin: 5mm auto;
+  padding: 3mm;
+  font-size: 9pt;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.contact-items {
+  display: grid;
+  gap: 3mm;
+  margin-top: auto;
+}
+
+.contact-items > div {
+  border-top: 0.3mm solid rgba(255, 255, 255, 0.45);
+  padding-top: 2mm;
+}
+
+.contact-items span {
+  display: block;
+  color: #cae0de;
+  font-size: 7.5pt;
+  font-weight: 700;
+}
+
+.placeholder-inline {
+  display: block;
+  margin-top: 1mm;
+  padding: 1.6mm 1.8mm;
+  font-size: 8.2pt;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.contact-note {
+  margin-top: 3mm;
+  color: #d9e9e7;
+  font-size: 6.7pt;
+  line-height: 1.45;
+}
+
+.start-strip {
+  display: grid;
+  grid-template-columns: 22mm 1fr;
+  gap: 6mm;
+  align-items: center;
+  margin-top: 7mm;
+  padding: 4mm 5mm;
+  border-top: 0.5mm solid var(--teal-800);
+  border-bottom: 0.5mm solid var(--teal-800);
+  background: var(--teal-050);
+}
+
+.start-strip h2 {
+  color: var(--teal-900);
+  font-size: 15pt;
+  font-weight: 900;
+}
+
+.start-strip ol {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3mm;
+  list-style: none;
+}
+
+.start-strip li {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  min-height: 12mm;
+  font-size: 7.8pt;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.start-strip li:not(:last-child) {
+  padding-right: 2mm;
+  border-right: 0.35mm solid var(--line);
+}
+
+.start-strip li strong {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 7mm;
+  height: 7mm;
+  flex: 0 0 auto;
+  border: 0.4mm solid var(--teal-800);
+  border-radius: 50%;
+  color: var(--teal-900);
+  font-size: 8pt;
+}
+
+@media screen {
+  body {
+    padding: 12mm 0;
+  }
+
+  .print-page {
+    margin-bottom: 12mm;
+    box-shadow: 0 4mm 12mm rgba(24, 51, 53, 0.22);
+  }
+}
+
+@media print {
+  html,
+  body {
+    width: 210mm;
+    background: #fff;
+  }
+
+  body {
+    padding: 0;
+  }
+
+  .flyer,
+  .print-page {
+    margin: 0;
+    box-shadow: none;
+  }
+}
+
