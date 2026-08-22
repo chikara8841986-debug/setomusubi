@@ -3,7 +3,7 @@ import Stripe from 'https://esm.sh/stripe@14?target=deno'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const DEFAULT_BASE_FEE = 3_850
-const DEFAULT_PER_VEHICLE_FEE = 1_650
+const DEFAULT_PER_VEHICLE_FEE = 2_200
 const FREE_VEHICLES = 2
 
 const CORS = {

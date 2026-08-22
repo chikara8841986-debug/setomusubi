@@ -3,7 +3,7 @@
  * Billing.tsx と Profile.tsx（車両追加時の注意書き）で共有する。
  */
 export const DEFAULT_BASE_FEE = 3_850
-export const DEFAULT_PER_VEHICLE_FEE = 1_650
+export const DEFAULT_PER_VEHICLE_FEE = 2_200
 export const FREE_VEHICLES = 2
 
 /**

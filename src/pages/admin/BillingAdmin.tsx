@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../contexts/ToastContext'
 import type { SubscriptionStatus } from '../../types/database'
-
-const DEFAULT_BASE_FEE = 3_850
-const DEFAULT_PER_VEHICLE_FEE = 1_650
-const FREE_VEHICLES = 2
+// 料金定数はここで再定義せず必ず constants.ts から読む。
+// 以前はこのファイルだけ独自に同じ数値を持っており、単価改定時に取り残される原因になっていた。
+import { DEFAULT_BASE_FEE, DEFAULT_PER_VEHICLE_FEE, FREE_VEHICLES } from '../../lib/constants'
 
 type BizRow = {
   id: string

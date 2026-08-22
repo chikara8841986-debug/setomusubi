@@ -351,7 +351,7 @@ export const STATUS_MAP: Record<string, { cls: string; label: string }> = {
 
 export const DEMO_PRICING = {
   baseFee: 3850,
-  perVehicleFee: 1650,
+  perVehicleFee: 2200,
   freeVehicles: 2,
 }
 
