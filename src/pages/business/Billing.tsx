@@ -3,12 +3,15 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
-import { DEFAULT_BASE_FEE, DEFAULT_PER_VEHICLE_FEE, FREE_VEHICLES } from '../../lib/constants'
+import {
+  DEFAULT_BASE_FEE, DEFAULT_PER_VEHICLE_FEE, FREE_VEHICLES,
+  isCampaignActive, campaignFirstChargeLabel,
+} from '../../lib/constants'
 import type { SubscriptionStatus } from '../../types/database'
 
 const STATUS_CONFIG: Record<SubscriptionStatus, { label: string; pill: string }> = {
   none: { label: '未登録', pill: 'bg-slate-100 text-slate-600' },
-  trialing: { label: 'ご利用開始済み（初月）', pill: 'bg-blue-100 text-blue-700' },
+  trialing: { label: 'ご利用中', pill: 'bg-blue-100 text-blue-700' },
   active: { label: '利用中', pill: 'bg-emerald-100 text-emerald-700' },
   past_due: { label: '支払い失敗', pill: 'bg-red-100 text-red-700' },
   canceled: { label: '解約済み', pill: 'bg-orange-100 text-orange-700' },
@@ -233,6 +236,8 @@ export default function Billing() {
       .formatToParts(new Date())
       .find((p) => p.type === 'day')?.value ?? '1',
   )
+  const campaignActive = isCampaignActive()
+  const firstChargeLabel = campaignFirstChargeLabel()
   const isHalfMonth = jstDay > 15
   const initialCharge = isHalfMonth ? Math.floor(estimatedFee / 2) : estimatedFee
 
@@ -253,12 +258,13 @@ export default function Billing() {
           </div>
 
           <p className="text-sm leading-relaxed text-slate-600">
-            {status === 'none' &&
-              '契約はまだ開始されていません。1日〜15日のご登録は当月1か月分、16日〜月末のご登録は当月の半額を即時請求します。翌月1日から通常の月額が請求されます。'}
+            {status === 'none' && (campaignActive
+              ? `ただいま3ヶ月無料キャンペーン中です。お申し込み時にお支払いは発生しません（カードのご登録のみ）。無料期間が終わる ${firstChargeLabel} から、月額の自動引き落としが始まります。`
+              : '契約はまだ開始されていません。1日〜15日のご登録は当月1か月分、16日〜月末のご登録は当月の半額を即時請求します。翌月1日から通常の月額が請求されます。')}
             {status === 'trialing' &&
-              `初期費用のお支払いが完了し、ご利用を開始しています。翌月1日から月額の自動引き落としが始まります（次回更新基準日: ${fmtDate(
+              `無料期間中です。この間もすべての機能をご利用いただけます。${fmtDate(
                 business.subscription_period_end,
-              )}）。`}
+              )} から月額の自動引き落としが始まります。`}
             {status === 'active' &&
               (business.stripe_subscription_id
                 ? `利用中です。次回更新基準日は ${fmtDate(business.subscription_period_end)} です。`
@@ -280,9 +286,9 @@ export default function Billing() {
               {checkoutBusy ? 'Stripeへ移動中...' : '決済画面へ進む'}
             </button>
             <p className="text-center text-xs text-slate-400">
-              今日（{jstDay}日）は
-              {isHalfMonth ? '16日以降のため当月半額' : '15日以内のため当月1か月分'}
-              を即時請求します。翌月1日から通常の月額が請求されます。
+              {campaignActive
+                ? `3ヶ月無料キャンペーン中のため、今お申し込みいただいてもお支払いは発生しません。${firstChargeLabel} から月額が自動請求されます。`
+                : `今日（${jstDay}日）は${isHalfMonth ? '16日以降のため当月半額' : '15日以内のため当月1か月分'}を即時請求します。翌月1日から通常の月額が請求されます。`}
             </p>
           </div>
         )}
@@ -355,12 +361,18 @@ export default function Billing() {
             <div className="rounded-lg border border-teal-100 bg-teal-50 p-3">
               <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 text-sm">
                 <span className="text-teal-700">
-                  今日登録した場合の初回請求（{isHalfMonth ? '当月半額' : '当月1か月分'}）
+                  {campaignActive
+                    ? '今日お申し込みした場合の初回請求'
+                    : `今日登録した場合の初回請求（${isHalfMonth ? '当月半額' : '当月1か月分'}）`}
                 </span>
-                <span className="font-bold text-teal-800">{fmtYen(initialCharge)}</span>
+                <span className="font-bold text-teal-800">
+                  {campaignActive ? '0円' : fmtYen(initialCharge)}
+                </span>
               </div>
               <p className="mt-1 text-xs text-teal-600">
-                翌月1日から {fmtYen(estimatedFee)}/月 が自動請求されます。
+                {campaignActive
+                  ? `3ヶ月無料キャンペーン中です。${firstChargeLabel} から ${fmtYen(estimatedFee)}/月 が自動請求されます。`
+                  : `翌月1日から ${fmtYen(estimatedFee)}/月 が自動請求されます。`}
               </p>
             </div>
           )}
