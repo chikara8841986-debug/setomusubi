@@ -159,7 +159,9 @@ export default function BusinessCalendar() {
         > | null
         if (!business) return
 
-        if (!business.cancel_phone || business.service_areas.length === 0) setProfileIncomplete(true)
+        // 検索表示を実際に阻む条件のみを見る。網羅的なチェックはプロフィール画面の
+        // チェックリストが一元管理しているため、ここで条件を重複して持たない。
+        if (business.service_areas.length === 0) setProfileIncomplete(true)
         if (business.closed_days?.length) setClosedDays(business.closed_days)
         if (business.business_hours_start) setBizHoursStart(business.business_hours_start.slice(0, 5))
         if (business.business_hours_end) setBizHoursEnd(business.business_hours_end.slice(0, 5))
@@ -773,8 +775,8 @@ export default function BusinessCalendar() {
 
       {profileIncomplete && (
         <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm">
-          <p className="text-amber-800 font-medium">プロフィールの必須項目が未設定です</p>
-          <p className="text-amber-700 text-xs mt-0.5">対応エリアとキャンセル連絡先を設定すると検索に表示されます。</p>
+          <p className="text-amber-800 font-medium">対応エリアが未設定です</p>
+          <p className="text-amber-700 text-xs mt-0.5">対応エリアを設定しないと、利用者・MSWの検索結果に表示されません。ほかに必要な設定もプロフィール画面で確認できます。</p>
           <Link to="/business/profile" className="text-amber-700 underline text-xs font-medium mt-1 inline-block">
             プロフィールを設定する
           </Link>

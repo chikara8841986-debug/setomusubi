@@ -345,14 +345,63 @@ export default function BusinessProfile() {
   }
 
   const isDirty = JSON.stringify(form) !== savedSnapshot
-  const missingFields = useMemo(
-    () =>
-      [
-        !form.cancel_phone && 'キャンセル連絡先',
-        (!form.service_areas || form.service_areas.length === 0) && '対応エリア',
-      ].filter(Boolean) as string[],
-    [form.cancel_phone, form.service_areas],
+  // 「MSWの検索に表示されるための条件」。src/pages/msw/Search.tsx の絞り込み条件と
+  // 1対1で対応させている。Search.tsx を変更したらここも必ず合わせること。
+  //
+  // 注意: cancel_phone は検索表示の条件ではない（旧実装は「設定すると検索に表示されます」と
+  // 案内していたが誤り）。予約成立後の連絡手段として重要なので「推奨」として別に案内する。
+  const activeVehicles = useMemo(
+    () => vehicles.filter((vehicle) => vehicle.active !== false),
+    [vehicles],
   )
+  const hasEquippedVehicle = useMemo(
+    () => activeVehicles.some(
+      (vehicle) => vehicle.has_wheelchair || vehicle.has_reclining_wheelchair || vehicle.has_stretcher,
+    ),
+    [activeVehicles],
+  )
+  const searchChecklist = useMemo(() => {
+    const subStatus = form.subscription_status ?? 'none'
+    return [
+      {
+        key: 'plan',
+        done: subStatus === 'active' || subStatus === 'trialing' || subStatus === 'past_due',
+        label: 'ご利用プランの登録',
+        hint: '「料金・契約」ページからお申し込みください',
+        href: '/business/billing',
+      },
+      {
+        key: 'vehicle',
+        done: activeVehicles.length > 0,
+        label: '車両を1台以上登録',
+        hint: 'このページ下の「車両管理」から追加できます',
+        href: null,
+      },
+      {
+        key: 'equipment',
+        done: hasEquippedVehicle,
+        label: '車両に対応機材を設定',
+        hint: '車椅子・リクライニング車椅子・ストレッチャーのいずれかを、車両ごとに設定してください',
+        href: null,
+      },
+      {
+        key: 'area',
+        done: (form.service_areas?.length ?? 0) > 0,
+        label: '対応エリアを選択',
+        hint: 'このページの「対応エリア」から選んでください',
+        href: null,
+      },
+      {
+        key: 'approved',
+        done: !!form.approved,
+        label: '管理者による事業所の承認',
+        hint: '承認をお待ちください（事業所側の操作は不要です）',
+        href: null,
+      },
+    ]
+  }, [form.subscription_status, form.approved, form.service_areas, activeVehicles, hasEquippedVehicle])
+
+  const remainingChecks = searchChecklist.filter((item) => !item.done)
 
   if (loading) {
     return (
@@ -424,25 +473,64 @@ export default function BusinessProfile() {
         </div>
       )}
 
-      {missingFields.length > 0 ? (
-        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-medium text-amber-800 mb-1.5">以下を設定すると MSW の検索に表示されます</p>
-          <div className="flex flex-wrap gap-1.5">
-            {missingFields.map((field) => (
-              <span key={field} className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">
-                {field}
-              </span>
+      {remainingChecks.length > 0 ? (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+          <p className="text-sm font-bold text-amber-900">
+            予約の依頼を受け取るまで、あと{remainingChecks.length}つです
+          </p>
+          <p className="mt-0.5 text-xs text-amber-700">
+            下のすべてが済むと、利用者・MSWの検索結果にあなたの事業所が表示されます。
+          </p>
+          <ul className="mt-2.5 space-y-1.5">
+            {searchChecklist.map((item) => (
+              <li key={item.key} className="flex items-start gap-2 text-sm">
+                <span
+                  className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    item.done ? 'bg-teal-600 text-white' : 'border border-amber-300 bg-white text-amber-500'
+                  }`}
+                  aria-hidden="true"
+                >
+                  {item.done ? '✓' : '−'}
+                </span>
+                <span className="min-w-0">
+                  <span className={item.done ? 'text-slate-400 line-through' : 'font-medium text-amber-900'}>
+                    {item.label}
+                  </span>
+                  {!item.done && (
+                    <span className="block text-xs font-normal text-amber-700">
+                      {item.hint}
+                      {item.href && (
+                        <>
+                          {' '}
+                          <Link to={item.href} className="font-medium underline hover:text-amber-900">
+                            開く
+                          </Link>
+                        </>
+                      )}
+                    </span>
+                  )}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       ) : !isDirty && (
-        <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
-          表示に必要な項目は設定済みです
-          <span className="block font-normal text-teal-600 mt-0.5">
+        <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-medium text-teal-700">
+          ✓ 検索に表示される条件はすべて満たしています
+          <span className="mt-0.5 block font-normal text-teal-600">
             <Link to="/business/calendar" className="underline hover:text-teal-800">
               カレンダー
             </Link>
-            で稼働ブロックを登録できます
+            で、ふさがっている時間を登録しておくと二重予約を防げます
+          </span>
+        </div>
+      )}
+
+      {!form.cancel_phone && (
+        <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+          <span className="font-medium text-slate-700">キャンセル連絡先が未設定です</span>
+          <span className="mt-0.5 block">
+            検索への表示には影響しませんが、予約が入ったあとに利用者や病院が連絡できないと困るため、設定をおすすめします。
           </span>
         </div>
       )}
