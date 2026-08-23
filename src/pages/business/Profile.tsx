@@ -737,6 +737,12 @@ export default function BusinessProfile() {
       <div className="mt-6">
         <LineLinkCard />
       </div>
+
+      <div className="mt-4 card">
+        <h3 className="text-base font-bold text-slate-800 mb-1">お問い合わせ</h3>
+        <p className="text-sm text-slate-600 mb-3">ご不明点やご要望があれば、フォームからお問い合わせください。</p>
+        <Link to="/contact" className="btn-secondary inline-block text-sm">問い合わせフォームを開く</Link>
+      </div>
     </div>
   )
 }

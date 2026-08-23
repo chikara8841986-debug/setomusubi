@@ -46,6 +46,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/reservations':    '予約一覧',
   '/admin/stats':           '統計ダッシュボード',
   '/admin/billing':         '課金管理',
+  '/admin/inquiries':       'お問い合わせ一覧',
+  '/contact':               'お問い合わせ',
   '/login':                 'ログイン',
   '/register/business':     '事業所登録',
   '/register/msw':          'MSW登録',
@@ -103,6 +105,7 @@ const AdminApprovals    = lazyWithRetry(() => import('./pages/admin/Approvals'))
 const AdminReservations = lazyWithRetry(() => import('./pages/admin/Reservations'))
 const AdminStats        = lazyWithRetry(() => import('./pages/admin/Stats'))
 const AdminBilling      = lazyWithRetry(() => import('./pages/admin/BillingAdmin'))
+const AdminInquiries    = lazyWithRetry(() => import('./pages/admin/Inquiries'))
 
 // Other pages
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'))
@@ -110,6 +113,7 @@ const Manual = lazyWithRetry(() => import('./pages/Manual'))
 const DemoGuide = lazyWithRetry(() => import('./pages/DemoGuide'))
 const Terms = lazyWithRetry(() => import('./pages/Terms'))
 const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy'))
+const Contact = lazyWithRetry(() => import('./pages/Contact'))
 
 // Demo pages
 const DemoIndex = lazyWithRetry(() => import('./pages/demo/DemoIndex'))
@@ -154,6 +158,7 @@ function AppRoutes() {
         <Route path="/register/msw" element={<MswRegister />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/contact" element={<Contact />} />
 
         {/* Business routes */}
         <Route path="/business/*" element={
@@ -197,6 +202,7 @@ function AppRoutes() {
                 <Route path="reservations" element={<AdminReservations />} />
                 <Route path="stats"        element={<AdminStats />} />
                 <Route path="billing"      element={<AdminBilling />} />
+                <Route path="inquiries"    element={<AdminInquiries />} />
                 <Route path="*"            element={<Navigate to="approvals" replace />} />
               </Routes>
             </Layout>

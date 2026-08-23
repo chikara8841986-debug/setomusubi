@@ -225,6 +225,32 @@ export type Database = {
         }
         Relationships: []
       }
+      inquiries: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          name: string
+          email: string
+          body: string
+          user_id: string | null
+          status: 'new' | 'in_progress' | 'done'
+          website: string | null
+          client_ip: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          body: string
+          user_id?: string | null
+          website?: string | null
+        }
+        Update: {
+          status?: 'new' | 'in_progress' | 'done'
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           id: string
@@ -521,3 +547,4 @@ export type Favorite = Database['public']['Tables']['favorites']['Row']
 export type Vehicle = Database['public']['Tables']['vehicles']['Row']
 export type OccupiedSlot = Database['public']['Tables']['occupied_slots']['Row']
 export type BillingEvent = Database['public']['Tables']['billing_events']['Row']
+export type Inquiry = Database['public']['Tables']['inquiries']['Row']

@@ -144,6 +144,12 @@ export default function Login() {
               📖 使い方ガイドを見る（PDF保存可）
             </Link>
           </p>
+          <p>
+            サービスに関するお問い合わせ →{' '}
+            <Link to="/contact" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
+              お問い合わせフォーム
+            </Link>
+          </p>
         </div>
       </div>
 
