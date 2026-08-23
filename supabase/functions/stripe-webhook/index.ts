@@ -370,7 +370,17 @@ Deno.serve(async (req) => {
           const sub = await stripe.subscriptions.retrieve(subscriptionId, {
             expand: ['items.data.price'],
           })
-          const vehicleItemId = findVehicleItemId(sub.items.data, vehiclePriceId)
+          // Fix: use the same index-fallback resolution as the other handlers below.
+          // Checkout Session line_items built with inline price_data (used for the
+          // 3-month-free campaign and for custom per-business pricing) carry no
+          // metadata/nickname on the resulting Price object, so findVehicleItemId
+          // alone would never match and stripe_vehicle_item_id would stay null,
+          // breaking later vehicle-count billing sync.
+          const vehicleItemId = resolveVehicleItemId(
+            sub.items.data,
+            vehiclePriceId,
+            sub.items.data.length > 1 ? 1 : 0,
+          )
 
           // Atomic conditional write: guard against concurrent deletion race (TOCTOU).
           // The guard reads above are separate from this write, so a concurrent
