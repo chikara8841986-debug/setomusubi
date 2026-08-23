@@ -62,13 +62,16 @@ Deno.serve(async (req) => {
 
     if (!res) return json({ error: 'Not found' }, 404)
 
+    // 個人予約（source='personal'）は hospitals が無いので、病院名欄が空欄にならないようフォールバックする
+    const requesterLabel = res.hospitals?.name ?? (res.source === 'personal' ? '個人のお客様' : '申込元情報なし')
+
     const body = `【せとむすび】予約キャンセルのお知らせ
 
-${res.hospitals?.name} より、確定済み予約のキャンセル連絡がありました。
+${requesterLabel} より、確定済み予約のキャンセル連絡がありました。
 
 ━━━━━━━━━━━━━━━━━━
 予約日時: ${res.reservation_date} ${res.start_time.slice(0,5)}〜${res.end_time.slice(0,5)}
-病院: ${res.hospitals?.name}
+病院: ${requesterLabel}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
 使用機材: ${EQUIPMENT_LABELS[res.equipment] ?? res.equipment}

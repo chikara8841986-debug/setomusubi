@@ -63,14 +63,17 @@ Deno.serve(async (req) => {
       stretcher: 'ストレッチャー',
     }
 
+    // 個人予約（source='personal'）は hospitals が無いので、病院名欄が空欄にならないようフォールバックする
+    const requesterLabel = res.hospitals?.name ?? (res.source === 'personal' ? '個人のお客様' : '申込元情報なし')
+
     const businessBody = `【せとむすび】新しい仮予約申請が届きました
 
-${res.hospitals?.name} から仮予約の申請がありました。
+${requesterLabel} から仮予約の申請がありました。
 内容を確認して承認または却下してください。
 
 ━━━━━━━━━━━━━━━━━━
 希望日時: ${res.reservation_date} ${res.start_time.slice(0,5)}〜${res.end_time.slice(0,5)}
-病院: ${res.hospitals?.name}
+病院: ${requesterLabel}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
 使用機材: ${EQUIPMENT_LABELS[res.equipment] ?? res.equipment}

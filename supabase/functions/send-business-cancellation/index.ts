@@ -55,9 +55,11 @@ Deno.serve(async (req) => {
       .single()
 
     if (!res) return json({ error: 'Not found' }, 404)
-    // 病院紐づきの予約（MSW由来）のみ通知対象。電話予約（hospitalなし）はスキップ。
-    if (!res.hospitals?.user_id) {
-      return json({ ok: true, skipped: 'no hospital (phone reservation)' })
+    // 通知先の決定: 病院紐づき(MSW由来)は hospitals.user_id、個人予約は requester_user_id。
+    // どちらも無い場合（電話予約など）のみスキップする。
+    const notifyTarget: string | null = res.hospitals?.user_id ?? res.requester_user_id ?? null
+    if (!notifyTarget) {
+      return json({ ok: true, skipped: 'no hospital or requester (phone reservation)' })
     }
 
     const biz = res.businesses as { name: string; cancel_phone: string | null } | null
@@ -80,7 +82,7 @@ ${biz?.cancel_phone ? `連絡先: ${biz.cancel_phone}` : ''}
 せとむすび
 `
 
-    await dispatch(res.hospitals.user_id, '【せとむすび】確定予約がキャンセルされました', body)
+    await dispatch(notifyTarget, '【せとむすび】確定予約がキャンセルされました', body)
 
     return json({ ok: true })
   } catch (e: any) {

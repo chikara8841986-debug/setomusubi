@@ -26,6 +26,8 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - [ ] **C4**: `/terms` ページの第7条に追記した解約・返金・支払い遅延の文面を実際に開いて確認。将来的に特定商取引法の表記ページも別途必要。
 - [ ] **F3**: 業者アカウント・MSWアカウントそれぞれでログイン→プロフィール画面の「通知設定」→「LINEと連携する」→表示されたコードを実際にLINE公式アカウント「せとむすび」のトーク画面に送信→「連携が完了しました」の返信が来ること・アプリ側で「連携済み」表示に切り替わることを確認。予約の承認・キャンセル等で実際にLINE通知が届くことも確認。
 
+- [ ] **G1（GENERAL_USERS_PLAN §4/§5 バックエンド）**: 個人利用者向けのフロントエンドが実装され次第、実際の登録画面から `role='personal'` で新規登録→事業所検索（`accepts_personal_requests=true`の事業所のみ表示されること）→予約申請→事業所側で承認→確定メールが申込者本人に届くこと→申込者が「予約をキャンセル」できること、を一通りブラウザで確認すること。バックエンド側（DB/RLS/RPC/Edge Function文言）はSQL直接操作による実データ検証とテキスト照合まで完了済み（2026-08-23、本項目末尾参照）。
+
 <!-- 新しい項目はこの下に追記していく -->
 
 ## 前提（システム構成の要点）
@@ -228,6 +230,12 @@ Claudeが自動修正・DB検証まで済ませたが、実ログインでのブ
 - **事象**: 管理者アカウント・開発環境・Vercel/Supabase/Stripe/Resend/ConoHa の認証情報が単一人・単一PC。
 - **現状確認**: ログイン情報はChromeの保存機能＋Googleアカウント同期（PC故障時も復旧可）、Windowsログインパスワードも設定済み。一方でVercel/Supabase/Stripe/Resend/GitHub等の主要サービスに2段階認証(2FA)は未設定であることを確認。
 - **ユーザー判断**: 今回は対応を見送り（スルー）。予備管理者の追加やパスワードマネージャ新規導入は不要と判断。2FA設定についても今回は着手しないことを確認済み。将来的にリスクが顕在化した場合に再検討する。
+
+### [x] E5. 新規RPC作成時、`anon`に意図せずEXECUTE権限が付く（デフォルト権限の罠）— 発見・対応済み 2026-08-23
+- **事象**: 個人利用者向けRPC `cancel_reservation_by_personal` を新規作成し、`revoke all on function ... from public; grant execute ... to authenticated, service_role;` を実行したにもかかわらず、作成直後に確認したところ `anon`（未ログイン）ロールにも EXECUTE 権限が付与されていた。本プロジェクトには関数作成時に `anon` へも自動でEXECUTEを付与する `ALTER DEFAULT PRIVILEGES` 相当の設定が入っており、`REVOKE ... FROM PUBLIC` はこの個別付与を剥がせないことが原因（`PUBLIC`経由の権限と、ロールへの直接付与は別物）。A5追補で発覚した `expire_reservation` の権限事故（authenticatedに誤って権限が付いていた）と根っこは同じ「作成時のデフォルト権限を見落とす」パターン。
+- **範囲確認**: 既存の主要RPC（`approve_reservation` / `reject_reservation` / `complete_reservation` / `cancel_reservation_by_msw` / `cancel_reservation_by_business` / `expire_reservation`）は `anon` へのEXECUTEが付いていないことを`pg_proc.proacl`で確認済み。**今回発覚したのは新規作成時のみの問題**であり、既存RPC群は汚染されていない。
+- **対応内容**: `revoke execute on function public.cancel_reservation_by_personal(uuid) from anon;` を追加で実行（migration: `supabase/migrations/20260823091635_personal_users_phase3_revoke_anon_execute.sql`）。`has_function_privilege('anon', ..., 'EXECUTE')` が `false` になったことを確認済み。
+- **今後の運用**: **新しいRPC/SECURITY DEFINER関数を作成した直後は、`REVOKE ... FROM PUBLIC` だけで満足せず、必ず `select has_function_privilege('anon', 'public.<関数名>(<引数型>)', 'EXECUTE')` で `anon` に権限が付いていないか個別に確認すること。** `get_advisors(type: 'security')` の `anon_security_definer_function_executable` 警告も毎回チェックする。
 
 ---
 

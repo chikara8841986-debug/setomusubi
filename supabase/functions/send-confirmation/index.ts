@@ -63,6 +63,9 @@ Deno.serve(async (req) => {
 
     if (!res) return json({ error: 'Not found' }, 404)
 
+    // 個人予約（source='personal'）は hospitals が無いので、病院名欄が空欄にならないようフォールバックする
+    const requesterLabel = res.hospitals?.name ?? (res.source === 'personal' ? '個人のお客様' : '申込元情報なし')
+
     const body = `【せとむすび】予約確定のお知らせ
 
 以下の内容で予約が確定しました。
@@ -70,7 +73,7 @@ Deno.serve(async (req) => {
 ━━━━━━━━━━━━━━━━━━
 予約日時: ${res.reservation_date} ${res.start_time.slice(0,5)}〜${res.end_time.slice(0,5)}
 事業所: ${res.businesses?.name}
-病院: ${res.hospitals?.name}
+病院: ${requesterLabel}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
 使用機材: ${EQUIPMENT_LABELS[res.equipment] ?? res.equipment}
@@ -90,6 +93,8 @@ ${APP_URL}/msw/reservations
     const targets: string[] = []
     if (res.businesses?.user_id) targets.push(res.businesses.user_id)
     if (res.hospitals?.user_id) targets.push(res.hospitals.user_id)
+    // 個人予約（hospitalsが無い）は申込者本人(requester_user_id)へ直接通知する
+    if (!res.hospitals?.user_id && res.requester_user_id) targets.push(res.requester_user_id)
     await Promise.all(targets.map((uid) => dispatch(uid, '【せとむすび】予約確定のお知らせ', body)))
 
     return json({ ok: true })

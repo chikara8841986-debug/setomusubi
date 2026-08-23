@@ -62,10 +62,10 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
   const { data: reservations, error } = await supabase
     .from('reservations')
     .select(`
-      id, contact_name, patient_name,
+      id, contact_name, patient_name, source, requester_user_id,
       reservation_date, start_time, end_time,
       businesses!inner(name, cancel_phone, user_id),
-      hospitals!inner(name, user_id)
+      hospitals(name, user_id)
     `)
     .eq('reservation_date', targetDate)
     .gte('start_time', wsTime)
@@ -79,7 +79,9 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
   let sent = 0
   for (const res of reservations) {
     const biz = res.businesses as { name: string; cancel_phone: string | null; user_id: string }
-    const hosp = res.hospitals as { name: string; user_id: string }
+    const hosp = res.hospitals as { name: string; user_id: string } | null
+    // 個人予約（hospitals無し）は病院名欄をフォールバックし、申込者本人へ直接通知する
+    const requesterLabel = hosp?.name ?? (res.source === 'personal' ? '個人のお客様' : '申込元情報なし')
     const body = `【せとむすび】1時間前リマインド
 
 まもなく予約の時間です。
@@ -87,7 +89,7 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
 ━━━━━━━━━━━━━━━━
 予約日時: ${res.reservation_date} ${String(res.start_time).slice(0,5)}〜${String(res.end_time).slice(0,5)}
 事業所: ${biz.name}
-病院: ${hosp.name}
+病院: ${requesterLabel}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
 ━━━━━━━━━━━━━━━━
@@ -95,10 +97,10 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
 
 せとむすび
 `
-    await Promise.all([
-      dispatch(biz.user_id, '【せとむすび】1時間前リマインド', body),
-      dispatch(hosp.user_id, '【せとむすび】1時間前リマインド', body),
-    ])
+    const notifyTargets = [biz.user_id, hosp?.user_id ?? res.requester_user_id ?? null].filter(
+      (uid): uid is string => !!uid
+    )
+    await Promise.all(notifyTargets.map((uid) => dispatch(uid, '【せとむすび】1時間前リマインド', body)))
     await supabase.from('reservations').update({ reminder_sent: true }).eq('id', res.id)
     sent++
   }
@@ -113,7 +115,7 @@ async function expireStalePending(now: Date): Promise<number> {
   const { data: rows, error } = await supabase
     .from('reservations')
     .select(`
-      id, contact_name, patient_name,
+      id, contact_name, patient_name, source, requester_user_id,
       reservation_date, start_time, end_time, equipment,
       businesses(name, cancel_phone),
       hospitals(name, user_id)
@@ -133,7 +135,9 @@ async function expireStalePending(now: Date): Promise<number> {
 
     const hosp = res.hospitals as { name: string; user_id: string } | null
     const biz = res.businesses as { name: string; cancel_phone: string | null } | null
-    if (hosp?.user_id) {
+    // 通知先: 病院紐づき(MSW由来)は hospitals.user_id、個人予約は requester_user_id
+    const notifyTarget = hosp?.user_id ?? res.requester_user_id ?? null
+    if (notifyTarget) {
       const body = `【せとむすび】申請が期限切れになりました
 
 下記の仮予約申請は、事業所からの承認がないままご希望日時を過ぎたため、無効となりました。
@@ -151,7 +155,7 @@ ${APP_URL}/msw/search
 
 せとむすび
 `
-      await dispatch(hosp.user_id, '【せとむすび】申請が期限切れになりました', body)
+      await dispatch(notifyTarget, '【せとむすび】申請が期限切れになりました', body)
     }
     expired++
   }
@@ -167,7 +171,7 @@ async function nudgePendingBusiness(now: Date): Promise<number> {
   const { data: rows, error } = await supabase
     .from('reservations')
     .select(`
-      id, contact_name, patient_name,
+      id, contact_name, patient_name, source,
       reservation_date, start_time, end_time,
       businesses!inner(name, user_id),
       hospitals(name)
@@ -184,6 +188,8 @@ async function nudgePendingBusiness(now: Date): Promise<number> {
   for (const res of rows) {
     const biz = res.businesses as { name: string; user_id: string }
     const hosp = res.hospitals as { name: string } | null
+    // 個人予約（source='personal'）は hospitals が無いので、病院名欄が空欄にならないようフォールバックする
+    const requesterLabel = hosp?.name ?? (res.source === 'personal' ? '個人のお客様' : '')
     const body = `【せとむすび】未対応の仮予約申請があります
 
 下記の申請が3時間以上、未対応のままです。
@@ -191,7 +197,7 @@ async function nudgePendingBusiness(now: Date): Promise<number> {
 
 ━━━━━━━━━━━━━━━━
 希望日時: ${res.reservation_date} ${String(res.start_time).slice(0,5)}〜${String(res.end_time).slice(0,5)}
-病院: ${hosp?.name ?? ''}
+病院: ${requesterLabel}
 担当者: ${res.contact_name ?? ''}
 患者: ${res.patient_name ?? ''}
 ━━━━━━━━━━━━━━━━
@@ -214,8 +220,8 @@ async function warnMswUnconfirmed(now: Date): Promise<number> {
   const { data: rows, error } = await supabase
     .from('reservations')
     .select(`
-      id, contact_name, patient_name, reservation_date, start_time, end_time, created_at,
-      hospitals!inner(name, user_id)
+      id, contact_name, patient_name, reservation_date, start_time, end_time, created_at, requester_user_id,
+      hospitals(name, user_id)
     `)
     .eq('status', 'pending')
     .eq('msw_unconfirmed_warning_sent', false)
@@ -234,7 +240,11 @@ async function warnMswUnconfirmed(now: Date): Promise<number> {
     const thresholdHours = isSameDayRequest ? 3 : 24
     if (hoursUntilStart > thresholdHours) continue
 
-    const hosp = res.hospitals as { name: string; user_id: string }
+    const hosp = res.hospitals as { name: string; user_id: string } | null
+    // 通知先: 病院紐づき(MSW由来)は hospitals.user_id、個人予約は requester_user_id
+    const notifyTarget = hosp?.user_id ?? res.requester_user_id ?? null
+    if (!notifyTarget) continue
+
     const body = `【せとむすび】まだ承認されていません
 
 下記の仮予約申請は、まだ事業所からの承認がありません。
@@ -251,7 +261,7 @@ ${APP_URL}/msw/search
 
 せとむすび
 `
-    await dispatch(hosp.user_id, '【せとむすび】まだ承認されていません', body)
+    await dispatch(notifyTarget, '【せとむすび】まだ承認されていません', body)
     await supabase.from('reservations').update({ msw_unconfirmed_warning_sent: true }).eq('id', res.id)
     warned++
   }
