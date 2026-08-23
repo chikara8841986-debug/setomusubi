@@ -6,13 +6,12 @@ import {
   DEMO_BUSINESS_VEHICLES,
   DEMO_CONTACTS,
   DEMO_HOSPITAL,
-  INITIAL_DEMO_OCCUPIED_SLOTS,
   EQUIPMENT_LABELS,
   findAvailableVehicles,
-  type DemoOccupiedSlot,
   type DemoReservation,
   type DemoVehicle,
 } from './demoData'
+import { useDemoOccupiedSlots, setDemoOccupiedSlots } from './demoOccupiedStore'
 
 function mapsUrl(address: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
@@ -64,7 +63,9 @@ export default function DemoMswSearch() {
   const [formError, setFormError] = useState('')
 
   // デモ用: occupied_slots をstateで持つ（申請後に占有を追加して連動を見せられる）
-  const [occupied, setOccupied] = useState<DemoOccupiedSlot[]>(INITIAL_DEMO_OCCUPIED_SLOTS)
+  // 事業所カレンダーで登録された占有時間をそのまま参照する（共有ストア）
+  const occupied = useDemoOccupiedSlots()
+  const setOccupied = setDemoOccupiedSlots
 
   const equipField = useMemo(
     () => EQUIPMENT_OPTIONS.find(o => o.value === equipment)!.field,

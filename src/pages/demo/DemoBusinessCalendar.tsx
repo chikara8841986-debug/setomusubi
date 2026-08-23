@@ -5,10 +5,10 @@ import DemoLayout from './DemoLayout'
 import {
   DEMO_BUSINESS_VEHICLES,
   DEMO_OWN_BUSINESS_ID,
-  INITIAL_DEMO_OCCUPIED_SLOTS,
   rangesOverlap,
   type DemoOccupiedSlot,
 } from './demoData'
+import { useDemoOccupiedSlots, setDemoOccupiedSlots } from './demoOccupiedStore'
 
 // 営業時間: デモ用に 8:00〜18:00 を 30分刻みで表示
 const GRID_START_MIN = 8 * 60
@@ -45,7 +45,9 @@ type DragState = {
 export default function DemoBusinessCalendar() {
   const vehicles = DEMO_BUSINESS_VEHICLES[DEMO_OWN_BUSINESS_ID] ?? []
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicles[0]?.id ?? '')
-  const [slots, setSlots] = useState<DemoOccupiedSlot[]>(INITIAL_DEMO_OCCUPIED_SLOTS)
+  // MSW検索と同じデータを見るため共有ストアから取得する（ページをまたいで連動させる）
+  const slots = useDemoOccupiedSlots()
+  const setSlots = setDemoOccupiedSlots
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
 
