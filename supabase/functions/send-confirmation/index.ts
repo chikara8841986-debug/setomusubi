@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 ━━━━━━━━━━━━━━━━━━
 予約日時: ${res.reservation_date} ${res.start_time.slice(0,5)}〜${res.end_time.slice(0,5)}
 事業所: ${res.businesses?.name}
-病院: ${requesterLabel}
+申込元: ${requesterLabel}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
 使用機材: ${EQUIPMENT_LABELS[res.equipment] ?? res.equipment}
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 ${res.businesses?.cancel_phone ? `キャンセル連絡先: ${res.businesses.cancel_phone}` : ''}
 
 ▶ 予約確認
-${APP_URL}/msw/reservations
+${APP_URL}${res.source === 'personal' ? '/my/reservations' : '/msw/reservations'}
 
 せとむすび
 `

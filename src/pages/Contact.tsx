@@ -8,10 +8,11 @@ import { useToast } from '../contexts/ToastContext'
 const NAME_MAX = 100
 const BODY_MAX = 3000
 
-function homeForRole(role: 'business' | 'msw' | 'admin' | null): string {
+function homeForRole(role: 'business' | 'msw' | 'admin' | 'personal' | null): string {
   if (role === 'business') return '/business/calendar'
   if (role === 'msw') return '/msw/search'
   if (role === 'admin') return '/admin/approvals'
+  if (role === 'personal') return '/my/search'
   return '/login'
 }
 

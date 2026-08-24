@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
 
     if (!res) return json({ error: 'Not found' }, 404)
 
+    // 個人予約（source='personal'）は hospitals が無いので、別の検索画面（/my/search）へ案内する
+    const searchPath = res.source === 'personal' ? '/my/search' : '/msw/search'
+
     const body = `【せとむすび】仮予約が却下されました
 
 申し訳ありませんが、以下の仮予約申請が事業所により却下されました。
@@ -69,13 +72,15 @@ Deno.serve(async (req) => {
 ━━━━━━━━━━━━━━━━━━
 
 ▶ 別の事業所を検索する
-${APP_URL}/msw/search
+${APP_URL}${searchPath}
 
 せとむすび
 `
 
-    if (res.hospitals?.user_id) {
-      await dispatch(res.hospitals.user_id, '【せとむすび】仮予約が却下されました', body)
+    // 通知先: 病院紐づき(MSW由来)は hospitals.user_id、個人予約は requester_user_id
+    const notifyTarget = res.hospitals?.user_id ?? res.requester_user_id ?? null
+    if (notifyTarget) {
+      await dispatch(notifyTarget, '【せとむすび】仮予約が却下されました', body)
     }
 
     return json({ ok: true })

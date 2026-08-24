@@ -49,8 +49,13 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/inquiries':       'お問い合わせ一覧',
   '/contact':               'お問い合わせ',
   '/login':                 'ログイン',
+  '/business/login':        '事業者ログイン',
   '/register/business':     '事業所登録',
   '/register/msw':          'MSW登録',
+  '/register/personal':     '新規登録',
+  '/my/search':              '事業所を探す',
+  '/my/reservations':        '予約一覧',
+  '/my/profile':              'マイページ',
   '/auth/forgot-password':  'パスワードを忘れた方',
   '/auth/reset-password':   'パスワード再設定',
   '/manual':                        '使い方ガイド',
@@ -80,8 +85,10 @@ function ScrollToTop() {
 
 // Auth pages (静的 import: 初回アクセス時に必要)
 import Login from './pages/auth/Login'
+import BusinessLogin from './pages/auth/BusinessLogin'
 import BusinessRegister from './pages/auth/BusinessRegister'
 import MswRegister from './pages/auth/MswRegister'
+import PersonalRegister from './pages/auth/PersonalRegister'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 
@@ -99,6 +106,11 @@ const MswContacts    = lazyWithRetry(() => import('./pages/msw/Contacts'))
 const MswFavorites   = lazyWithRetry(() => import('./pages/msw/Favorites'))
 const MswBusinesses  = lazyWithRetry(() => import('./pages/msw/Businesses'))
 const HospitalProfile = lazyWithRetry(() => import('./pages/msw/HospitalProfile'))
+
+// Personal (general user) pages (lazy)
+const PersonalSearch       = lazyWithRetry(() => import('./pages/my/Search'))
+const PersonalReservations = lazyWithRetry(() => import('./pages/my/Reservations'))
+const PersonalProfile      = lazyWithRetry(() => import('./pages/my/Profile'))
 
 // Admin pages (lazy)
 const AdminApprovals    = lazyWithRetry(() => import('./pages/admin/Approvals'))
@@ -142,6 +154,7 @@ function RootRedirect() {
   if (role === 'business') return <Navigate to="/business/calendar" replace />
   if (role === 'msw') return <Navigate to="/msw/search" replace />
   if (role === 'admin') return <Navigate to="/admin/approvals" replace />
+  if (role === 'personal') return <Navigate to="/my/search" replace />
   return <Navigate to="/login" replace />
 }
 
@@ -152,10 +165,12 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/business/login" element={<BusinessLogin />} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/register/business" element={<BusinessRegister />} />
         <Route path="/register/msw" element={<MswRegister />} />
+        <Route path="/register/personal" element={<PersonalRegister />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<Contact />} />
@@ -187,6 +202,20 @@ function AppRoutes() {
                 <Route path="businesses"   element={<MswBusinesses />} />
                 <Route path="contacts"     element={<MswContacts />} />
                 <Route path="profile"      element={<HospitalProfile />} />
+                <Route path="*"            element={<Navigate to="search" replace />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        {/* Personal (general user) routes */}
+        <Route path="/my/*" element={
+          <ProtectedRoute allowedRoles={['personal']}>
+            <Layout>
+              <Routes>
+                <Route path="search"       element={<PersonalSearch />} />
+                <Route path="reservations" element={<PersonalReservations />} />
+                <Route path="profile"      element={<PersonalProfile />} />
                 <Route path="*"            element={<Navigate to="search" replace />} />
               </Routes>
             </Layout>

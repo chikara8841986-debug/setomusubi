@@ -219,7 +219,7 @@ export default function BusinessReservations() {
     }
     const autoRejectedCount: number = typeof data === 'number' ? data : 0
     invokeNotifyWithRetry('send-confirmation', { reservation_id: r.id })
-      .then((ok) => { if (!ok) showToast('承認しましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
+      .then((ok) => { if (!ok) showToast('承認しましたが、通知メールの送信に失敗しました。申込者へ直接ご連絡ください。', 'error') })
 
     closeModal()
     setProcessing(false)
@@ -241,7 +241,7 @@ export default function BusinessReservations() {
       return
     }
     invokeNotifyWithRetry('send-rejection', { reservation_id: r.id })
-      .then((ok) => { if (!ok) showToast('お断りしましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
+      .then((ok) => { if (!ok) showToast('お断りしましたが、通知メールの送信に失敗しました。申込者へ直接ご連絡ください。', 'error') })
     closeModal()
     setProcessing(false)
     showToast('申請をお断りしました', 'error')
@@ -322,6 +322,7 @@ export default function BusinessReservations() {
     ? rawList.filter(r =>
         r.patient_name.toLowerCase().includes(nq) ||
         (r.hospitals?.name ?? '').toLowerCase().includes(nq) ||
+        (r.caller_name ?? '').toLowerCase().includes(nq) ||
         r.contact_name.toLowerCase().includes(nq)
       )
     : rawList
@@ -345,7 +346,7 @@ export default function BusinessReservations() {
           📞 電話予約を記録
         </button>
       </div>
-      <p className="text-sm text-slate-600 mb-4 leading-relaxed">「申請中」タブにMSWからの仮予約が届きます。承認すると予約が確定し、MSWへ通知メールが送られます。</p>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">「申請中」タブに利用者・病院MSWからの仮予約が届きます。承認すると予約が確定し、申込者へ通知メールが送られます。</p>
 
       <MonthFilter
         value={monthFilter}
@@ -414,7 +415,7 @@ export default function BusinessReservations() {
             <input
               type="text"
               className="input-base pr-8"
-              placeholder="患者名・病院名・担当者名で絞り込み..."
+              placeholder="患者名・申込元・担当者名で絞り込み..."
               value={nameSearch}
               onChange={e => setNameSearch(e.target.value)}
             />
@@ -465,7 +466,7 @@ export default function BusinessReservations() {
             <>
               <div className="text-4xl mb-3">📭</div>
               <p className="text-slate-500 text-sm font-medium mb-1">新しい申請はありません</p>
-              <p className="text-xs text-slate-400 mb-4">カレンダーに空き枠を追加するとMSWから申請が届きます</p>
+              <p className="text-xs text-slate-400 mb-4">カレンダーに空き枠を追加すると利用者・MSWから申請が届きます</p>
               <Link to="/business/calendar" className="btn-primary text-sm inline-flex items-center gap-1">
                 📅 カレンダーで空き枠を追加
               </Link>
@@ -526,9 +527,10 @@ export default function BusinessReservations() {
                   <p className="text-lg font-bold text-slate-800 flex items-center gap-1.5 flex-wrap leading-snug">
                     {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     {r.source === 'phone' && <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium">📞 電話</span>}
+                    {r.source === 'personal' && <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">👤 個人</span>}
                   </p>
                   <p className="text-base font-medium text-slate-600 mt-1">
-                    {r.source === 'phone' ? (r.caller_name || '電話予約') : (r.hospitals?.name ?? '—')} ／ {r.contact_name}
+                    {r.source === 'phone' ? (r.caller_name || '電話予約') : r.source === 'personal' ? (r.caller_name || '個人のお客様') : (r.hospitals?.name ?? '—')} ／ {r.contact_name}
                   </p>
                   <p className="text-base text-slate-700 mt-1">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment]}</p>
                 </button>
@@ -610,12 +612,18 @@ export default function BusinessReservations() {
                 <span className="text-sm text-blue-700 font-medium">電話予約（手動記録）</span>
               </div>
             )}
+            {selected.source === 'personal' && (
+              <div className="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <span className="text-amber-500">👤</span>
+                <span className="text-sm text-amber-700 font-medium">一般の方（ご利用者・ご家族）からの予約</span>
+              </div>
+            )}
 
             <dl className="space-y-3 text-base">
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
-              {selected.source === 'phone' ? (
+              {selected.source === 'phone' || selected.source === 'personal' ? (
                 <>
-                  {selected.caller_name && <Row label="連絡者" value={selected.caller_name} />}
+                  {selected.caller_name && <Row label={selected.source === 'personal' ? '申込者' : '連絡者'} value={selected.caller_name} />}
                   {selected.caller_phone && (
                     <div className="flex gap-3">
                       <dt className="text-slate-500 w-20 flex-shrink-0 text-base">連絡先</dt>
@@ -629,7 +637,7 @@ export default function BusinessReservations() {
                 </>
               ) : (
                 <>
-                  <Row label="病院" value={selected.hospitals?.name ?? '—'} />
+                  <Row label="申込元" value={selected.hospitals?.name ?? '—'} />
                   {selected.hospitals?.phone && (
                     <div className="flex gap-3">
                       <dt className="text-slate-500 w-20 flex-shrink-0 text-base">病院電話</dt>
@@ -796,7 +804,7 @@ export default function BusinessReservations() {
               {/* 連絡者 */}
               <div>
                 <label className="label">連絡者名</label>
-                <input type="text" className="input-base" placeholder="例: 田中MSW"
+                <input type="text" className="input-base" placeholder="例: 山田 花子"
                   value={phoneForm.callerName}
                   onChange={e => setPhoneForm(f => ({ ...f, callerName: e.target.value }))} />
               </div>

@@ -24,6 +24,12 @@ const NAV_MSW: NavItem[] = [
   { to: '/msw/profile', label: '病院情報', icon: '🏥' },
 ]
 
+const NAV_PERSONAL: NavItem[] = [
+  { to: '/my/search', label: '事業所を探す', icon: '🔍' },
+  { to: '/my/reservations', label: '予約一覧', icon: '📋' },
+  { to: '/my/profile', label: 'マイページ', icon: '👤' },
+]
+
 const NAV_ADMIN: NavItem[] = [
   { to: '/admin/approvals', label: '事業所承認', icon: '🛡️' },
   { to: '/admin/reservations', label: '予約一覧', icon: '📋' },
@@ -395,11 +401,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = role === 'business' ? NAV_BUSINESS
     : role === 'msw' ? NAV_MSW
     : role === 'admin' ? NAV_ADMIN
+    : role === 'personal' ? NAV_PERSONAL
     : []
 
   const roleLabel = role === 'business' ? '事業所'
     : role === 'msw' ? 'MSW'
     : role === 'admin' ? '管理者'
+    : role === 'personal' ? 'ご利用者'
     : ''
 
   const roleBgClass = role === 'business'
@@ -408,7 +416,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       ? 'bg-sky-600 text-white'
       : role === 'admin'
         ? 'bg-violet-600 text-white'
-        : 'bg-slate-100 text-slate-600'
+        : role === 'personal'
+          ? 'bg-amber-500 text-white'
+          : 'bg-slate-100 text-slate-600'
+
+  const personalName = role === 'personal'
+    ? (typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null)
+    : null
 
   const onboardingRole = role === 'business' || role === 'msw' ? role : null
   const onboardingStorageKey = onboardingRole && user
@@ -486,11 +500,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-sm font-bold tracking-tight text-teal-600">せとむすび</span>
-              {(businessName || hospitalName) && (
+              {(businessName || hospitalName || personalName) && (
                 <>
                   <span className="text-slate-300 text-xs">|</span>
                   <span className="text-lg font-black text-slate-800 truncate max-w-[200px]">
-                    {businessName ?? hospitalName}
+                    {businessName ?? hospitalName ?? personalName}
                   </span>
                 </>
               )}

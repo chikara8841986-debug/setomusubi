@@ -1,4 +1,4 @@
-export type UserRole = 'business' | 'msw' | 'admin'
+export type UserRole = 'business' | 'msw' | 'admin' | 'personal'
 
 export type Equipment = 'wheelchair' | 'reclining_wheelchair' | 'stretcher'
 
@@ -80,6 +80,7 @@ export type Database = {
           stripe_coupon_id: string | null
           past_due_since: string | null
           buffer_minutes: number
+          accepts_personal_requests: boolean
           created_at: string
         }
         Insert: {
@@ -120,6 +121,7 @@ export type Database = {
           stripe_coupon_id?: string | null
           past_due_since?: string | null
           buffer_minutes?: number
+          accepts_personal_requests?: boolean
         }
         Update: {
           id?: string
@@ -159,6 +161,7 @@ export type Database = {
           stripe_coupon_id?: string | null
           past_due_since?: string | null
           buffer_minutes?: number
+          accepts_personal_requests?: boolean
         }
         Relationships: []
       }
@@ -368,6 +371,7 @@ export type Database = {
           id: string
           business_id: string
           hospital_id: string | null
+          requester_user_id: string | null
           slot_id: string | null
           vehicle_id: string | null
           source: string
@@ -396,6 +400,7 @@ export type Database = {
           id?: string
           business_id: string
           hospital_id?: string | null
+          requester_user_id?: string | null
           slot_id?: string | null
           vehicle_id?: string | null
           source?: string
@@ -422,6 +427,7 @@ export type Database = {
           id?: string
           business_id?: string
           hospital_id?: string | null
+          requester_user_id?: string | null
           slot_id?: string | null
           vehicle_id?: string | null
           source?: string
@@ -506,6 +512,10 @@ export type Database = {
         Returns: void
       }
       cancel_reservation_by_business: {
+        Args: { p_reservation_id: string }
+        Returns: void
+      }
+      cancel_reservation_by_personal: {
         Args: { p_reservation_id: string }
         Returns: void
       }

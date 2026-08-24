@@ -34,6 +34,7 @@ export default function AdminStats() {
     totalApproved: 0,
     totalPending: 0,
     totalHospitals: 0,
+    totalPersonal: 0,
     totalReservationsThisMonth: 0,
     totalReservationsLastMonth: 0,
     totalReservationsAllTime: 0,
@@ -52,6 +53,7 @@ export default function AdminStats() {
       supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', true),
       supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('approved', false),
       supabase.from('hospitals').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'personal'),
       supabase.from('reservations').select('*', { count: 'exact', head: true })
         .gte('reservation_date', thisMonthStart).lte('reservation_date', thisMonthEnd),
       supabase.from('reservations').select('*', { count: 'exact', head: true })
@@ -73,7 +75,7 @@ export default function AdminStats() {
     if (results.some(r => r.error)) { setLoadError(true); setLoading(false); setRefreshing(false); return }
 
     const [
-      { count: approved }, { count: pending }, { count: hospitals },
+      { count: approved }, { count: pending }, { count: hospitals }, { count: personal },
       { count: resThisMonth }, { count: resLastMonth }, { count: resAll },
       { count: completed }, { count: cancelled }, { count: pendingRequests },
       { count: confirmedTodayCount },
@@ -83,6 +85,7 @@ export default function AdminStats() {
       totalApproved: approved ?? 0,
       totalPending: pending ?? 0,
       totalHospitals: hospitals ?? 0,
+      totalPersonal: personal ?? 0,
       totalReservationsThisMonth: resThisMonth ?? 0,
       totalReservationsLastMonth: resLastMonth ?? 0,
       totalReservationsAllTime: resAll ?? 0,
@@ -121,9 +124,14 @@ export default function AdminStats() {
       href: '/admin/approvals',
     },
     {
-      label: '病院・MSW', value: stats.totalHospitals, sub: '病院',
+      label: '病院MSW・ケアマネ等', value: stats.totalHospitals, sub: '件',
       icon: '🏥',
       bg: 'from-sky-50 to-white', iconBg: 'bg-sky-100', valueColor: 'text-sky-700',
+    },
+    {
+      label: '一般利用者（個人）', value: stats.totalPersonal, sub: '人',
+      icon: '👤',
+      bg: 'from-amber-50 to-white', iconBg: 'bg-amber-100', valueColor: 'text-amber-700',
     },
     {
       label: `${thisMonth}の予約`, value: stats.totalReservationsThisMonth, sub: '件',

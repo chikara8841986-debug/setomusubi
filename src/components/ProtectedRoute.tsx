@@ -29,6 +29,7 @@ export default function ProtectedRoute({ children, allowedRoles }: Props) {
     if (role === 'business') return <Navigate to="/business/calendar" replace />
     if (role === 'msw') return <Navigate to="/msw/search" replace />
     if (role === 'admin') return <Navigate to="/admin/approvals" replace />
+    if (role === 'personal') return <Navigate to="/my/search" replace />
     // role が null（プロフィール未取得）の場合もログインへ
     return <Navigate to="/login" replace />
   }

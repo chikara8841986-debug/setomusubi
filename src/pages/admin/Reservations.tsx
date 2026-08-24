@@ -10,6 +10,15 @@ function mapsUrl(address: string) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}`
 }
 
+// 申込元の表示名。MSW（病院）由来は hospitals.name、電話予約・個人予約は hospitals が無いので
+// caller_name にフォールバックする（GENERAL_USERS_PLAN.md §一般利用者への開放 参照）。
+function requesterLabel(r: { source: string; hospitals: { name: string } | null; caller_name: string | null }) {
+  if (r.hospitals?.name) return r.hospitals.name
+  if (r.source === 'personal') return r.caller_name ?? '個人のお客様'
+  if (r.source === 'phone') return r.caller_name ?? '電話予約'
+  return '—'
+}
+
 const STATUS_LABELS: Record<string, string> = {
   pending: '申請中',
   confirmed: '確定',
@@ -38,13 +47,13 @@ const EQUIPMENT_LABELS: Record<string, string> = {
 }
 
 function exportCSV(reservations: ReservationFull[]) {
-  const header = ['予約日', '開始時間', '終了時間', '事業所名', '病院名', '担当者', '患者氏名', '乗車地', '目的地', '使用機材', '機材貸出', 'ステータス', '備考', '作成日時']
+  const header = ['予約日', '開始時間', '終了時間', '事業所名', '申込元', '担当者', '患者氏名', '乗車地', '目的地', '使用機材', '機材貸出', 'ステータス', '備考', '作成日時']
   const rows = reservations.map(r => [
     r.reservation_date,
     r.start_time.slice(0, 5),
     r.end_time.slice(0, 5),
     r.businesses?.name ?? '',
-    r.hospitals?.name ?? '',
+    requesterLabel(r),
     r.contact_name,
     r.patient_name,
     r.patient_address,
@@ -147,7 +156,8 @@ export default function AdminReservations() {
     ? reservations.filter(r =>
         r.patient_name.toLowerCase().includes(q) ||
         (r.businesses?.name ?? '').toLowerCase().includes(q) ||
-        (r.hospitals?.name ?? '').toLowerCase().includes(q) ||
+        requesterLabel(r).toLowerCase().includes(q) ||
+        (r.caller_name ?? '').toLowerCase().includes(q) ||
         r.contact_name.toLowerCase().includes(q)
       )
     : reservations
@@ -155,7 +165,7 @@ export default function AdminReservations() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-1">全予約一覧</h1>
-      <p className="text-sm text-slate-600 mb-4 leading-relaxed">全事業所・全病院の予約を確認できます</p>
+      <p className="text-sm text-slate-600 mb-4 leading-relaxed">全事業所の予約を確認できます（利用者・MSW・電話予約を含む）</p>
 
       {/* Filters + Export */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -239,7 +249,7 @@ export default function AdminReservations() {
           <input
             type="text"
             className="input-base pr-8"
-            placeholder="患者名・事業所名・病院名・担当者名で絞り込み..."
+            placeholder="患者名・事業所名・申込元・担当者名で絞り込み..."
             value={nameSearch}
             onChange={e => setNameSearch(e.target.value)}
           />
@@ -299,7 +309,7 @@ export default function AdminReservations() {
                       {format(parseISO(r.reservation_date), 'M月d日（E）', { locale: ja })} {r.start_time.slice(0, 5)}〜{r.end_time.slice(0, 5)}
                     </p>
                     <p className="text-base font-medium text-slate-600 mt-1 truncate">
-                      {r.businesses?.name ?? '—'} ← {r.hospitals?.name ?? '—'} ／ {r.contact_name}
+                      {r.businesses?.name ?? '—'} ← {requesterLabel(r)} ／ {r.contact_name}
                     </p>
                     <p className="text-base text-slate-700 mt-1">患者: {r.patient_name} ／ {EQUIPMENT_LABELS[r.equipment] ?? r.equipment}</p>
                   </div>
@@ -341,7 +351,7 @@ export default function AdminReservations() {
               <Row label="日時" value={`${format(parseISO(selected.reservation_date), 'yyyy年M月d日（E）', { locale: ja })} ${selected.start_time.slice(0,5)}〜${selected.end_time.slice(0,5)}`} />
               <Row label="申請日時" value={format(parseISO(selected.created_at), 'yyyy/M/d HH:mm', { locale: ja })} />
               <Row label="事業所" value={selected.businesses?.name ?? '—'} />
-              <Row label="病院" value={selected.hospitals?.name ?? '—'} />
+              <Row label="申込元" value={requesterLabel(selected)} />
               <Row label="担当者" value={selected.contact_name} />
               <Row label="患者氏名" value={selected.patient_name} />
               <div className="flex gap-3">

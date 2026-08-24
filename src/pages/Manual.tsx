@@ -73,8 +73,10 @@ export default function Manual() {
             1. せとむすびとは
           </h2>
           <p className="text-slate-700 mb-4">
-            <strong>せとむすび</strong>は、香川県の<strong>介護タクシー事業所</strong>と<strong>病院のMSW（医療ソーシャルワーカー）</strong>をつなぐ仮予約プラットフォームです。
+            <strong>せとむすび</strong>は、香川県の<strong>介護タクシー事業所</strong>と、<strong>病院のMSW（医療ソーシャルワーカー）・ケアマネジャー等の専門職</strong>、
+            そして<strong>ご利用者ご本人・ご家族</strong>をつなぐ仮予約プラットフォームです。
             これまで電話でやり取りしていた介護タクシーの手配を、スマートフォン・PCからいつでも効率よく行えます。
+            ご利用者ご本人・ご家族の方は、ログイン画面の「ご利用者登録」から直接アカウントを作成し、検索・予約申請ができます。
           </p>
 
           <div className="grid grid-cols-1 gap-4 mb-6" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -418,7 +420,7 @@ export default function Manual() {
         {/* Footer */}
         <div className="border-t border-slate-200 pt-6 text-center text-xs text-slate-400 space-y-1">
           <p className="font-bold text-slate-600">せとむすび</p>
-          <p>介護タクシー × MSW 仮予約プラットフォーム</p>
+          <p>介護タクシー × ご利用者・MSW 仮予約プラットフォーム</p>
           <p>{dateLabel}版</p>
           <p className="no-print mt-3">
             <Link to="/demo" className="text-teal-600 hover:underline mr-4">⚡ デモを試す</Link>

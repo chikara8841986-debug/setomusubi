@@ -81,6 +81,7 @@ export default function BusinessProfile() {
     pricing: '',
     cancel_phone: '',
     buffer_minutes: 0,
+    accepts_personal_requests: false,
   })
 
   const fetchProfile = async () => {
@@ -216,6 +217,7 @@ export default function BusinessProfile() {
         pricing: form.pricing,
         cancel_phone: form.cancel_phone,
         buffer_minutes: form.buffer_minutes ?? 0,
+        accepts_personal_requests: form.accepts_personal_requests ?? false,
       })
       .eq('user_id', user.id)
     setSaving(false)
@@ -554,7 +556,7 @@ export default function BusinessProfile() {
             <div>
               <label className="label">キャンセル連絡先 <span className="text-red-500">*</span></label>
               <input className="input-base" value={form.cancel_phone ?? ''} onChange={(e) => setForm((current) => ({ ...current, cancel_phone: e.target.value }))} maxLength={20} />
-              <p className="text-sm text-slate-500 mt-1">MSW の申請確認画面に表示されます</p>
+              <p className="text-sm text-slate-500 mt-1">利用者・MSW の申請確認画面に表示されます</p>
             </div>
           </div>
         </div>
@@ -630,7 +632,7 @@ export default function BusinessProfile() {
           <div className="flex items-center justify-between border-b pb-2">
             <div>
               <h2 className="text-lg font-bold text-slate-700">対応エリア <span className="text-red-500">*</span></h2>
-              <p className="text-sm text-slate-500 mt-1">MSW の検索対象になります</p>
+              <p className="text-sm text-slate-500 mt-1">利用者・MSW の検索対象になります</p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setForm((current) => ({ ...current, service_areas: [...SERVICE_AREAS] }))} className="text-xs text-teal-600 hover:underline">
@@ -669,6 +671,34 @@ export default function BusinessProfile() {
           <BoolRow label="女性介助者対応" field="has_female_caregiver" />
           <BoolRow label="長距離対応" field="long_distance" />
           <BoolRow label="当日対応" field="same_day" />
+        </div>
+
+        <div className="card space-y-3">
+          <div className="border-b pb-2">
+            <h2 className="text-lg font-bold text-slate-700">個人予約の受付</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              病院MSW・ケアマネ等の専門職からの申請とは別に、ご利用者ご本人・ご家族から直接の予約申請を受け付けるかどうかを設定します。
+            </p>
+          </div>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.accepts_personal_requests ?? false}
+              onChange={(e) => setForm((current) => ({ ...current, accepts_personal_requests: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 rounded border-slate-300 text-teal-600"
+            />
+            <span className="text-sm text-slate-700">
+              一般の方（ご利用者・ご家族）からの予約申請を受け付ける
+              <span className="block text-xs text-slate-400 mt-0.5">
+                既定はオフです。オンにすると、上の「予約に表示される条件」をすべて満たしている場合に限り、一般の方の検索結果にも表示されるようになります。
+              </span>
+            </span>
+          </label>
+          {(form.accepts_personal_requests ?? false) && remainingChecks.length > 0 && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              ⚠️ 現在、上の必須条件が{remainingChecks.length}つ未達成のため、オンにしてもまだ一般の方の検索結果には表示されません。
+            </p>
+          )}
         </div>
 
         <div className="card space-y-3">

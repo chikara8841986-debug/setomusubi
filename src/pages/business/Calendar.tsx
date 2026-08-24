@@ -681,7 +681,7 @@ export default function BusinessCalendar() {
     }
     const autoRejectedCount: number = typeof data === 'number' ? data : 0
     invokeNotifyWithRetry('send-confirmation', { reservation_id: reservationId })
-      .then((ok) => { if (!ok) showToast('承認しましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
+      .then((ok) => { if (!ok) showToast('承認しましたが、通知メールの送信に失敗しました。申込者へ直接ご連絡ください。', 'error') })
     showToast(autoRejectedCount > 0 ? `承認しました。他${autoRejectedCount}件は自動でお断りしました` : '予約を承認しました')
     setSelectedSlot(null)
     setSelectedPendingRes(null)
@@ -702,7 +702,7 @@ export default function BusinessCalendar() {
       return
     }
     invokeNotifyWithRetry('send-rejection', { reservation_id: reservationId })
-      .then((ok) => { if (!ok) showToast('お断りしましたが、通知メールの送信に失敗しました。MSWへ直接ご連絡ください。', 'error') })
+      .then((ok) => { if (!ok) showToast('お断りしましたが、通知メールの送信に失敗しました。申込者へ直接ご連絡ください。', 'error') })
     showToast('申請をお断りしました', 'error')
     setSelectedSlot(null)
     setSelectedPendingRes(null)
@@ -1363,10 +1363,12 @@ export default function BusinessCalendar() {
             <div className="space-y-3 text-sm text-slate-700">
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
                 <p>
-                  <span className="text-slate-500">病院名/担当者:</span>{' '}
+                  <span className="text-slate-500">申込元/担当者:</span>{' '}
                   {selectedPendingRes.source === 'phone'
                     ? `電話${selectedPendingRes.caller_name ? ` / ${selectedPendingRes.caller_name}` : ''}`
-                    : `${selectedPendingRes.hospitals?.name ?? '病院未設定'} / ${selectedPendingRes.contact_name}`}
+                    : selectedPendingRes.source === 'personal'
+                      ? `個人のお客様 / ${selectedPendingRes.caller_name ?? selectedPendingRes.contact_name}`
+                      : `${selectedPendingRes.hospitals?.name ?? '申込元未設定'} / ${selectedPendingRes.contact_name}`}
                 </p>
                 <p><span className="text-slate-500">患者名:</span> {selectedPendingRes.patient_name}</p>
                 <p>

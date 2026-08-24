@@ -3,7 +3,10 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
-export default function Login() {
+// 事業者向けログイン画面。/login（利用者向け）とは別に用意し、事業所登録への導線をこちらに集約する。
+// 認証の仕組み自体は/loginと共通（Supabase Auth）。ロール別リダイレクトも同じ。
+// この入口からMSW・個人アカウントでログインしても弾かない（入口違いで詰ませない）。
+export default function BusinessLogin() {
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = location.state as { message?: string; email?: string } | null
@@ -62,7 +65,7 @@ export default function Login() {
         {/* Brand */}
         <div className="text-center mb-8">
           <h1 className="font-display text-4xl font-black text-teal-800 drop-shadow-sm tracking-wide">せとむすび</h1>
-          <p className="text-slate-600 text-sm mt-2 tracking-wide">介護タクシー予約プラットフォーム</p>
+          <p className="text-slate-600 text-sm mt-2 tracking-wide">介護タクシー事業所の方向けログイン</p>
         </div>
 
         {notice && (
@@ -73,7 +76,7 @@ export default function Login() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-auth p-7">
-          <h2 className="text-lg font-bold text-slate-800 mb-5">ログイン</h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-5">事業者ログイン</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">メールアドレス</label>
@@ -86,7 +89,7 @@ export default function Login() {
                 maxLength={255}
                 autoComplete="email"
                 autoFocus
-                placeholder="example@mail.jp"
+                placeholder="example@taxi.jp"
               />
             </div>
             <div>
@@ -129,15 +132,9 @@ export default function Login() {
         {/* Register links */}
         <div className="mt-3 bg-white/75 backdrop-blur-md rounded-2xl px-5 py-4 space-y-2 text-center text-sm text-slate-700 shadow-sm">
           <p>
-            はじめてご利用の方（新規登録）→{' '}
-            <Link to="/register/personal" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
-              ご利用者登録
-            </Link>
-          </p>
-          <p>
-            病院MSW・ケアマネ等の方（新規登録）→{' '}
-            <Link to="/register/msw" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
-              専門職登録
+            はじめてご利用の事業所様（新規登録）→{' '}
+            <Link to="/register/business" className="text-teal-700 hover:text-teal-900 font-semibold transition-colors">
+              事業所登録
             </Link>
           </p>
           <p className="border-t border-slate-200 pt-2">
@@ -153,11 +150,10 @@ export default function Login() {
           </p>
         </div>
 
-        {/* 事業者導線: 完全には消さず最下部に小さく1行だけ残す（ブックマーク済み事業者が迷子にならないように） */}
         <p className="mt-3 text-center text-xs text-white/70">
-          介護タクシー事業所の方は{' '}
-          <Link to="/business/login" className="underline hover:text-white transition-colors">
-            こちら（事業者ログイン）
+          ご利用者・ご家族・病院MSWの方は{' '}
+          <Link to="/login" className="underline hover:text-white transition-colors">
+            こちら
           </Link>
         </p>
       </div>

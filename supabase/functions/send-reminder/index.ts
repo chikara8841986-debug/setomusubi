@@ -89,7 +89,7 @@ async function sendConfirmedReminders(now: Date): Promise<number> {
 ━━━━━━━━━━━━━━━━
 予約日時: ${res.reservation_date} ${String(res.start_time).slice(0,5)}〜${String(res.end_time).slice(0,5)}
 事業所: ${biz.name}
-病院: ${requesterLabel}
+申込元: ${requesterLabel}
 担当者: ${res.contact_name}
 患者: ${res.patient_name}
 ━━━━━━━━━━━━━━━━
@@ -151,7 +151,7 @@ async function expireStalePending(now: Date): Promise<number> {
 ━━━━━━━━━━━━━━━━
 
 ▶ 別の事業所を検索する
-${APP_URL}/msw/search
+${APP_URL}${res.source === 'personal' ? '/my/search' : '/msw/search'}
 
 せとむすび
 `
@@ -193,11 +193,11 @@ async function nudgePendingBusiness(now: Date): Promise<number> {
     const body = `【せとむすび】未対応の仮予約申請があります
 
 下記の申請が3時間以上、未対応のままです。
-承認またはお断りのご対応をお願いします。承認されない間、この車両のこの時間帯は他のMSWからも予約できません。
+承認またはお断りのご対応をお願いします。承認されない間、この車両のこの時間帯は他の申込者からも予約できません。
 
 ━━━━━━━━━━━━━━━━
 希望日時: ${res.reservation_date} ${String(res.start_time).slice(0,5)}〜${String(res.end_time).slice(0,5)}
-病院: ${requesterLabel}
+申込元: ${requesterLabel}
 担当者: ${res.contact_name ?? ''}
 患者: ${res.patient_name ?? ''}
 ━━━━━━━━━━━━━━━━
@@ -220,7 +220,7 @@ async function warnMswUnconfirmed(now: Date): Promise<number> {
   const { data: rows, error } = await supabase
     .from('reservations')
     .select(`
-      id, contact_name, patient_name, reservation_date, start_time, end_time, created_at, requester_user_id,
+      id, contact_name, patient_name, source, reservation_date, start_time, end_time, created_at, requester_user_id,
       hospitals(name, user_id)
     `)
     .eq('status', 'pending')
@@ -257,7 +257,7 @@ async function warnMswUnconfirmed(now: Date): Promise<number> {
 ━━━━━━━━━━━━━━━━
 
 ▶ 別の事業所を検索する
-${APP_URL}/msw/search
+${APP_URL}${res.source === 'personal' ? '/my/search' : '/msw/search'}
 
 せとむすび
 `

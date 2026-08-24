@@ -230,7 +230,7 @@ export default function BusinessIntroduction() {
   return (
     <div>
       <h1 className="text-xl font-bold text-slate-800 mb-1">事業所紹介ページ</h1>
-      <p className="text-xs text-slate-400 mb-3">MSWが事業所を選ぶ際に参照する紹介ページを設定します。写真やPR文・料金を充実させると選ばれやすくなります。「プレビュー」でMSWに見える表示を確認できます。</p>
+      <p className="text-xs text-slate-400 mb-3">ご利用者・病院MSWの方が事業所を選ぶ際に参照する紹介ページを設定します。写真やPR文・料金を充実させると選ばれやすくなります。「プレビュー」で相手に見える表示を確認できます。</p>
 
       {isDirty && (
         <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -280,14 +280,14 @@ export default function BusinessIntroduction() {
         <div className="mb-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-xs text-teal-700 font-medium">
           ✓ 紹介ページが充実しています！
           <span className="block font-normal text-teal-600 mt-0.5">
-            <Link to="/business/calendar" className="underline hover:text-teal-800">カレンダー</Link>に空き枠を追加するとMSWの検索に表示されます
+            <Link to="/business/calendar" className="underline hover:text-teal-800">カレンダー</Link>に空き枠を追加すると利用者・MSWの検索に表示されます
           </span>
         </div>
       )}
 
       {/* Preview section */}
       <div className="card mb-5 border-teal-100">
-        <p className="text-xs font-semibold text-teal-600 mb-3 uppercase tracking-wide">プレビュー（MSWに見える画面）</p>
+        <p className="text-xs font-semibold text-teal-600 mb-3 uppercase tracking-wide">プレビュー（利用者・MSWに見える画面）</p>
 
         <div className="flex items-start gap-3 mb-3">
           {profileImageUrl ? (
