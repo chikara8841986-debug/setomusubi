@@ -40,7 +40,7 @@ export const SERVICE_AREAS: string[] = [
 ]
 
 /**
- * 3ヶ月無料キャンペーンの終了日（JST・当日を含む）。
+ * 2ヶ月無料キャンペーンの終了日（JST・当日を含む）。
  *
  * ⚠️ `supabase/functions/create-checkout-session/index.ts` の `CAMPAIGN_END_JST` と
  *    必ず同じ値にすること。Edge Function は Deno で動き `src/` を import できないため、
@@ -65,11 +65,11 @@ export function isCampaignActive(now = new Date()): boolean {
 
 /**
  * キャンペーン適用時の初回請求日を「2026年12月1日」形式で返す。
- * 「申込の翌月から3ヶ月無料、その次の月の1日から課金開始」= 申込月の4ヶ月後の1日。
+ * 「申込の翌月から2ヶ月無料、その次の月の1日から課金開始」= 申込月の3ヶ月後の1日。
  * Edge Function 側の getCampaignTrialEndUnix と同じ計算。
  */
 export function campaignFirstChargeLabel(now = new Date()): string {
   const { year, month } = jstParts(now)
-  const total = year * 12 + (month - 1) + 4
+  const total = year * 12 + (month - 1) + 3
   return `${Math.floor(total / 12)}年${(total % 12) + 1}月1日`
 }

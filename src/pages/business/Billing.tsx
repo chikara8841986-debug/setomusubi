@@ -139,9 +139,16 @@ export default function Billing() {
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: { business_id: business.id },
       })
-      if (error || !data?.url) {
-        throw error ?? new Error('決済URLを取得できませんでした')
+      if (error) throw error
+      // 個別料金が0円の事業所は請求する項目が無く、Stripeにサブスクを作れない。
+      // 決済を経由せず「無料契約」として有効化されるため、画面を更新して知らせる。
+      if (data?.free_plan) {
+        showToast(data.message ?? '無料契約でご利用を開始しました', 'success')
+        await load()
+        setCheckoutBusy(false)
+        return
       }
+      if (!data?.url) throw new Error('決済URLを取得できませんでした')
       window.location.href = data.url
     } catch (e: any) {
       showToast(e?.message ?? '決済画面を開けませんでした', 'error')
@@ -259,7 +266,7 @@ export default function Billing() {
 
           <p className="text-sm leading-relaxed text-slate-600">
             {status === 'none' && (campaignActive
-              ? `ただいま3ヶ月無料キャンペーン中です。お申し込み時にお支払いは発生しません（カードのご登録のみ）。無料期間が終わる ${firstChargeLabel} から、月額の自動引き落としが始まります。`
+              ? `ただいま2ヶ月無料キャンペーン中です。お申し込み時にお支払いは発生しません（カードのご登録のみ）。無料期間が終わる ${firstChargeLabel} から、月額の自動引き落としが始まります。`
               : '契約はまだ開始されていません。1日〜15日のご登録は当月1か月分、16日〜月末のご登録は当月の半額を即時請求します。翌月1日から通常の月額が請求されます。')}
             {status === 'trialing' &&
               `無料期間中です。この間もすべての機能をご利用いただけます。${fmtDate(
@@ -287,7 +294,7 @@ export default function Billing() {
             </button>
             <p className="text-center text-xs text-slate-400">
               {campaignActive
-                ? `3ヶ月無料キャンペーン中のため、今お申し込みいただいてもお支払いは発生しません。${firstChargeLabel} から月額が自動請求されます。`
+                ? `2ヶ月無料キャンペーン中のため、今お申し込みいただいてもお支払いは発生しません。${firstChargeLabel} から月額が自動請求されます。`
                 : `今日（${jstDay}日）は${isHalfMonth ? '16日以降のため当月半額' : '15日以内のため当月1か月分'}を即時請求します。翌月1日から通常の月額が請求されます。`}
             </p>
           </div>
@@ -371,7 +378,7 @@ export default function Billing() {
               </div>
               <p className="mt-1 text-xs text-teal-600">
                 {campaignActive
-                  ? `3ヶ月無料キャンペーン中です。${firstChargeLabel} から ${fmtYen(estimatedFee)}/月 が自動請求されます。`
+                  ? `2ヶ月無料キャンペーン中です。${firstChargeLabel} から ${fmtYen(estimatedFee)}/月 が自動請求されます。`
                   : `翌月1日から ${fmtYen(estimatedFee)}/月 が自動請求されます。`}
               </p>
             </div>

@@ -7,7 +7,7 @@ const DEFAULT_PER_VEHICLE_FEE = 2_200
 const FREE_VEHICLES = 2
 
 // ------------------------------------------------------------------ //
-// 3ヶ月無料キャンペーン（チラシ「今年かぎり」対応）
+// 2ヶ月無料キャンペーン（チラシ「今年かぎり」対応）
 // この日付（JST・当日を含む）までの申込を無料キャンペーン対象とする。
 // 延長・終了はこの1行を書き換えるだけでよい。
 // ------------------------------------------------------------------ //
@@ -59,12 +59,12 @@ function getNextMonthStartUnix(now = new Date()) {
   return addMonthsJstStartUnix(1, now)
 }
 
-// キャンペーン: 「申込の翌月から3ヶ月無料、その次の月の1日から課金開始」
-// = 申込月の4ヶ月後の1日 0:00 JST。
-// 例: 8月22日申込 → 9・10・11月が無料 → 12月1日に初回請求。
-// 「ちょうど3ヶ月後」にしない（月の途中になり請求日を月初に揃える設計と噛み合わなくなるため）。
+// キャンペーン: 「申込の翌月から2ヶ月無料、その次の月の1日から課金開始」
+// = 申込月の3ヶ月後の1日 0:00 JST。
+// 例: 8月22日申込 → 9・10月が無料 → 11月1日に初回請求。
+// 「ちょうど2ヶ月後」にしない（月の途中になり請求日を月初に揃える設計と噛み合わなくなるため）。
 function getCampaignTrialEndUnix(now = new Date()) {
-  return addMonthsJstStartUnix(4, now)
+  return addMonthsJstStartUnix(3, now)
 }
 
 // 申込日（JST）がキャンペーン終了日以前かどうか。
@@ -181,12 +181,42 @@ Deno.serve(async (req) => {
     const hasCustomBase = biz.custom_base_price != null
     const hasCustomVehicle = biz.custom_per_vehicle_price != null
 
+    // ------------------------------------------------------------------ //
+    // ¥0 ハンドリング
+    // Stripe は JPY で unit_amount:0 を受け付けないため、0円の項目は Stripe に
+    // 送らない（sync-vehicle-billing と同じ方針）。ここでガードしないと、管理者が
+    // 個別料金を0円に設定した事業所は「決済画面へ進む」でStripeエラーになり申し込めない。
+    //
+    // 安全性: custom_base_price / custom_per_vehicle_price は
+    // guard_business_owner_immutable により事業所オーナーからは変更できず、管理者しか
+    // 設定できない。よって事業所が自分で無料プランを作ることはできない。
+    // ------------------------------------------------------------------ //
+    const baseIsFree = baseFee === 0
+    const vehicleIsFree = perVehicleFee === 0
+    const billableAddonQty = vehicleIsFree ? 0 : addonQty
+    const monthlyTotal = (baseIsFree ? 0 : baseFee) + billableAddonQty * perVehicleFee
+
+    if (monthlyTotal === 0) {
+      // 完全無料プラン。請求する項目が無いのでStripeにサブスクリプションを作れない。
+      // 決済を経由せず「無料契約」として有効化する（Billing.tsx は
+      // status='active' かつ stripe_subscription_id なし を「無料契約で継続中」と表示する）。
+      const { error: freeErr } = await supabase
+        .from('businesses')
+        .update({ subscription_status: 'active' })
+        .eq('id', biz.id)
+      if (freeErr) throw freeErr
+      return json({
+        free_plan: true,
+        message: '個別料金の設定により、お支払いなしでご利用いただけます。',
+      })
+    }
+
     const campaignActive = isCampaignActive()
 
     let sessionParams: Stripe.Checkout.SessionCreateParams
 
     if (campaignActive) {
-      // 3ヶ月無料キャンペーン: mode: 'subscription' で Checkout を作り、
+      // 2ヶ月無料キャンペーン: mode: 'subscription' で Checkout を作り、
       // trial_end で無料期間を指定する。申込時点では一切課金しない。
       // カードは Stripe が Checkout で保存し（payment_method_collection: 'always'）、
       // trial 終了後に自動で初回請求される（billing_cycle_anchor は trial_end に自動で揃う）。
@@ -199,7 +229,10 @@ Deno.serve(async (req) => {
 
       const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
 
-      if (effectiveBasePriceId) {
+      // 基本料が0円の事業所は基本料の項目自体を作らない（JPYでunit_amount:0は不可）
+      if (baseIsFree) {
+        // 何も追加しない
+      } else if (effectiveBasePriceId) {
         lineItems.push({ price: effectiveBasePriceId, quantity: 1 })
       } else {
         lineItems.push({
@@ -216,9 +249,10 @@ Deno.serve(async (req) => {
         })
       }
 
-      if (addonQty > 0) {
+      // 追加単価が0円、または追加台数0のときは車両の項目を作らない
+      if (billableAddonQty > 0) {
         if (effectiveVehiclePriceId) {
-          lineItems.push({ price: effectiveVehiclePriceId, quantity: addonQty })
+          lineItems.push({ price: effectiveVehiclePriceId, quantity: billableAddonQty })
         } else {
           lineItems.push({
             price_data: {
@@ -230,7 +264,7 @@ Deno.serve(async (req) => {
               unit_amount: perVehicleFee,
               recurring: { interval: 'month' },
             },
-            quantity: addonQty,
+            quantity: billableAddonQty,
           })
         }
       }
@@ -249,7 +283,7 @@ Deno.serve(async (req) => {
           trial_end: trialEnd,
           metadata: {
             business_id: biz.id,
-            campaign: 'free_3month_until_' + CAMPAIGN_END_JST,
+            campaign: 'free_2month_until_' + CAMPAIGN_END_JST,
           },
         },
         metadata: {
@@ -260,7 +294,7 @@ Deno.serve(async (req) => {
           custom_base_price: biz.custom_base_price != null ? String(biz.custom_base_price) : '',
           custom_per_vehicle_price:
             biz.custom_per_vehicle_price != null ? String(biz.custom_per_vehicle_price) : '',
-          campaign: 'free_3month_until_' + CAMPAIGN_END_JST,
+          campaign: 'free_2month_until_' + CAMPAIGN_END_JST,
           campaign_trial_end: String(trialEnd),
         },
         success_url: `${billingUrl}?billing=success`,
@@ -274,8 +308,9 @@ Deno.serve(async (req) => {
       const { day: jstDay } = getJstDateParts()
       const billingCycleAnchor = getNextMonthStartUnix()
       const isHalfMonth = jstDay > 15
-      const totalMonthlyFee = baseFee + addonQty * perVehicleFee
-      const initialCharge = isHalfMonth ? Math.floor(totalMonthlyFee / 2) : totalMonthlyFee
+      // 0円の項目は含めない（monthlyTotal は上で 0 でないことを確認済み）
+      const totalMonthlyFee = monthlyTotal
+      const initialCharge = Math.max(1, isHalfMonth ? Math.floor(totalMonthlyFee / 2) : totalMonthlyFee)
 
       sessionParams = {
         customer: customerId,
