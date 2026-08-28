@@ -42,6 +42,11 @@ export default function MswRegister() {
       setError('病院名を入力してください')
       return
     }
+    // 予約が成立したあと事業所から連絡が取れないと運行できないため、電話番号は必須にする
+    if (!hospitalPhone.trim()) {
+      setError('代表電話番号を入力してください')
+      return
+    }
     if (!agreedToPolicies) {
       setError('利用規約とプライバシーポリシーへの同意が必要です')
       return
@@ -60,7 +65,7 @@ export default function MswRegister() {
             role: 'msw',
             hospital_name: hospitalName.trim(),
             hospital_address: hospitalAddress.trim() || null,
-            hospital_phone: hospitalPhone.trim() || null,
+            hospital_phone: hospitalPhone.trim(),
             contact_name: contactName.trim() || null,
           },
         },
@@ -73,7 +78,7 @@ export default function MswRegister() {
 
       navigate('/login', {
         state: {
-          message: '登録申請を受け付けました。確認メールを送信したので、メール内のリンクをクリックして登録を完了してください。その後、管理者の承認をお待ちください。',
+          message: '確認メールを送信しました。メール内のリンクをクリックすると登録が完了し、そのままご利用いただけます。',
           email,
         },
       })
@@ -176,8 +181,8 @@ export default function MswRegister() {
                     onChange={e => setHospitalAddress(e.target.value)} maxLength={300} placeholder="香川県丸亀市〇〇町..." />
                 </div>
                 <div>
-                  <label className="label">代表電話番号</label>
-                  <input type="tel" className="input-base" value={hospitalPhone}
+                  <label className="label">代表電話番号 <span className="text-red-500">*</span></label>
+                  <input type="tel" required className="input-base" value={hospitalPhone}
                     onChange={e => setHospitalPhone(e.target.value)} maxLength={20} placeholder="0877-00-0000" />
                 </div>
                 <div>
