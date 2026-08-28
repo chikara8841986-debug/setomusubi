@@ -40,13 +40,19 @@ export const SERVICE_AREAS: string[] = [
 ]
 
 /**
- * 2ヶ月無料キャンペーンの終了日（JST・当日を含む）。
+ * 2ヶ月無料キャンペーン。
  *
- * ⚠️ `supabase/functions/create-checkout-session/index.ts` の `CAMPAIGN_END_JST` と
+ * 課金開始日 =「稼働開始組の下限日」と「申込月の2ヶ月後の1日」の遅いほう。
+ * 稼働(2026年11月)より前に事前登録した事業所も、稼働後に参入した事業所も、
+ * どちらも約2ヶ月の無料期間になる。
+ *   9月申込 → 2027年1月1日 / 12月申込 → 2027年2月1日
+ *
+ * ⚠️ `supabase/functions/create-checkout-session/index.ts` の同名の定数と
  *    必ず同じ値にすること。Edge Function は Deno で動き `src/` を import できないため、
  *    やむを得ず二重定義になっている。片方だけ変えると、画面の説明と実際の課金がズレる。
  */
-export const CAMPAIGN_END_JST = '2026-12-31'
+export const CAMPAIGN_SIGNUP_DEADLINE_JST = '2026-12-31'
+export const CAMPAIGN_MIN_BILLING_START_JST = '2027-01-01'
 
 function jstParts(now: Date) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -56,20 +62,23 @@ function jstParts(now: Date) {
   return { year: Number(pick('year')), month: Number(pick('month')), day: Number(pick('day')) }
 }
 
-/** 今日（JST）がキャンペーン対象期間内かどうか。 */
+/** 今日（JST）がキャンペーンの受付期限内かどうか。 */
 export function isCampaignActive(now = new Date()): boolean {
   const { year, month, day } = jstParts(now)
   const today = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  return today <= CAMPAIGN_END_JST
+  return today <= CAMPAIGN_SIGNUP_DEADLINE_JST
 }
 
 /**
- * キャンペーン適用時の初回請求日を「2026年12月1日」形式で返す。
- * 「申込の翌月から2ヶ月無料、その次の月の1日から課金開始」= 申込月の3ヶ月後の1日。
- * Edge Function 側の getCampaignTrialEndUnix と同じ計算。
+ * キャンペーン適用時の初回請求日を「2027年1月1日」形式で返す。
+ * Edge Function 側の getCampaignTrialEndUnix と同じ計算にすること。
  */
 export function campaignFirstChargeLabel(now = new Date()): string {
   const { year, month } = jstParts(now)
-  const total = year * 12 + (month - 1) + 3
-  return `${Math.floor(total / 12)}年${(total % 12) + 1}月1日`
+  const total = year * 12 + (month - 1) + 2
+  const relY = Math.floor(total / 12)
+  const relM = (total % 12) + 1
+  const [floorY, floorM] = CAMPAIGN_MIN_BILLING_START_JST.split('-').map(Number)
+  const useFloor = floorY * 12 + floorM > relY * 12 + relM
+  return useFloor ? `${floorY}年${floorM}月1日` : `${relY}年${relM}月1日`
 }

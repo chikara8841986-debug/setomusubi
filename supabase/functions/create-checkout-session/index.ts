@@ -7,11 +7,23 @@ const DEFAULT_PER_VEHICLE_FEE = 2_200
 const FREE_VEHICLES = 2
 
 // ------------------------------------------------------------------ //
-// 2ヶ月無料キャンペーン（チラシ「今年かぎり」対応）
-// この日付（JST・当日を含む）までの申込を無料キャンペーン対象とする。
-// 延長・終了はこの1行を書き換えるだけでよい。
+// 2ヶ月無料キャンペーン
+//
+// 課金開始日 = 「稼働開始組の下限日」と「申込月の2ヶ月後の1日」の遅いほう。
+// こうすると、稼働(2026年11月)より前に事前登録した事業所も、稼働後に参入した
+// 事業所も、どちらも取りこぼさずに約2ヶ月の無料期間になる。
+//
+//   9月申込  → 2027年1月1日から課金（稼働の11月・12月が無料）
+//   11月申込 → 2027年1月1日から課金（11月・12月が無料）
+//   12月申込 → 2027年2月1日から課金（12月・1月が無料）
+//   1月申込  → 2027年3月1日から課金
+//
+// 変更するときはこの2つの日付だけ書き換える:
+//   CAMPAIGN_SIGNUP_DEADLINE_JST  … この日までに申し込んだ事業所が対象（当日を含む）
+//   CAMPAIGN_MIN_BILLING_START_JST … これより前には課金を始めない（稼働開始前の登録者を守る下限）
 // ------------------------------------------------------------------ //
-const CAMPAIGN_END_JST = '2026-12-31'
+const CAMPAIGN_SIGNUP_DEADLINE_JST = '2026-12-31'
+const CAMPAIGN_MIN_BILLING_START_JST = '2027-01-01'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -59,20 +71,24 @@ function getNextMonthStartUnix(now = new Date()) {
   return addMonthsJstStartUnix(1, now)
 }
 
-// キャンペーン: 「申込の翌月から2ヶ月無料、その次の月の1日から課金開始」
-// = 申込月の3ヶ月後の1日 0:00 JST。
-// 例: 8月22日申込 → 9・10月が無料 → 11月1日に初回請求。
-// 「ちょうど2ヶ月後」にしない（月の途中になり請求日を月初に揃える設計と噛み合わなくなるため）。
+// キャンペーン適用時の課金開始日（＝無料期間の終わり）。
+// 「下限日」と「申込月の2ヶ月後の1日」の遅いほうを採用する。
+// 最後に now+60秒 とも比較し、過去日をtrial_endに渡してStripeに拒否されるのを防ぐ。
 function getCampaignTrialEndUnix(now = new Date()) {
-  return addMonthsJstStartUnix(3, now)
+  const floorDate = Math.floor(
+    new Date(`${CAMPAIGN_MIN_BILLING_START_JST}T00:00:00+09:00`).getTime() / 1000,
+  )
+  const relative = addMonthsJstStartUnix(2, now)
+  const minSafe = Math.floor(now.getTime() / 1000) + 60
+  return Math.max(floorDate, relative, minSafe)
 }
 
-// 申込日（JST）がキャンペーン終了日以前かどうか。
+// 申込日（JST）がキャンペーンの受付期限以前かどうか。
 function isCampaignActive(now = new Date()) {
   const { year, month, day } = getJstDateParts(now)
   const todayJst =
     String(year) + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0')
-  return todayJst <= CAMPAIGN_END_JST
+  return todayJst <= CAMPAIGN_SIGNUP_DEADLINE_JST
 }
 
 Deno.serve(async (req) => {
@@ -283,7 +299,7 @@ Deno.serve(async (req) => {
           trial_end: trialEnd,
           metadata: {
             business_id: biz.id,
-            campaign: 'free_2month_until_' + CAMPAIGN_END_JST,
+            campaign: 'free_2month_until_' + CAMPAIGN_SIGNUP_DEADLINE_JST,
           },
         },
         metadata: {
@@ -294,7 +310,7 @@ Deno.serve(async (req) => {
           custom_base_price: biz.custom_base_price != null ? String(biz.custom_base_price) : '',
           custom_per_vehicle_price:
             biz.custom_per_vehicle_price != null ? String(biz.custom_per_vehicle_price) : '',
-          campaign: 'free_2month_until_' + CAMPAIGN_END_JST,
+          campaign: 'free_2month_until_' + CAMPAIGN_SIGNUP_DEADLINE_JST,
           campaign_trial_end: String(trialEnd),
         },
         success_url: `${billingUrl}?billing=success`,
