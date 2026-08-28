@@ -150,12 +150,21 @@ Deno.serve(async (req) => {
       return json({ ok: true, ...result })
     }
 
-    const { user_id, business_id, hospital_id, subject, text } = body
-    if (!subject || !text || (!user_id && !business_id && !hospital_id)) {
-      return json({ error: 'subject, text and one of user_id/business_id/hospital_id are required' }, 400)
+    // to_email: アカウントを持たない相手（問い合わせフォームの送信者など）へ直接送るための宛先。
+    // この関数はSERVICE_ROLE_KEYを持つ内部呼び出しのみ許可しているため、外部からの
+    // 任意アドレス送信（オープンリレー）にはならない。
+    const { user_id, business_id, hospital_id, to_email, subject, text } = body
+    if (!subject || !text || (!user_id && !business_id && !hospital_id && !to_email)) {
+      return json({ error: 'subject, text and one of user_id/business_id/hospital_id/to_email are required' }, 400)
     }
 
     const endpoints: Endpoint[] = []
+
+    // 0) メールアドレス直接指定（アカウント不要）
+    if (to_email) {
+      endpoints.push({ email: to_email, lineUserId: null, notifyEmail: true, notifyLine: false })
+    }
+
     let orgBusinessId: string | null = business_id ?? null
     let orgHospitalId: string | null = hospital_id ?? null
 
